@@ -1,0 +1,17 @@
+.env
+.DS_Store
+postgres-data/
+
+# Frontend
+node_modules/
+frontend/dist/
+
+# Backend (.NET)
+**/bin/
+**/obj/
+
+# IDE / editor
+.idea/
+.vs/
+*.user
+*.suo
