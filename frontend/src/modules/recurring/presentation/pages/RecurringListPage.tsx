@@ -1,14 +1,21 @@
 import { useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { Repeat2, Search } from 'lucide-react';
-import { Input } from '@/components/ui/input';
+import { Plus, Repeat2, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Input } from '@/components/ui/input';
+import { cn } from '@/lib/utils';
 import { useRecurringTemplates } from '../../application/use-recurring';
 import { RecurringListItem } from '../components/RecurringListItem';
 import { CreateRecurringDialog } from '../components/CreateRecurringDialog';
 
 type StatusFilter = 'all' | 'active' | 'paused';
+
+const STATUS_FILTERS: { value: StatusFilter; label: string }[] = [
+    { value: 'all', label: 'Todos' },
+    { value: 'active', label: 'Activos' },
+    { value: 'paused', label: 'Pausados' },
+];
 
 export function RecurringListPage(): React.ReactElement {
     const { workspaceSlug = '' } = useParams<{ workspaceSlug: string }>();
@@ -27,12 +34,6 @@ export function RecurringListPage(): React.ReactElement {
         return matchesQuery && matchesStatus;
     });
 
-    const STATUS_FILTERS: { value: StatusFilter; label: string }[] = [
-        { value: 'all', label: 'Todos' },
-        { value: 'active', label: 'Activos' },
-        { value: 'paused', label: 'Pausados' },
-    ];
-
     return (
         <>
             <CreateRecurringDialog
@@ -40,84 +41,113 @@ export function RecurringListPage(): React.ReactElement {
                 onClose={() => setCreateOpen(false)}
                 workspaceSlug={workspaceSlug}
             />
-            <div className="flex h-full w-full flex-col overflow-hidden">
-                {/* Page header */}
-                <div className="flex items-center justify-between border-b px-6 py-4">
-                    <div className="flex items-center gap-3">
-                        <div className="flex h-8 w-8 items-center justify-center rounded-md bg-violet-100 dark:bg-violet-900/30">
-                            <Repeat2 className="h-4 w-4 text-violet-600 dark:text-violet-400" />
-                        </div>
-                        <h1 className="text-lg font-semibold">Tareas recurrentes</h1>
-                    </div>
-                    <Button onClick={() => setCreateOpen(true)}>Nueva tarea recurrente</Button>
-                </div>
-
-                {/* Toolbar */}
-                <div className="flex h-11 w-full items-center gap-2.5 border-b border-subtle px-5">
-                    <Search className="h-3.5 w-3.5 flex-shrink-0 text-placeholder" />
-                    <Input
-                        className="h-full w-full border-0 bg-transparent p-0 text-sm shadow-none placeholder:text-placeholder focus-visible:ring-0 text-primary"
-                        value={query}
-                        onChange={(e) => setQuery(e.target.value)}
-                        placeholder="Buscar tareas recurrentes..."
-                    />
-                    <div className="ml-auto flex flex-shrink-0 items-center gap-1">
-                        {STATUS_FILTERS.map((s) => (
-                            <button
-                                key={s.value}
-                                type="button"
-                                onClick={() => setStatusFilter(s.value)}
-                                className={`rounded-md px-2 py-1 text-xs font-medium transition-colors ${
-                                    statusFilter === s.value
-                                        ? 'bg-accent-subtle text-accent-primary'
-                                        : 'text-placeholder hover:text-primary hover:bg-layer-transparent-hover'
-                                }`}
-                            >
-                                {s.label}
-                            </button>
-                        ))}
-                    </div>
-                </div>
-
-                {/* Content */}
-                {isLoading ? (
-                    <div className="flex flex-col gap-y-2 p-5">
-                        {[1, 2, 3].map((i) => (
-                            <Skeleton key={i} className="h-12 w-full rounded-md" />
-                        ))}
-                    </div>
-                ) : filtered.length === 0 ? (
-                    <div className="flex h-full flex-col items-center justify-center gap-4 text-center">
-                        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-layer-1">
-                            <Repeat2 className="h-7 w-7 text-placeholder" />
-                        </div>
+            <div className="p-8">
+                <div className="max-w-5xl mx-auto">
+                    {/* Header */}
+                    <div className="flex items-center justify-between mb-8">
                         <div>
-                            <p className="text-sm font-medium text-primary">
+                            <p className="text-xs text-placeholder uppercase tracking-wider mb-1">
+                                {workspaceSlug}
+                            </p>
+                            <h1 className="text-2xl font-bold text-primary">Tareas recurrentes</h1>
+                        </div>
+                        <Button
+                            className="bg-accent-primary hover:bg-accent-primary-hover text-on-color gap-2"
+                            onClick={() => setCreateOpen(true)}
+                        >
+                            <Plus size={16} />
+                            Nueva tarea recurrente
+                        </Button>
+                    </div>
+
+                    {/* Search + filters */}
+                    <div className="flex items-center gap-3 mb-5">
+                        <div className="relative flex-1">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-placeholder" />
+                            <Input
+                                value={query}
+                                onChange={(e) => setQuery(e.target.value)}
+                                placeholder="Buscar tareas recurrentes..."
+                                className="pl-9 bg-surface-1 border-subtle text-primary placeholder:text-placeholder"
+                            />
+                        </div>
+                        <div className="flex items-center gap-1 rounded-lg border border-subtle bg-surface-1 p-1">
+                            {STATUS_FILTERS.map((s) => (
+                                <button
+                                    key={s.value}
+                                    type="button"
+                                    onClick={() => setStatusFilter(s.value)}
+                                    className={cn(
+                                        'rounded-md px-3 py-1 text-xs font-medium transition-colors',
+                                        statusFilter === s.value
+                                            ? 'bg-accent-subtle text-accent-primary'
+                                            : 'text-placeholder hover:text-primary hover:bg-layer-transparent-hover',
+                                    )}
+                                >
+                                    {s.label}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Loading */}
+                    {isLoading && (
+                        <div className="space-y-2">
+                            {(['sk-0', 'sk-1', 'sk-2'] as const).map((k) => (
+                                <div
+                                    key={k}
+                                    className="flex items-center gap-3 p-4 bg-surface-1/50 border border-subtle rounded-lg"
+                                >
+                                    <Skeleton className="h-8 w-8 rounded-md bg-layer-1 shrink-0" />
+                                    <div className="flex-1 space-y-1.5">
+                                        <Skeleton className="h-4 w-48 bg-layer-1" />
+                                        <Skeleton className="h-3 w-32 bg-layer-1" />
+                                    </div>
+                                    <Skeleton className="h-4 w-28 bg-layer-1" />
+                                </div>
+                            ))}
+                        </div>
+                    )}
+
+                    {/* Empty state */}
+                    {!isLoading && filtered.length === 0 && (
+                        <div className="flex flex-col items-center justify-center py-24 text-center">
+                            <Repeat2 size={48} className="text-placeholder mb-4" />
+                            <h2 className="text-lg font-medium text-secondary mb-2">
                                 {query || statusFilter !== 'all'
                                     ? 'Sin resultados'
                                     : 'No hay tareas recurrentes'}
-                            </p>
-                            <p className="mt-1 text-xs text-placeholder">
+                            </h2>
+                            <p className="text-sm text-placeholder mb-6">
                                 {query || statusFilter !== 'all'
-                                    ? 'Intentá con otro filtro o búsqueda'
+                                    ? 'Probá con otro filtro o búsqueda'
                                     : 'Creá tu primera tarea recurrente para automatizar trabajo repetitivo'}
                             </p>
+                            {!query && statusFilter === 'all' && (
+                                <Button
+                                    className="bg-accent-primary hover:bg-accent-primary-hover text-on-color gap-2"
+                                    onClick={() => setCreateOpen(true)}
+                                >
+                                    <Plus size={16} />
+                                    Nueva tarea recurrente
+                                </Button>
+                            )}
                         </div>
-                        {!query && statusFilter === 'all' && (
-                            <Button onClick={() => setCreateOpen(true)}>Nueva tarea recurrente</Button>
-                        )}
-                    </div>
-                ) : (
-                    <div className="flex h-full w-full flex-col overflow-y-auto">
-                        {filtered.map((template) => (
-                            <RecurringListItem
-                                key={template.id}
-                                template={template}
-                                workspaceSlug={workspaceSlug}
-                            />
-                        ))}
-                    </div>
-                )}
+                    )}
+
+                    {/* List */}
+                    {!isLoading && filtered.length > 0 && (
+                        <div className="space-y-2">
+                            {filtered.map((template) => (
+                                <RecurringListItem
+                                    key={template.id}
+                                    template={template}
+                                    workspaceSlug={workspaceSlug}
+                                />
+                            ))}
+                        </div>
+                    )}
+                </div>
             </div>
         </>
     );
