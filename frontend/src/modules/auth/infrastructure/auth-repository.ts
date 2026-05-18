@@ -46,4 +46,12 @@ export const authRepository = {
         apiClient.post('/api/auth/change-password', data).then(() => undefined),
     deactivateAccount: (): Promise<void> =>
         apiClient.delete('/api/auth/me').then(() => undefined),
+    sendMagicLink: (email: string): Promise<void> =>
+        apiClient.post('/api/auth/magic-link', { email }).then(() => undefined),
+    verifyMagicLink: (token: string): Promise<User> =>
+        apiClient.post<User>('/api/auth/magic-link/verify', { token }).then((r) => r.data),
+    getOAuthUrl: (provider: 'google' | 'github'): Promise<{ url: string; message: string }> =>
+        apiClient
+            .get<{ url: string; message: string }>(`/api/auth/oauth/${provider}/authorize`)
+            .then((r) => r.data),
 };

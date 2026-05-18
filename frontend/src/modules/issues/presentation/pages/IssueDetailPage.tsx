@@ -28,6 +28,7 @@ import { RichTextEditor } from '@/shared/components/RichTextEditor';
 import { useDocumentCollaboration } from '@/shared/hooks/useDocumentCollaboration';
 import type { IssueRelationType } from '../../domain/types';
 import { FileAttachments } from '@/modules/files/presentation/components/FileAttachments';
+import { WorklogPanel } from '@/modules/time-tracking/presentation/components/WorklogPanel';
 import { IssuePriorityBadge } from '../components/IssuePriorityBadge';
 import { IssueStateBadge } from '../components/IssueStateBadge';
 import {
@@ -1004,6 +1005,9 @@ export const IssueDetailPage = (): React.ReactElement => {
                                 </PropertyRow>
                             </div>
                         </div>
+
+                        {/* Time Tracking */}
+                        <WorklogPanel issueId={issue.id} workspaceSlug={workspaceSlug} />
 
                         {/* AI Tools */}
                         <div className="border border-subtle rounded-lg bg-surface-1 overflow-hidden mt-4">

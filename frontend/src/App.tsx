@@ -16,6 +16,7 @@ const ResetPasswordPage = lazy(() => import('@/modules/auth/presentation/pages/R
 const ProfilePage = lazy(() => import('@/modules/auth/presentation/pages/ProfilePage').then(m => ({ default: m.ProfilePage })));
 const OnboardingPage = lazy(() => import('@/modules/auth/presentation/pages/OnboardingPage').then(m => ({ default: m.OnboardingPage })));
 const ApiTokensPage = lazy(() => import('@/modules/auth/presentation/pages/ApiTokensPage').then(m => ({ default: m.ApiTokensPage })));
+const MagicLinkVerifyPage = lazy(() => import('@/modules/auth/presentation/pages/MagicLinkVerifyPage').then(m => ({ default: m.MagicLinkVerifyPage })));
 
 // Workspace pages
 const WorkspacesPage = lazy(() => import('@/modules/workspaces/presentation/pages/WorkspacesPage').then(m => ({ default: m.WorkspacesPage })));
@@ -92,6 +93,9 @@ const TeamsPage = lazy(() => import('@/modules/teams/presentation/pages/TeamsPag
 // Integrations pages
 const IntegrationsPage = lazy(() => import('@/modules/integrations/presentation/pages/IntegrationsPage').then(m => ({ default: m.IntegrationsPage })));
 
+// Importer pages
+const ImporterPage = lazy(() => import('@/modules/importer/presentation/pages/ImporterPage').then(m => ({ default: m.ImporterPage })));
+
 // Space / Deploy Boards pages
 const PublicSpacePage = lazy(() => import('@/modules/space/presentation/pages/PublicSpacePage').then(m => ({ default: m.PublicSpacePage })));
 const DeployBoardsPage = lazy(() => import('@/modules/space/presentation/pages/DeployBoardsPage').then(m => ({ default: m.DeployBoardsPage })));
@@ -114,6 +118,7 @@ export const App = (): React.ReactElement => (
             <Route path="/register" element={<RegisterPage />} />
             <Route path="/forgot-password" element={<ForgotPasswordPage />} />
             <Route path="/reset-password" element={<ResetPasswordPage />} />
+            <Route path="/magic-link/:token" element={<MagicLinkVerifyPage />} />
             <Route element={<AuthGuard />}>
                 <Route path="/onboarding" element={<OnboardingPage />} />
                 <Route path="/" element={<WorkspaceRedirect />} />
@@ -133,6 +138,7 @@ export const App = (): React.ReactElement => (
                     <Route path="companies/:companyId/inbox" element={<InboxPage />} />
                     <Route path="companies/:companyId/deploy-boards" element={<DeployBoardsPage />} />
                     <Route path="companies/:companyId/settings" element={<CompanySettingsPage />} />
+                    <Route path="companies/:companyId/importer" element={<ImporterPage />} />
                     <Route path="stickies" element={<StickiesPage />} />
                     <Route path="favorites" element={<FavoritesPage />} />
                     <Route path="analytics" element={<AnalyticsPage />} />
