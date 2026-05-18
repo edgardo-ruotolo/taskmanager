@@ -17,7 +17,7 @@ import {
     SheetHeader,
     SheetTitle,
 } from '@/components/ui/sheet';
-import { RichTextEditor } from '@/shared/components/RichTextEditor';
+import { CollaborativeEditor } from '@/shared/components/CollaborativeEditor';
 import {
     usePage,
     useUpdatePage,
@@ -105,10 +105,10 @@ export function PageDetailPage(): React.ReactElement {
     }, [page]);
 
     const handleContentChange = useCallback(
-        (html: string): void => {
+        (content: string): void => {
             if (saveTimer.current) clearTimeout(saveTimer.current);
             saveTimer.current = setTimeout(() => {
-                updateMutation.mutate({ description: html });
+                updateMutation.mutate({ description: content });
             }, 800);
         },
         [updateMutation],
@@ -213,10 +213,11 @@ export function PageDetailPage(): React.ReactElement {
                             disabled={page.isLocked}
                             className="mb-6 w-full bg-transparent text-[28px] font-bold outline-none placeholder:text-muted-foreground disabled:opacity-60"
                         />
-                        <RichTextEditor
-                            content={page.description}
-                            onChange={page.isLocked ? undefined : handleContentChange}
-                            placeholder="Empieza a escribir..."
+                        <CollaborativeEditor
+                            documentId={`page-${pageId}`}
+                            initialContent={page.description}
+                            onSave={page.isLocked ? undefined : handleContentChange}
+                            readOnly={page.isLocked}
                         />
                     </div>
                 </div>

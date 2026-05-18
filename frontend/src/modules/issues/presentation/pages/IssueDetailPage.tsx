@@ -25,6 +25,7 @@ import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/modules/auth/application/auth-store';
 import { RichTextEditor } from '@/shared/components/RichTextEditor';
+import { useDocumentCollaboration } from '@/shared/hooks/useDocumentCollaboration';
 import type { IssueRelationType } from '../../domain/types';
 import { FileAttachments } from '@/modules/files/presentation/components/FileAttachments';
 import { IssuePriorityBadge } from '../components/IssuePriorityBadge';
@@ -729,6 +730,10 @@ export const IssueDetailPage = (): React.ReactElement => {
     );
 
     const isSubscribed = subscribers.some((s: IssueSubscriber) => s.userId === currentUserId);
+
+    const { participants: docParticipants } = useDocumentCollaboration(
+        issueId ? `issue-${issueId}` : '',
+    );
     const backUrl = `/${workspaceSlug}/companies/${companyId}/issues`;
 
     if (issueLoading) {
@@ -818,9 +823,29 @@ export const IssueDetailPage = (): React.ReactElement => {
 
                         {/* Description */}
                         <div className="mb-6">
-                            <p className="text-xs font-medium text-placeholder uppercase tracking-wider mb-3">
-                                Descripción
-                            </p>
+                            <div className="flex items-center justify-between mb-3">
+                                <p className="text-xs font-medium text-placeholder uppercase tracking-wider">
+                                    Descripción
+                                </p>
+                                {docParticipants.length > 1 && (
+                                    <div className="flex items-center gap-1.5">
+                                        <div className="flex -space-x-1">
+                                            {docParticipants.slice(0, 3).map((p) => (
+                                                <div
+                                                    key={p.userId}
+                                                    title={p.userName}
+                                                    className="w-5 h-5 rounded-full bg-blue-600/20 border border-blue-500/50 flex items-center justify-center text-[9px] font-semibold text-blue-400"
+                                                >
+                                                    {p.userName.slice(0, 1).toUpperCase()}
+                                                </div>
+                                            ))}
+                                        </div>
+                                        <span className="text-[11px] text-placeholder">
+                                            {docParticipants.length} personas editando
+                                        </span>
+                                    </div>
+                                )}
+                            </div>
                             <div className="rounded-lg border border-subtle bg-surface-1 px-4 py-3">
                                 <RichTextEditor
                                     content={issue.description ?? ''}
