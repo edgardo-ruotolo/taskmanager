@@ -1,17 +1,43 @@
+# Environment
 .env
+.env.local
+.env.*.local
+*.local
+
+# macOS
 .DS_Store
+.AppleDouble
+.LSOverride
+
+# Database
 postgres-data/
 
-# Frontend
+# Frontend (React / Vite)
 node_modules/
 frontend/dist/
+frontend/.vite/
+frontend/coverage/
 
-# Backend (.NET)
+# Backend (.NET 9)
 **/bin/
 **/obj/
+backend/appsettings.Local.json
+*.nupkg
+**/TestResults/
+**/.dotnet-tools.json
+
+# Logs
+*.log
+logs/
 
 # IDE / editor
 .idea/
 .vs/
 *.user
 *.suo
+*.userprefs
+.reference-screenshots/
+
+# Misc
+.cache/
+.turbo/

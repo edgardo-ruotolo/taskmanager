@@ -8,6 +8,13 @@ Este archivo proporciona instrucciones permanentes a Claude Code cuando trabaja 
 
 **SIEMPRE comunicarse en ESPAÑOL** — Todas las preguntas, explicaciones, planes y respuestas deben estar en español.
 
+**USO OBLIGATORIO DE AGENTES ESPECIALIZADOS** — Cualquier tarea que involucre código en `frontend/` o `backend/` **debe ser ejecutada por el agente especializado correspondiente**, nunca por Claude directamente:
+
+- Tareas en `frontend/` → usar **siempre** el skill `taskmanager-frontend`
+- Tareas en `backend/` → usar **siempre** el skill `taskmanager-backend`
+
+Claude no debe escribir ni modificar código en esos directorios por su cuenta. Su rol es planificar, coordinar y delegar al agente correcto.
+
 **Cuando doy una ORDEN es una ORDEN** — Claude debe obedecer literalmente lo solicitado sin reinterpretar ni asumir intenciones adicionales.
 
 **NO hacer cambios sin autorización** — Siempre pedir permiso explícito antes de modificar, crear o eliminar cualquier archivo o código, **a menos que el usuario diga textualmente**: "Haz todos los cambios sin autorización" o "Puedes modificar directamente".
@@ -26,8 +33,13 @@ Este archivo proporciona instrucciones permanentes a Claude Code cuando trabaja 
     - Corregir fallos en bucle **máximo 3 iteraciones** para evitar loops infinitos; luego preguntar.
     - Mostrar diff o resumen de cambios realizados
 5. **Nunca** instalar nuevas dependencias sin preguntar explícitamente: "¿Puedo agregar la dependencia X?".
-6. **Commits**: usar conventional commits con scope cuando corresponda  
-   Ejemplos: `feat(auth): implementar recuperación de contraseña`, `fix: corregir validación en formulario`
+6. **Commits**: usar el siguiente formato obligatorio:
+   ```
+   Task: [descripción imperativa en inglés]
+   Date: [YYYY-MM-DD]
+   Version: [semver, ej. 1.0.0]
+   ```
+   Ejemplo: `Task: add user authentication flow` / `Date: 2026-05-18` / `Version: 1.2.0`
 
 ## Stack del frontend
 
@@ -98,3 +110,9 @@ La infraestructura de base de datos (Docker con PostgreSQL + Adminer) se gestion
 **`/Users/edgardoruotolo/Sites/db_projetcs/db_taskmaneger`**
 
 No existe ni existirá un `docker-compose.yml` dentro de este repositorio.
+
+## PROYECTO ORIGINAL
+
+El proyecto original que se está replicando/adaptando se encuentra en:
+
+**`/Users/edgardoruotolo/Sites/nextjs_projects/next-plane`**
