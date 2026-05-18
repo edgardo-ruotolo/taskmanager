@@ -22,6 +22,7 @@ using TaskManager.Api.Modules.States.Entities;
 using TaskManager.Api.Modules.Webhooks.Entities;
 using TaskManager.Api.Modules.Analytics.Entities;
 using TaskManager.Api.Modules.Exporter.Entities;
+using TaskManager.Api.Modules.Home.Entities;
 using TaskManager.Api.Modules.Teams.Entities;
 using TaskManager.Api.Modules.Workspaces.Entities;
 
@@ -90,6 +91,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
     public DbSet<TeamMember> TeamMembers => Set<TeamMember>();
     public DbSet<AnalyticView> AnalyticViews => Set<AnalyticView>();
     public DbSet<ExporterHistory> ExporterHistories => Set<ExporterHistory>();
+    public DbSet<UserRecentVisit> UserRecentVisits => Set<UserRecentVisit>();
+    public DbSet<WorkspaceQuickLink> WorkspaceQuickLinks => Set<WorkspaceQuickLink>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -150,6 +153,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
         builder.Entity<TeamMember>().HasQueryFilter(e => !e.IsDeleted);
         builder.Entity<AnalyticView>().HasQueryFilter(e => !e.IsDeleted);
         builder.Entity<ExporterHistory>().HasQueryFilter(e => !e.IsDeleted);
+        builder.Entity<UserRecentVisit>().HasQueryFilter(e => !e.IsDeleted);
+        builder.Entity<WorkspaceQuickLink>().HasQueryFilter(e => !e.IsDeleted);
 
         builder.Entity<RecurringIssueTemplate>().HasQueryFilter(e => !e.IsDeleted);
         builder.Entity<RecurringIssueRun>().HasQueryFilter(e => !e.IsDeleted);
