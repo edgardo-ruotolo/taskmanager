@@ -89,6 +89,10 @@ const DraftsPage = lazy(() => import('@/modules/drafts/presentation/pages/Drafts
 // Teams pages
 const TeamsPage = lazy(() => import('@/modules/teams/presentation/pages/TeamsPage').then(m => ({ default: m.TeamsPage })));
 
+// Space / Deploy Boards pages
+const PublicSpacePage = lazy(() => import('@/modules/space/presentation/pages/PublicSpacePage').then(m => ({ default: m.PublicSpacePage })));
+const DeployBoardsPage = lazy(() => import('@/modules/space/presentation/pages/DeployBoardsPage').then(m => ({ default: m.DeployBoardsPage })));
+
 // God Mode pages
 const GodModeGeneralPage = lazy(() => import('@/modules/admin/presentation/pages/GodModeGeneralPage').then(m => ({ default: m.GodModeGeneralPage })));
 const GodModeEmailPage = lazy(() => import('@/modules/admin/presentation/pages/GodModeEmailPage').then(m => ({ default: m.GodModeEmailPage })));
@@ -102,6 +106,7 @@ const GodModeStatesPage = lazy(() => import('@/modules/admin/presentation/pages/
 export const App = (): React.ReactElement => (
     <Suspense fallback={<PageLoader />}>
         <Routes>
+            <Route path="/public/:token" element={<PublicSpacePage />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
             <Route path="/forgot-password" element={<ForgotPasswordPage />} />
@@ -123,6 +128,7 @@ export const App = (): React.ReactElement => (
                     <Route path="companies/:companyId/archives" element={<ArchivesPage />} />
                     <Route path="companies/:companyId/estimates" element={<EstimatesPage />} />
                     <Route path="companies/:companyId/inbox" element={<InboxPage />} />
+                    <Route path="companies/:companyId/deploy-boards" element={<DeployBoardsPage />} />
                     <Route path="companies/:companyId/settings" element={<CompanySettingsPage />} />
                     <Route path="stickies" element={<StickiesPage />} />
                     <Route path="favorites" element={<FavoritesPage />} />
