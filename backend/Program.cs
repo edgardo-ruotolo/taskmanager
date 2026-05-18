@@ -166,5 +166,6 @@ RecurringJob.AddOrUpdate<IRecurringDispatcher>(
 app.MapControllers();
 app.MapHub<NotificationHub>("/hubs/notifications");
 app.MapHub<IssueHub>("/hubs/issues");
+app.MapHub<DocumentHub>("/hubs/document");
 
 app.Run();
