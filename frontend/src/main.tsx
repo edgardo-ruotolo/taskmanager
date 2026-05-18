@@ -7,6 +7,7 @@ import { Toaster } from 'sonner';
 import { queryClient } from '@/shared/lib/query-client';
 import { ErrorBoundary } from '@/shared/components/ErrorBoundary';
 import { ThemeProvider } from '@/shared/components/ThemeProvider';
+import { TooltipProvider } from '@/components/ui/tooltip';
 import { App } from './App';
 import './index.css';
 
@@ -19,9 +20,11 @@ ReactDOM.createRoot(rootElement).render(
             <ThemeProvider>
                 <QueryClientProvider client={queryClient}>
                     <BrowserRouter>
-                        <App />
-                        <Toaster position="top-right" richColors />
-                        <ReactQueryDevtools initialIsOpen={false} />
+                        <TooltipProvider>
+                            <App />
+                            <Toaster position="top-right" richColors />
+                            <ReactQueryDevtools initialIsOpen={false} />
+                        </TooltipProvider>
                     </BrowserRouter>
                 </QueryClientProvider>
             </ThemeProvider>

@@ -4,6 +4,7 @@ using Hangfire;
 using Hangfire.PostgreSql;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 using Scalar.AspNetCore;
 using Serilog;
 using TaskManager.Api.Common.Auth;
@@ -51,8 +52,12 @@ builder.Configuration
     .AddJsonFile("appsettings.Local.json", optional: true)
     .AddEnvironmentVariables();
 
+var npgsqlDataSource = new NpgsqlDataSourceBuilder(builder.Configuration.GetConnectionString("Postgres"))
+    .EnableDynamicJson()
+    .Build();
+
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("Postgres")));
+    options.UseNpgsql(npgsqlDataSource));
 
 builder.Services.AddIdentity<User, IdentityRole<Guid>>(options =>
 {
@@ -137,7 +142,8 @@ if (builder.Environment.IsDevelopment())
          .AllowAnyHeader()
          .AllowCredentials()));
 
-builder.Services.AddControllers(o => o.Filters.Add<GlobalExceptionFilter>());
+builder.Services.AddControllers(o => o.Filters.Add<GlobalExceptionFilter>())
+    .AddJsonOptions(o => o.JsonSerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter()));
 builder.Services.AddOpenApi();
 
 var app = builder.Build();

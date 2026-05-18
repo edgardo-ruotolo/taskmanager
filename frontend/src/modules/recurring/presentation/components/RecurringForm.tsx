@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Info, Repeat2, X } from 'lucide-react';
+import { useCompanies } from '@/modules/companies/application/use-companies';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -53,7 +54,8 @@ interface Props {
     onClose: () => void;
 }
 
-export function RecurringForm({ data, prefill, onSubmit, onClose }: Props): React.ReactElement {
+export function RecurringForm({ workspaceSlug, data, prefill, onSubmit, onClose }: Props): React.ReactElement {
+    const { data: companiesData } = useCompanies(workspaceSlug);
     const {
         register,
         control,
@@ -373,6 +375,47 @@ export function RecurringForm({ data, prefill, onSubmit, onClose }: Props): Reac
                             />
                         </div>
                     </div>
+
+                    {/* Companies */}
+                    {companiesData && companiesData.items.length > 0 && (
+                        <div className="flex flex-col gap-y-1">
+                            <Label className="flex items-center gap-1">
+                                Empresas
+                                <FieldHelp text="Seleccioná las empresas donde se crearán las tareas" />
+                            </Label>
+                            <Controller
+                                name="companyIds"
+                                control={control}
+                                render={({ field }) => (
+                                    <div className="flex flex-wrap gap-2">
+                                        {companiesData.items.map((company) => (
+                                            <button
+                                                key={company.id}
+                                                type="button"
+                                                onClick={() => {
+                                                    const current = field.value ?? [];
+                                                    const updated = current.includes(company.id)
+                                                        ? current.filter((id) => id !== company.id)
+                                                        : [...current, company.id];
+                                                    field.onChange(updated);
+                                                }}
+                                                className={`rounded-md px-3 py-1 text-xs font-medium transition-colors ${
+                                                    (field.value ?? []).includes(company.id)
+                                                        ? 'bg-primary text-primary-foreground'
+                                                        : 'border text-muted-foreground hover:bg-muted'
+                                                }`}
+                                            >
+                                                {company.identifier} {company.name}
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
+                            />
+                            {errors.companyIds && (
+                                <p className="text-xs text-destructive">{errors.companyIds.message}</p>
+                            )}
+                        </div>
+                    )}
 
                     <div className="grid grid-cols-2 gap-3">
                         <div className="flex flex-col gap-y-1">

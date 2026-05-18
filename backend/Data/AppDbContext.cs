@@ -172,6 +172,9 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
         builder.Entity<IssueWorklog>().HasQueryFilter(e => !e.IsDeleted);
 
         builder.Entity<RecurringIssueTemplate>().HasQueryFilter(e => !e.IsDeleted);
+        builder.Entity<RecurringIssueTemplate>()
+            .Property(t => t.DaysOfWeek)
+            .HasColumnType("jsonb");
         builder.Entity<RecurringIssueRun>().HasQueryFilter(e => !e.IsDeleted);
         builder.Entity<RecurringIssueRunIssue>().HasQueryFilter(e => !e.Run.IsDeleted);
         builder.Entity<RecurringIssueTemplateCompany>().HasQueryFilter(e => !e.Template.IsDeleted);
