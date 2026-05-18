@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type React from 'react';
-import { NavLink, useParams } from 'react-router-dom';
+import { NavLink, useParams, useLocation } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -80,7 +80,7 @@ const DEV_ITEMS: SettingsNavItem[] = [
     { to: 'integrations', label: 'Integraciones', icon: Plug },
 ];
 
-function SettingsSidebar({ activeTab, onTabChange }: { activeTab: string; onTabChange: (tab: string) => void }): React.ReactElement {
+function _SettingsSidebar({ activeTab, onTabChange }: { activeTab: string; onTabChange: (tab: string) => void }): React.ReactElement {
     const renderItem = (item: SettingsNavItem): React.ReactElement => {
         const Icon = item.icon;
         const isActive = activeTab === item.to;
@@ -155,7 +155,25 @@ function GeneralTab({ workspaceSlug }: { workspaceSlug: string }): React.ReactEl
     const qc = useQueryClient();
     const [coverPhoto, setCoverPhoto] = useState<UnsplashPhoto | null>(null);
 
-    const settingsForm = useForm<SettingsForm>({ resolver: zodResolver(settingsSchema) });
+    const settingsForm = useForm<SettingsForm>({
+        resolver: zodResolver(settingsSchema),
+        defaultValues: { name: '', description: '' },
+    });
+
+    const { data: workspaceData } = useQuery({
+        queryKey: ['workspace-detail', workspaceSlug],
+        queryFn: () => workspaceRepository.getBySlug(workspaceSlug),
+        enabled: !!workspaceSlug,
+    });
+
+    useEffect(() => {
+        if (workspaceData) {
+            settingsForm.reset({
+                name: workspaceData.name,
+                description: workspaceData.description ?? '',
+            });
+        }
+    }, [workspaceData, settingsForm]);
 
     const updateMutation = useMutation({
         mutationFn: (data: SettingsForm) => workspaceRepository.update(workspaceSlug, data),
@@ -490,7 +508,7 @@ function MembersTab({ workspaceSlug }: { workspaceSlug: string }): React.ReactEl
     );
 }
 
-function WebhooksTab(): React.ReactElement {
+function _WebhooksTab(): React.ReactElement {
     return (
         <div className="space-y-6">
             <SectionHeader
@@ -508,7 +526,7 @@ function WebhooksTab(): React.ReactElement {
     );
 }
 
-function TokensTab(): React.ReactElement {
+function _TokensTab(): React.ReactElement {
     return (
         <div className="space-y-6">
             <SectionHeader
@@ -526,7 +544,7 @@ function TokensTab(): React.ReactElement {
     );
 }
 
-function IntegrationsTab(): React.ReactElement {
+function _IntegrationsTab(): React.ReactElement {
     return (
         <div className="space-y-6">
             <SectionHeader
@@ -661,7 +679,7 @@ function ThemeTab({ workspaceSlug }: { workspaceSlug: string }): React.ReactElem
     );
 }
 
-function DisabledTab({ title, description }: { title: string; description: string }): React.ReactElement {
+function _DisabledTab({ title, description }: { title: string; description: string }): React.ReactElement {
     return (
         <div className="space-y-6">
             <SectionHeader title={title} description={description} />
@@ -676,8 +694,11 @@ function DisabledTab({ title, description }: { title: string; description: strin
 
 export const WorkspaceSettingsPage = (): React.ReactElement => {
     const { workspaceSlug } = useParams<{ workspaceSlug: string }>();
+    const location = useLocation();
     const slug = workspaceSlug ?? '';
-    const [activeTab, setActiveTab] = useState('general');
+    
+    // Determine tab from URL path
+    const activeTab = location.pathname.split('/').pop() ?? 'general';
 
     const renderContent = (): React.ReactElement => {
         switch (activeTab) {
@@ -687,46 +708,14 @@ export const WorkspaceSettingsPage = (): React.ReactElement => {
                 return <MembersTab workspaceSlug={slug} />;
             case 'theme':
                 return <ThemeTab workspaceSlug={slug} />;
-            case 'billing':
-                return (
-                    <DisabledTab
-                        title="Facturación y planes"
-                        description="Gestiona tu plan y métodos de pago."
-                    />
-                );
-            case 'exports':
-                return (
-                    <DisabledTab
-                        title="Exportaciones"
-                        description="Exporta los datos de tu workspace."
-                    />
-                );
-            case 'webhooks':
-                return <WebhooksTab />;
-            case 'tokens':
-                return <TokensTab />;
-            case 'integrations':
-                return <IntegrationsTab />;
             default:
                 return <GeneralTab workspaceSlug={slug} />;
         }
     };
 
     return (
-        <div className="p-6 md:p-8">
-            <div className="max-w-5xl mx-auto">
-                <div className="mb-6">
-                    <h1 className="text-lg font-semibold text-primary">Configuración del workspace</h1>
-                </div>
-
-                <div className="flex gap-0">
-                    <SettingsSidebar activeTab={activeTab} onTabChange={setActiveTab} />
-
-                    <div className="flex-1 pl-8">
-                        {renderContent()}
-                    </div>
-                </div>
-            </div>
+        <div className="animate-fade-in">
+            {renderContent()}
         </div>
     );
 };

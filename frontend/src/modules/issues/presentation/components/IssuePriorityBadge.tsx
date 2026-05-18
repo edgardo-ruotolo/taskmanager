@@ -23,7 +23,7 @@ export const IssuePriorityBadge = ({
     priority,
     className,
 }: IssuePriorityBadgeProps): React.ReactElement => {
-    const config = PRIORITY_CONFIG[priority];
+    const config = PRIORITY_CONFIG[priority] ?? PRIORITY_CONFIG[0];
     const { label, color, Icon } = config;
 
     return (

@@ -4,10 +4,10 @@ import type { ProjectModule, CreateModuleData, ModuleIssueRef } from '../domain/
 export const moduleRepository = {
     getAll: (workspaceSlug: string, companyId: string): Promise<ProjectModule[]> =>
         apiClient
-            .get<ProjectModule[]>(
+            .get<{ items: ProjectModule[] }>(
                 `/api/workspaces/${workspaceSlug}/companies/${companyId}/modules`,
             )
-            .then((r) => r.data),
+            .then((r) => r.data.items),
 
     create: (
         workspaceSlug: string,

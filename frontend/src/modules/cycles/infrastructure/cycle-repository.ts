@@ -4,8 +4,8 @@ import type { Cycle, CreateCycleData, CycleIssueRef } from '../domain/types';
 export const cycleRepository = {
     getAll: (workspaceSlug: string, companyId: string): Promise<Cycle[]> =>
         apiClient
-            .get<Cycle[]>(`/api/workspaces/${workspaceSlug}/companies/${companyId}/cycles`)
-            .then((r) => r.data),
+            .get<{ items: Cycle[] }>(`/api/workspaces/${workspaceSlug}/companies/${companyId}/cycles`)
+            .then((r) => r.data.items),
 
     create: (
         workspaceSlug: string,

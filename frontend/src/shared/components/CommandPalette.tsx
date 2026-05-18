@@ -1,7 +1,18 @@
 import type React from 'react';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Building2, Settings, Bell, BarChart2, User, AlertCircle, GitBranch, BoxSelect, Tag, Loader2 } from 'lucide-react';
+import { 
+    Building2, 
+    Settings, 
+    Bell, 
+    BarChart2, 
+    User, 
+    GitBranch, 
+    BoxSelect, 
+    Loader2, 
+    Plus, 
+    Sparkles 
+} from 'lucide-react';
 import {
     CommandDialog,
     CommandEmpty,
@@ -13,6 +24,7 @@ import {
 } from '@/components/ui/command';
 import { useWorkspaceStore } from '@/modules/workspaces/application/workspace-store';
 import { useSearch } from '@/modules/search/application/use-search';
+import { StatePip } from '@/components/ui/state-pip';
 
 interface NavItem {
     label: string;
@@ -34,7 +46,6 @@ export const CommandPalette = (): React.ReactElement => {
     const [query, setQuery] = useState('');
     const navigate = useNavigate();
     const activeWorkspace = useWorkspaceStore((s) => s.activeWorkspace);
-    const activeCompanyId = useWorkspaceStore((s) => s.activeCompanyId);
     const slug = activeWorkspace?.slug ?? '';
 
     const debouncedQuery = useDebounce(query, 300);
@@ -81,140 +92,134 @@ export const CommandPalette = (): React.ReactElement => {
     return (
         <CommandDialog open={open} onOpenChange={setOpen}>
             <CommandInput
-                placeholder="Buscar tareas, ciclos, módulos..."
+                placeholder="Escribe un comando o busca…"
                 value={query}
                 onValueChange={setQuery}
             />
-            <CommandList>
+            <CommandList className="max-h-[460px] p-2">
                 {isSearching ? (
                     <>
                         {isFetching && (
-                            <div className="flex items-center justify-center py-4 text-xs text-placeholder gap-2">
+                            <div className="flex items-center justify-center py-6 text-xs text-[var(--neutral-600)] gap-2 font-mono uppercase tracking-[0.1em]">
                                 <Loader2 size={14} className="animate-spin" />
-                                Buscando...
+                                Buscando…
                             </div>
                         )}
                         {!isFetching && !hasResults && (
                             <CommandEmpty>Sin resultados para "{debouncedQuery}"</CommandEmpty>
                         )}
                         {searchResults && searchResults.issues.length > 0 && (
-                            <CommandGroup heading="Tareas">
+                            <CommandGroup heading={`Tareas · ${searchResults.issues.length}`}>
                                 {searchResults.issues.map((issue) => (
                                     <CommandItem
                                         key={issue.id}
                                         onSelect={() => handleSelect(`/${slug}/companies/${issue.companyId}/issues/${issue.id}`)}
-                                        className="flex items-center gap-2 cursor-pointer"
+                                        className="flex items-center gap-3 group"
                                     >
-                                        <AlertCircle size={14} className="text-placeholder shrink-0" />
-                                        <span className="text-xs font-mono text-placeholder shrink-0">ISS-{issue.sequenceId}</span>
-                                        <span className="truncate">{issue.title}</span>
+                                        <div className="w-5 flex justify-center">
+                                            <StatePip state="backlog" size={14} />
+                                        </div>
+                                        <div className="flex-1">
+                                            <div className="text-[13.5px] font-medium tracking-[-0.01em]">{issue.title}</div>
+                                            <div className="font-mono text-[11px] text-[var(--neutral-600)] mt-0.5">
+                                                #{issue.sequenceId}
+                                            </div>
+                                        </div>
+                                        <span className="font-mono text-[10px] text-[var(--brand-700)] opacity-0 group-aria-selected:opacity-100 transition-opacity">↵ ir</span>
                                     </CommandItem>
                                 ))}
                             </CommandGroup>
                         )}
                         {searchResults && searchResults.cycles.length > 0 && (
-                            <>
-                                <CommandSeparator />
-                                <CommandGroup heading="Ciclos">
-                                    {searchResults.cycles.map((cycle) => (
-                                        <CommandItem
-                                            key={cycle.id}
-                                            onSelect={() => handleSelect(`/${slug}/companies/${cycle.companyId}/cycles`)}
-                                            className="flex items-center gap-2 cursor-pointer"
-                                        >
-                                            <GitBranch size={14} className="text-placeholder shrink-0" />
-                                            <span className="truncate">{cycle.name}</span>
-                                        </CommandItem>
-                                    ))}
-                                </CommandGroup>
-                            </>
+                            <CommandGroup heading={`Ciclos · ${searchResults.cycles.length}`}>
+                                {searchResults.cycles.map((cycle) => (
+                                    <CommandItem
+                                        key={cycle.id}
+                                        onSelect={() => handleSelect(`/${slug}/companies/${cycle.companyId}/cycles`)}
+                                        className="flex items-center gap-3 group"
+                                    >
+                                        <div className="w-5 flex justify-center text-[var(--brand-700)]">
+                                            <GitBranch size={14} />
+                                        </div>
+                                        <div className="flex-1">
+                                            <div className="text-[13.5px] font-medium tracking-[-0.01em]">{cycle.name}</div>
+                                            <div className="font-mono text-[11px] text-[var(--neutral-600)] mt-0.5 uppercase tracking-wider">
+                                                Ciclo activo
+                                            </div>
+                                        </div>
+                                        <span className="font-mono text-[10px] text-[var(--brand-700)] opacity-0 group-aria-selected:opacity-100 transition-opacity">↵ ir</span>
+                                    </CommandItem>
+                                ))}
+                            </CommandGroup>
                         )}
                         {searchResults && searchResults.modules.length > 0 && (
-                            <>
-                                <CommandSeparator />
-                                <CommandGroup heading="Módulos">
-                                    {searchResults.modules.map((mod) => (
-                                        <CommandItem
-                                            key={mod.id}
-                                            onSelect={() => handleSelect(`/${slug}/companies/${mod.companyId}/modules`)}
-                                            className="flex items-center gap-2 cursor-pointer"
-                                        >
-                                            <BoxSelect size={14} className="text-placeholder shrink-0" />
-                                            <span className="truncate">{mod.name}</span>
-                                        </CommandItem>
-                                    ))}
-                                </CommandGroup>
-                            </>
-                        )}
-                        {searchResults && searchResults.labels.length > 0 && (
-                            <>
-                                <CommandSeparator />
-                                <CommandGroup heading="Etiquetas">
-                                    {searchResults.labels.map((label) => (
-                                        <CommandItem
-                                            key={label.id}
-                                            onSelect={() => handleSelect(`/${slug}/settings/labels`)}
-                                            className="flex items-center gap-2 cursor-pointer"
-                                        >
-                                            <span
-                                                className="w-2.5 h-2.5 rounded-full shrink-0"
-                                                style={{ backgroundColor: label.color }}
-                                                aria-hidden="true"
-                                            />
-                                            <Tag size={14} className="text-placeholder shrink-0" />
-                                            <span className="truncate">{label.name}</span>
-                                        </CommandItem>
-                                    ))}
-                                </CommandGroup>
-                            </>
+                            <CommandGroup heading={`Módulos · ${searchResults.modules.length}`}>
+                                {searchResults.modules.map((mod) => (
+                                    <CommandItem
+                                        key={mod.id}
+                                        onSelect={() => handleSelect(`/${slug}/companies/${mod.companyId}/modules`)}
+                                        className="flex items-center gap-3 group"
+                                    >
+                                        <div className="w-5 flex justify-center text-[var(--neutral-600)]">
+                                            <BoxSelect size={14} />
+                                        </div>
+                                        <div className="flex-1">
+                                            <div className="text-[13.5px] font-medium tracking-[-0.01em]">{mod.name}</div>
+                                            <div className="font-mono text-[11px] text-[var(--neutral-600)] mt-0.5 uppercase tracking-wider">
+                                                Módulo
+                                            </div>
+                                        </div>
+                                        <span className="font-mono text-[10px] text-[var(--brand-700)] opacity-0 group-aria-selected:opacity-100 transition-opacity">↵ ir</span>
+                                    </CommandItem>
+                                ))}
+                            </CommandGroup>
                         )}
                     </>
                 ) : (
                     <>
-                        <CommandEmpty>Sin resultados.</CommandEmpty>
                         <CommandGroup heading="Navegación">
                             {navItems.map((item) => (
                                 <CommandItem
                                     key={item.path}
                                     onSelect={() => handleSelect(item.path)}
-                                    className="flex items-center gap-2 cursor-pointer"
+                                    className="flex items-center gap-3"
                                 >
-                                    <span className="text-placeholder">{item.icon}</span>
-                                    {item.label}
+                                    <div className="w-5 flex justify-center text-[var(--neutral-600)]">{item.icon}</div>
+                                    <span className="text-[13.5px] tracking-[-0.01em]">{item.label}</span>
                                 </CommandItem>
                             ))}
                         </CommandGroup>
-                        {activeCompanyId && (
-                            <>
-                                <CommandSeparator />
-                                <CommandGroup heading="Empresa actual">
-                                    <CommandItem
-                                        onSelect={() => handleSelect(`/${slug}/companies/${activeCompanyId}/issues`)}
-                                        className="flex items-center gap-2 cursor-pointer"
-                                    >
-                                        <AlertCircle size={16} className="text-placeholder" />
-                                        Tareas
-                                    </CommandItem>
-                                    <CommandItem
-                                        onSelect={() => handleSelect(`/${slug}/companies/${activeCompanyId}/cycles`)}
-                                        className="flex items-center gap-2 cursor-pointer"
-                                    >
-                                        <GitBranch size={16} className="text-placeholder" />
-                                        Ciclos
-                                    </CommandItem>
-                                    <CommandItem
-                                        onSelect={() => handleSelect(`/${slug}/companies/${activeCompanyId}/modules`)}
-                                        className="flex items-center gap-2 cursor-pointer"
-                                    >
-                                        <BoxSelect size={16} className="text-placeholder" />
-                                        Módulos
-                                    </CommandItem>
-                                </CommandGroup>
-                            </>
-                        )}
+                        <CommandSeparator className="my-1" />
+                        <CommandGroup heading="Acciones">
+                            <CommandItem onSelect={() => handleSelect(`/${slug}/companies`)} className="flex items-center gap-3">
+                                <div className="w-5 flex justify-center text-[var(--neutral-600)]"><Plus size={14} /></div>
+                                <span className="text-[13.5px] tracking-[-0.01em]">Crear nuevo issue</span>
+                                <kbd className="ml-auto font-mono text-[10px] text-[var(--neutral-600)] opacity-40">C</kbd>
+                            </CommandItem>
+                            <CommandItem onSelect={() => { /* AI summary — stub */ }} className="flex items-center gap-3">
+                                <div className="w-5 flex justify-center text-[var(--brand-700)]"><Sparkles size={14} /></div>
+                                <span className="text-[13.5px] tracking-[-0.01em]">Resumir este ciclo con IA</span>
+                                <kbd className="ml-auto font-mono text-[10px] text-[var(--neutral-600)] opacity-40">⌘ I</kbd>
+                            </CommandItem>
+                        </CommandGroup>
                     </>
                 )}
             </CommandList>
+            <div className="flex items-center gap-4 px-4 py-2.5 border-t border-[var(--neutral-300)] bg-[var(--neutral-100)] rounded-b-xl shrink-0">
+                <span className="text-[11px] text-[var(--neutral-600)] flex items-center gap-1.5 font-medium">
+                    <kbd className="bg-[var(--neutral-200)] px-1 rounded border border-[var(--neutral-400)] text-[9px]">↑</kbd>
+                    <kbd className="bg-[var(--neutral-200)] px-1 rounded border border-[var(--neutral-400)] text-[9px]">↓</kbd>
+                    navegar
+                </span>
+                <span className="text-[11px] text-[var(--neutral-600)] flex items-center gap-1.5 font-medium">
+                    <kbd className="bg-[var(--neutral-200)] px-1 rounded border border-[var(--neutral-400)] text-[9px]">↵</kbd>
+                    abrir
+                </span>
+                <span className="ml-auto text-[11px] text-[var(--neutral-600)] flex items-center gap-1.5 italic">
+                    <Sparkles size={11} className="text-[var(--brand-700)]" />
+                    IA puede ayudar — escribe "?"
+                </span>
+            </div>
         </CommandDialog>
     );
 };

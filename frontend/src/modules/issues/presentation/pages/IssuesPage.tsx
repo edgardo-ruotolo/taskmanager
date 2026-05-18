@@ -5,10 +5,6 @@ import {
     Plus,
     LayoutList,
     Columns,
-    TableProperties,
-    GanttChart,
-    CalendarDays,
-    SlidersHorizontal,
     GripVertical,
     CircleDashed,
 } from 'lucide-react';
@@ -31,6 +27,8 @@ import { useDroppable } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { StatePip } from '@/components/ui/state-pip';
+import { PriorityDot } from '@/components/ui/priority-dot';
 import { cn } from '@/lib/utils';
 import { useIssues, useCreateIssue, useUpdateIssue } from '../../application/use-issues';
 import { useCompanyStates } from '@/modules/states/application/use-states';
@@ -40,9 +38,7 @@ import type { State } from '@/modules/states/domain/types';
 import { PRIORITY_LABELS } from '../../domain/types';
 import type { IssuePriority } from '../../domain/types';
 import { CreateIssueDialog } from '../components/CreateIssueDialog';
-import { IssueListPdfExport } from '@/modules/pdf/presentation/components/IssueListPdfExport';
 import { IssueRow } from '../components/IssueRow';
-import { IssuePriorityBadge } from '../components/IssuePriorityBadge';
 import { IssueFilters } from '../components/IssueFilters';
 import type { IssueFilter } from '../components/IssueFilters';
 import { IssueSpreadsheetView } from '../components/IssueSpreadsheetView';
@@ -57,16 +53,33 @@ import type { DisplayOptions, GroupByOption } from '../components/DisplayOptions
 
 type ViewMode = 'list' | 'kanban' | 'spreadsheet' | 'gantt' | 'calendar';
 
+const STATE_PIP_VALUES = ['backlog', 'unstarted', 'started', 'completed', 'cancelled'] as const;
+type StatePipState = (typeof STATE_PIP_VALUES)[number];
+
+function toStatePipState(stateGroup?: string): StatePipState {
+    const lower = stateGroup?.toLowerCase() ?? 'backlog';
+    return (STATE_PIP_VALUES as readonly string[]).includes(lower)
+        ? (lower as StatePipState)
+        : 'backlog';
+}
+
+type PriorityDotValue = 'urgent' | 'high' | 'medium' | 'low' | 'none';
+
+function mapPriority(priority: number): PriorityDotValue {
+    const MAP: Record<number, PriorityDotValue> = { 1: 'urgent', 2: 'high', 3: 'medium', 4: 'low', 0: 'none' };
+    return MAP[priority] ?? 'none';
+}
+
 /* ── Loading skeleton ── */
 function LoadingSkeleton(): React.ReactElement {
     return (
-        <div className="border border-subtle rounded-lg overflow-hidden">
+        <div className="border border-[var(--neutral-400)] rounded-lg overflow-hidden">
             {(['s0', 's1', 's2', 's3', 's4'] as const).map((k) => (
-                <div key={k} className="h-12 px-4 flex items-center gap-3 border-b border-subtle last:border-b-0">
-                    <Skeleton className="w-2 h-2 rounded-full bg-layer-1" />
-                    <Skeleton className="h-3 w-16 bg-layer-1" />
-                    <Skeleton className="h-3 flex-1 bg-layer-1" />
-                    <Skeleton className="h-3 w-20 bg-layer-1" />
+                <div key={k} className="h-12 px-4 flex items-center gap-3 border-b border-[var(--neutral-400)] last:border-b-0">
+                    <Skeleton className="w-2 h-2 rounded-full bg-[var(--neutral-200)]" />
+                    <Skeleton className="h-3 w-16 bg-[var(--neutral-200)]" />
+                    <Skeleton className="h-3 flex-1 bg-[var(--neutral-200)]" />
+                    <Skeleton className="h-3 w-20 bg-[var(--neutral-200)]" />
                 </div>
             ))}
         </div>
@@ -77,18 +90,18 @@ function LoadingSkeleton(): React.ReactElement {
 function EmptyState({ workspaceSlug, companyId }: { workspaceSlug: string; companyId: string }): React.ReactElement {
     return (
         <div className="flex flex-col items-center justify-center py-24 text-center animate-fade-in">
-            <div className="w-14 h-14 rounded-2xl bg-surface-2 border border-subtle flex items-center justify-center mb-4">
-                <CircleDashed size={24} className="text-placeholder" />
+            <div className="w-14 h-14 rounded-2xl bg-white border border-[var(--neutral-400)] flex items-center justify-center mb-4">
+                <CircleDashed size={24} className="text-[var(--neutral-600)]" />
             </div>
-            <h3 className="text-base font-semibold text-secondary mb-1">Sin tareas aún</h3>
-            <p className="text-sm text-placeholder mb-6 max-w-xs">
+            <h3 className="text-base font-semibold text-[var(--neutral-900)] mb-1">Sin tareas aún</h3>
+            <p className="text-sm text-[var(--neutral-600)] mb-6 max-w-xs">
                 Crea tu primera tarea para empezar a rastrear el trabajo de este proyecto.
             </p>
             <CreateIssueDialog
                 workspaceSlug={workspaceSlug}
                 companyId={companyId}
                 trigger={
-                    <Button className="bg-accent-primary hover:bg-accent-primary-hover text-on-color gap-2">
+                    <Button variant="default" className="gap-2">
                         <Plus size={16} />
                         Crear primer issue
                     </Button>
@@ -134,7 +147,7 @@ function QuickAddRow({ workspaceSlug, companyId, defaultStateId }: QuickAddRowPr
             <button
                 type="button"
                 onClick={() => setActive(true)}
-                className="w-full flex items-center gap-2 px-4 h-10 text-xs text-placeholder hover:text-secondary hover:bg-surface-2 transition-colors border-t border-subtle"
+                className="w-full flex items-center gap-2 px-4 h-10 text-xs text-[var(--neutral-600)] hover:text-[var(--neutral-900)] hover:bg-[var(--neutral-100)] transition-colors border-t border-[var(--neutral-400)]"
             >
                 <Plus size={13} />
                 Agregar issue
@@ -143,8 +156,8 @@ function QuickAddRow({ workspaceSlug, companyId, defaultStateId }: QuickAddRowPr
     }
 
     return (
-        <div className="flex items-center gap-2 px-4 h-10 border-t border-subtle bg-surface-2">
-            <Plus size={13} className="text-placeholder shrink-0" />
+        <div className="flex items-center gap-2 px-4 h-10 border-t border-[var(--neutral-400)] bg-[var(--neutral-100)]">
+            <Plus size={13} className="text-[var(--neutral-600)] shrink-0" />
             <input
                 ref={inputRef}
                 value={title}
@@ -153,7 +166,7 @@ function QuickAddRow({ workspaceSlug, companyId, defaultStateId }: QuickAddRowPr
                 onBlur={handleSubmit}
                 disabled={isPending}
                 placeholder="Título de la tarea… (Enter para crear, Esc para cancelar)"
-                className="flex-1 bg-transparent text-sm text-primary placeholder:text-placeholder outline-none"
+                className="flex-1 bg-transparent text-sm text-[var(--neutral-1200)] placeholder:text-[var(--neutral-600)] outline-none"
             />
         </div>
     );
@@ -182,7 +195,7 @@ function SortableIssueRow({ issue, companyIdentifier, onClick }: SortableIssueRo
                 aria-label="Arrastrar para reordenar"
                 {...attributes}
                 {...listeners}
-                className="absolute left-0 top-0 h-full px-1 flex items-center opacity-0 group-hover/drag:opacity-100 transition-opacity cursor-grab active:cursor-grabbing text-placeholder hover:text-secondary z-10"
+                className="absolute left-0 top-0 h-full px-1 flex items-center opacity-0 group-hover/drag:opacity-100 transition-opacity cursor-grab active:cursor-grabbing text-[var(--neutral-600)] hover:text-[var(--neutral-900)] z-10"
             >
                 <GripVertical size={14} />
             </button>
@@ -218,38 +231,41 @@ function ListGroupSection({
     showQuickAdd = false,
 }: ListGroupSectionProps): React.ReactElement {
     return (
-        <div className="border border-subtle rounded-lg overflow-hidden animate-fade-in">
+        <div className="flex flex-col animate-fade-in mb-4">
             {/* Group header */}
-            <div className="flex items-center gap-2 px-4 h-9 border-b border-subtle bg-surface-1">
+            <div className="flex items-center gap-2 px-2 h-8 mb-1">
                 {color && (
                     <span
-                        className="w-2 h-2 rounded-full shrink-0"
+                        className="w-1.5 h-1.5 rounded-full shrink-0"
                         style={{ backgroundColor: color }}
                         aria-hidden="true"
                     />
                 )}
-                <span className="text-xs font-semibold text-secondary flex-1">{label}</span>
-                <span className="text-xs text-placeholder bg-layer-2 px-1.5 py-0.5 rounded-full min-w-[1.25rem] text-center">
+                <span className="text-[11px] font-semibold text-[var(--neutral-900)] flex-1 uppercase tracking-wider">{label}</span>
+                <span className="text-[10px] font-mono text-[var(--neutral-600)] tabular-nums">
                     {issues.length}
                 </span>
             </div>
-            <SortableContext items={issues.map((i) => i.id)} strategy={verticalListSortingStrategy}>
-                {issues.map((issue) => (
-                    <SortableIssueRow
-                        key={issue.id}
-                        issue={issue}
-                        companyIdentifier={companyIdentifier}
-                        onClick={() => onIssueClick(issue)}
+            
+            <div className="bg-canvas border-t border-[var(--neutral-300)]">
+                <SortableContext items={issues.map((i) => i.id)} strategy={verticalListSortingStrategy}>
+                    {issues.map((issue) => (
+                        <SortableIssueRow
+                            key={issue.id}
+                            issue={issue}
+                            companyIdentifier={companyIdentifier}
+                            onClick={() => onIssueClick(issue)}
+                        />
+                    ))}
+                </SortableContext>
+                {showQuickAdd && defaultStateId && (
+                    <QuickAddRow
+                        workspaceSlug={workspaceSlug}
+                        companyId={companyId}
+                        defaultStateId={defaultStateId}
                     />
-                ))}
-            </SortableContext>
-            {showQuickAdd && defaultStateId && (
-                <QuickAddRow
-                    workspaceSlug={workspaceSlug}
-                    companyId={companyId}
-                    defaultStateId={defaultStateId}
-                />
-            )}
+                )}
+            </div>
         </div>
     );
 }
@@ -338,7 +354,6 @@ function ListView({
     };
 
     const groups = buildGroups(groupBy, orderedIssues, states);
-    const showGroupHeader = groupBy !== 'none' || true;
 
     return (
         <DndContext
@@ -347,7 +362,7 @@ function ListView({
             onDragStart={handleDragStart}
             onDragEnd={handleDragEnd}
         >
-            <div className="space-y-3 animate-fade-in">
+            <div className="space-y-4 animate-fade-in pb-12">
                 {groups.map((group, idx) => (
                     <ListGroupSection
                         key={group.key}
@@ -359,14 +374,14 @@ function ListView({
                         companyId={companyId}
                         defaultStateId={defaultStateId}
                         onIssueClick={onIssueClick}
-                        showQuickAdd={idx === 0 && showGroupHeader}
+                        showQuickAdd={idx === 0}
                     />
                 ))}
             </div>
 
             <DragOverlay>
                 {activeIssue ? (
-                    <div className="bg-surface-1 border border-accent-primary/30 rounded-md shadow-overlay-200 opacity-95 pointer-events-none">
+                    <div className="bg-white border border-[var(--neutral-400)] rounded-md shadow-[var(--shadow-overlay-200)] opacity-95 pointer-events-none overflow-hidden">
                         <IssueRow
                             issue={activeIssue}
                             companyIdentifier={companyIdentifier}
@@ -404,19 +419,22 @@ function KanbanCard({ issue, companyIdentifier, onClick, isDragOverlay = false }
             {...(isDragOverlay ? {} : attributes)}
             {...(isDragOverlay ? {} : listeners)}
             className={cn(
-                'w-full text-left bg-surface-1 rounded-md border border-subtle p-3 cursor-grab active:cursor-grabbing hover:border-accent-primary/30 transition-colors',
-                isDragOverlay && 'shadow-overlay-200 rotate-1',
+                'w-full text-left bg-white rounded-lg border border-[var(--neutral-300)] p-3.5 cursor-grab active:cursor-grabbing hover:border-[var(--neutral-400)] hover:shadow-[0_2px_4px_rgba(0,0,0,0.04)] transition-all duration-150',
+                isDragOverlay && 'shadow-[0_12px_24px_rgba(0,0,0,0.1)] rotate-1 border-[var(--brand-700)]/20',
             )}
             onClick={onClick}
         >
-            <p className="text-xs font-mono text-placeholder mb-1.5">
-                {companyIdentifier ?? 'ISS'}-{issue.sequenceId}
-            </p>
-            <p className="text-sm font-medium text-primary line-clamp-2 mb-2">{issue.title}</p>
-            <div className="flex items-center justify-between gap-2">
-                <IssuePriorityBadge priority={issue.priority} />
+            <div className="flex items-center gap-2 mb-2">
+                <StatePip state={toStatePipState(issue.stateGroup)} size={13} />
+                <span className="text-[10px] font-mono text-[var(--neutral-600)] tracking-tight">
+                    {companyIdentifier ?? 'ISS'}-{issue.sequenceId}
+                </span>
+            </div>
+            <p className="text-[13.5px] font-medium text-[var(--neutral-1200)] line-clamp-2 mb-3 tracking-[-0.01em]">{issue.title}</p>
+            <div className="flex items-center justify-between gap-2 mt-auto pt-1">
+                <PriorityDot priority={mapPriority(issue.priority)} size={11} />
                 {issue.dueDate && (
-                    <span className="text-xs text-placeholder">
+                    <span className="text-[10px] font-mono text-[var(--neutral-600)] uppercase tracking-wider">
                         {new Date(issue.dueDate).toLocaleDateString('es-ES', { day: '2-digit', month: 'short' })}
                     </span>
                 )}
@@ -444,8 +462,8 @@ function KanbanColumn({ state, issues, companyIdentifier, onIssueClick }: Kanban
                     style={{ backgroundColor: state.color }}
                     aria-hidden="true"
                 />
-                <span className="text-sm font-semibold text-primary">{state.name}</span>
-                <span className="ml-auto min-w-[1.25rem] text-center text-xs font-medium text-placeholder bg-layer-2 px-1.5 py-0.5 rounded-full">
+                <span className="text-sm font-semibold text-[var(--neutral-1200)]">{state.name}</span>
+                <span className="ml-auto min-w-[1.25rem] text-center text-xs font-medium text-[var(--neutral-600)] bg-[var(--neutral-200)] px-1.5 py-0.5 rounded-full">
                     {issues.length}
                 </span>
             </div>
@@ -453,12 +471,12 @@ function KanbanColumn({ state, issues, companyIdentifier, onIssueClick }: Kanban
                 ref={setNodeRef}
                 className={cn(
                     'flex-1 min-h-20 rounded-lg p-2 space-y-2 transition-colors',
-                    isOver && 'bg-accent-subtle/30',
-                    issues.length === 0 && !isOver && 'border border-dashed border-subtle',
+                    isOver && 'bg-[color-mix(in_oklch,var(--brand-700)_8%,white)]',
+                    issues.length === 0 && !isOver && 'border border-dashed border-[var(--neutral-400)]',
                 )}
             >
                 {issues.length === 0 && !isOver ? (
-                    <p className="text-xs text-placeholder text-center py-6">Sin tareas</p>
+                    <p className="text-xs text-[var(--neutral-600)] text-center py-6">Sin tareas</p>
                 ) : (
                     <SortableContext items={issues.map((i) => i.id)} strategy={verticalListSortingStrategy}>
                         {issues.map((issue) => (
@@ -527,7 +545,7 @@ function KanbanView({ issues, states, companyIdentifier, onIssueClick, workspace
             onDragStart={handleDragStart}
             onDragEnd={handleDragEnd}
         >
-            <div className="flex gap-4 overflow-x-auto pb-4 animate-fade-in">
+            <div className="flex gap-6 overflow-x-auto pb-12 pt-2 animate-fade-in scrollbar-hide">
                 {states.map((state) => (
                     <KanbanColumn
                         key={state.id}
@@ -568,11 +586,14 @@ function ViewToggleButton({ current, mode, label, onClick, children }: ViewToggl
             onClick={onClick}
             aria-label={label}
             className={cn(
-                'p-2 transition-colors',
-                current === mode ? 'bg-layer-2 text-primary' : 'text-placeholder hover:text-secondary hover:bg-surface-2',
+                'inline-flex items-center gap-1.5 px-2.5 py-1 text-[11.5px] font-medium transition-all rounded-[4px]',
+                current === mode 
+                    ? 'bg-white text-[var(--neutral-1200)] shadow-[0_1px_2px_rgba(0,0,0,0.08)]' 
+                    : 'text-[var(--neutral-600)] hover:text-[var(--neutral-1200)]',
             )}
         >
             {children}
+            <span className="hidden lg:inline">{label}</span>
         </button>
     );
 }
@@ -717,68 +738,36 @@ export const IssuesPage = (): React.ReactElement => {
         <div className="p-6 md:p-8">
             <div className="max-w-6xl mx-auto">
                 {/* Header */}
-                <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center justify-between mb-5 px-1">
                     <div className="flex items-center gap-3">
-                        <h1 className="text-xl font-semibold text-primary">Tareas</h1>
+                        <h1 className="text-[20px] font-semibold text-[var(--neutral-1200)] tracking-[-0.02em]">Tareas</h1>
                         {hasIssues && (
-                            <span className="text-xs font-medium text-placeholder bg-layer-2 px-2 py-0.5 rounded-full">
+                            <span className="text-[10.5px] font-mono font-medium text-[var(--neutral-600)] bg-[var(--neutral-200)] px-2 py-0.5 rounded-full uppercase tracking-wider">
                                 {issues.length}
                             </span>
                         )}
                     </div>
 
                     <div className="flex items-center gap-2">
-                        {/* Display options button */}
-                        {hasIssues && viewMode === 'list' && (
-                            <button
-                                type="button"
-                                onClick={() => setDisplayPanelOpen(true)}
-                                aria-label="Opciones de vista"
-                                className={cn(
-                                    'p-2 rounded-md border transition-colors text-xs flex items-center gap-1.5',
-                                    displayPanelOpen
-                                        ? 'bg-accent-subtle border-accent-primary/50 text-accent-primary'
-                                        : 'border-subtle text-placeholder hover:text-secondary hover:bg-surface-2',
-                                )}
-                            >
-                                <SlidersHorizontal size={14} />
-                                <span className="hidden sm:inline">Vista</span>
-                            </button>
-                        )}
-
-                        {/* View toggle */}
-                        <div className="flex items-center border border-subtle rounded-md overflow-hidden">
-                            <ViewToggleButton mode="list" current={viewMode} label="Vista lista" onClick={() => setViewMode('list')}>
-                                <LayoutList size={15} />
+                        {/* Display options / View toggle integrated */}
+                        <div className="flex items-center bg-[var(--neutral-200)] border border-[var(--neutral-300)] rounded-md p-[3px] gap-0.5">
+                            <ViewToggleButton mode="list" current={viewMode} label="Lista" onClick={() => setViewMode('list')}>
+                                <LayoutList size={14} />
                             </ViewToggleButton>
-                            <ViewToggleButton mode="kanban" current={viewMode} label="Vista kanban" onClick={() => setViewMode('kanban')}>
-                                <Columns size={15} />
-                            </ViewToggleButton>
-                            <ViewToggleButton mode="spreadsheet" current={viewMode} label="Vista hoja" onClick={() => setViewMode('spreadsheet')}>
-                                <TableProperties size={15} />
-                            </ViewToggleButton>
-                            <ViewToggleButton mode="gantt" current={viewMode} label="Vista Gantt" onClick={() => setViewMode('gantt')}>
-                                <GanttChart size={15} />
-                            </ViewToggleButton>
-                            <ViewToggleButton mode="calendar" current={viewMode} label="Vista calendario" onClick={() => setViewMode('calendar')}>
-                                <CalendarDays size={15} />
+                            <ViewToggleButton mode="kanban" current={viewMode} label="Tablero" onClick={() => setViewMode('kanban')}>
+                                <Columns size={14} />
                             </ViewToggleButton>
                         </div>
 
-                        {hasIssues && (
-                            <IssueListPdfExport
-                                issues={issues}
-                                companyIdentifier={companyIdentifier}
-                            />
-                        )}
+                        <div className="h-4 w-px bg-[var(--neutral-300)] mx-1" />
 
                         <CreateIssueDialog
                             workspaceSlug={workspaceSlug}
                             companyId={companyId}
                             trigger={
-                                <Button className="bg-accent-primary hover:bg-accent-primary-hover text-on-color gap-2">
-                                    <Plus size={15} />
-                                    Nuevo issue
+                                <Button variant="default" size="sm" className="gap-1.5 h-8 bg-[var(--neutral-1200)] hover:bg-[var(--neutral-1000)] text-[#f0eadf]">
+                                    <Plus size={14} />
+                                    Nuevo
                                 </Button>
                             }
                         />

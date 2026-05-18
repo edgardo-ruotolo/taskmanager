@@ -1,7 +1,8 @@
 import type React from 'react';
-import { Clock, Copy, MoreHorizontal } from 'lucide-react';
+import { MoreHorizontal } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { IssuePriorityBadge } from './IssuePriorityBadge';
+import { StatePip } from '@/components/ui/state-pip';
+import { PriorityDot } from '@/components/ui/priority-dot';
 import type { Issue } from '../../domain/types';
 
 interface IssueRowProps {
@@ -10,8 +11,18 @@ interface IssueRowProps {
     onClick: () => void;
 }
 
+const STATE_PIP_VALUES = ['backlog', 'unstarted', 'started', 'completed', 'cancelled'] as const;
+type StatePipState = (typeof STATE_PIP_VALUES)[number];
+
+function toStatePipState(stateGroup?: string): StatePipState {
+    const lower = stateGroup?.toLowerCase() ?? 'backlog';
+    return (STATE_PIP_VALUES as readonly string[]).includes(lower)
+        ? (lower as StatePipState)
+        : 'backlog';
+}
+
 function formatShortDate(dateStr: string): string {
-    return new Intl.DateTimeFormat('es-ES', { day: '2-digit', month: '2-digit' }).format(
+    return new Intl.DateTimeFormat('es-ES', { day: '2-digit', month: 'short' }).format(
         new Date(dateStr),
     );
 }
@@ -25,84 +36,85 @@ function getInitials(name: string): string {
         .toUpperCase();
 }
 
+const mapPriority = (p: number): 'urgent' | 'high' | 'medium' | 'low' | 'none' => {
+    switch (p) {
+        case 4:
+            return 'urgent';
+        case 3:
+            return 'high';
+        case 2:
+            return 'medium';
+        case 1:
+            return 'low';
+        default:
+            return 'none';
+    }
+};
+
 export const IssueRow = ({ issue, companyIdentifier, onClick }: IssueRowProps): React.ReactElement => (
-    <button
-        type="button"
+    <div
+        role="button"
+        tabIndex={0}
         onClick={onClick}
+        onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') onClick();
+        }}
         className={cn(
-            'group w-full flex items-center gap-3 px-4 h-12 text-left',
-            'hover:bg-surface-2 transition-colors',
-            'border-b border-subtle last:border-b-0',
+            'group w-full flex items-center gap-3 px-4 h-11 text-left cursor-pointer',
+            'hover:bg-white hover:shadow-[0_1px_3px_rgba(0,0,0,0.05)] transition-all duration-150',
+            'border-b border-[var(--neutral-300)] last:border-b-0 relative',
         )}
     >
-        {/* Left: sequence id */}
-        <span className="text-xs font-mono text-placeholder w-16 shrink-0">
-            {companyIdentifier ?? 'ISS'}-{issue.sequenceId}
-        </span>
+        {/* Left: sequence id + pip */}
+        <div className="flex items-center gap-3 w-28 shrink-0">
+            <StatePip state={toStatePipState(issue.stateGroup)} size={14} />
+            <span className="text-[11px] font-mono text-[var(--neutral-600)] tracking-tight">
+                {companyIdentifier ?? 'ISS'}-{issue.sequenceId}
+            </span>
+        </div>
 
         {/* Center: title */}
-        <span className="flex-1 min-w-0 text-sm text-primary truncate">{issue.title}</span>
+        <span className="flex-1 min-w-0 text-[13.5px] text-[var(--neutral-1200)] truncate tracking-[-0.01em] font-medium">
+            {issue.title}
+        </span>
 
-        {/* Right: state + priority + date + assignee + hover actions */}
-        <div className="flex items-center gap-3 shrink-0">
-            {/* State badge */}
-            <span className="flex items-center gap-1.5">
-                <span
-                    className="w-2 h-2 rounded-full shrink-0"
-                    style={{ backgroundColor: issue.stateColor }}
-                    aria-hidden="true"
-                />
-                <span className="hidden sm:inline text-xs text-placeholder">{issue.stateName}</span>
-            </span>
-
-            <IssuePriorityBadge priority={issue.priority} />
+        {/* Right: priority + date + assignee + hover actions */}
+        <div className="flex items-center gap-4 shrink-0">
+            <PriorityDot priority={mapPriority(issue.priority)} size={12} />
 
             {issue.dueDate ? (
-                <span className="text-xs text-placeholder tabular-nums w-10 text-right">
+                <span className="text-[11px] text-[var(--neutral-600)] font-mono tabular-nums w-12 text-right">
                     {formatShortDate(issue.dueDate)}
                 </span>
             ) : (
-                <span className="w-10" aria-hidden="true" />
+                <span className="w-12" aria-hidden="true" />
             )}
 
             {issue.assigneeId ? (
-                <abbr
+                <div
                     title={issue.assigneeId}
-                    className="no-underline w-6 h-6 rounded-full bg-layer-2 flex items-center justify-center text-[10px] font-semibold text-secondary shrink-0 cursor-default"
+                    className="w-6 h-6 rounded-full bg-[var(--brand-700)] flex items-center justify-center text-[10px] font-bold text-white shrink-0"
                 >
                     {getInitials(issue.assigneeId)}
-                </abbr>
+                </div>
             ) : (
-                <span className="w-6 h-6 rounded-full border border-dashed border-subtle shrink-0" aria-hidden="true" />
+                <div
+                    className="w-6 h-6 rounded-full border border-dashed border-[var(--neutral-400)] shrink-0"
+                    aria-hidden="true"
+                />
             )}
 
             {/* Hover action icons */}
-            <div className="hidden group-hover:flex items-center gap-0.5 shrink-0">
-                <button
-                    type="button"
-                    aria-label="Fecha"
-                    onClick={(e) => e.stopPropagation()}
-                    className="p-1 rounded text-placeholder hover:text-secondary hover:bg-surface-2 transition-colors"
-                >
-                    <Clock size={13} />
-                </button>
-                <button
-                    type="button"
-                    aria-label="Copiar"
-                    onClick={(e) => e.stopPropagation()}
-                    className="p-1 rounded text-placeholder hover:text-secondary hover:bg-surface-2 transition-colors"
-                >
-                    <Copy size={13} />
-                </button>
+            <div className="hidden group-hover:flex items-center gap-0.5 shrink-0 ml-1">
                 <button
                     type="button"
                     aria-label="Más opciones"
                     onClick={(e) => e.stopPropagation()}
-                    className="p-1 rounded text-placeholder hover:text-secondary hover:bg-surface-2 transition-colors"
+                    className="p-1.5 rounded-md text-[var(--neutral-600)] hover:text-[var(--neutral-1200)] hover:bg-[var(--neutral-200)] transition-colors"
                 >
-                    <MoreHorizontal size={13} />
+                    <MoreHorizontal size={14} />
                 </button>
             </div>
         </div>
-    </button>
+    </div>
 );

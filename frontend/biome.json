@@ -53,7 +53,8 @@
 				"noSvgWithoutTitle": "warn",
 				"useAriaPropsForRole": "error",
 				"useValidAriaProps": "error",
-				"noAccessKey": "error"
+				"noAccessKey": "error",
+				"useSemanticElements": "warn"
 			},
 			"complexity": {
 				"noBannedTypes": "warn",

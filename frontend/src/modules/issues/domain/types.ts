@@ -26,6 +26,7 @@ export interface Issue {
     stateId: string;
     stateName: string;
     stateColor: string;
+    stateGroup?: string;
     createdById: string;
     assigneeId?: string;
     parentId?: string;
