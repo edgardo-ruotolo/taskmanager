@@ -1,3 +1,9 @@
+export interface OnboardingState {
+    hasCompletedOnboarding: boolean;
+    completedSteps: string[];
+    currentStep: string | null;
+}
+
 export interface User {
     id: string;
     email: string;
@@ -7,6 +13,7 @@ export interface User {
     displayName?: string;
     avatarUrl?: string;
     roles?: string[];
+    onboarding?: OnboardingState;
 }
 
 export interface ApiToken {
