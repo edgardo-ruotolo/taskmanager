@@ -1,111 +1,147 @@
 import type React from 'react';
 import { useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { Plus, FileText, Search, Trash2 } from 'lucide-react';
+import { useNavigate, useParams } from 'react-router-dom';
+import { FileText, MoreHorizontal, Plus, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { usePagesStore } from '../../application/pages-store';
+import { Skeleton } from '@/components/ui/skeleton';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { usePages, useCreatePage, useDeletePage, useArchivePage, useDuplicatePage } from '../../application/use-pages';
 
 export function PagesPage(): React.ReactElement {
     const { workspaceSlug = '' } = useParams<{ workspaceSlug: string }>();
     const navigate = useNavigate();
-    const { pages, addPage, deletePage } = usePagesStore();
     const [search, setSearch] = useState('');
 
-    const workspacePages = pages.filter(
-        (p) =>
-            p.workspaceSlug === workspaceSlug &&
-            (search === '' || p.title.toLowerCase().includes(search.toLowerCase())),
+    const { data: pages = [], isLoading } = usePages(workspaceSlug);
+    const createMutation = useCreatePage(workspaceSlug);
+    const deleteMutation = useDeletePage(workspaceSlug);
+    const archiveMutation = useArchivePage(workspaceSlug);
+    const duplicateMutation = useDuplicatePage(workspaceSlug);
+
+    const filteredPages = pages.filter(
+        (p) => search === '' || p.title.toLowerCase().includes(search.toLowerCase()),
     );
 
-    const createPage = (): void => {
-        const id = crypto.randomUUID();
-        addPage({ id, title: 'Nueva página', workspaceSlug });
-        void navigate(`/${workspaceSlug}/pages/${id}`);
+    const createPage = async (): Promise<void> => {
+        const page = await createMutation.mutateAsync({ title: 'Nueva página' });
+        void navigate(`/${workspaceSlug}/pages/${page.id}`);
     };
 
     return (
         <div className="p-6 md:p-8">
-            <div className="max-w-4xl mx-auto">
-                <div className="flex items-center justify-between mb-6 gap-4">
-                    <h1 className="text-xl font-semibold text-primary shrink-0">Páginas</h1>
-                    <div className="relative flex-1 max-w-xs">
+            <div className="mx-auto max-w-4xl">
+                <div className="mb-6 flex items-center justify-between gap-4">
+                    <h1 className="shrink-0 text-xl font-semibold">Páginas</h1>
+                    <div className="relative max-w-xs flex-1">
                         <Search
                             size={14}
-                            className="absolute left-3 top-1/2 -translate-y-1/2 text-placeholder"
+                            className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
                             aria-hidden="true"
                         />
                         <Input
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
                             placeholder="Buscar páginas..."
-                            className="pl-8 h-8 text-[13px] bg-layer-1 border-subtle text-primary placeholder:text-placeholder"
+                            className="h-8 pl-8 text-[13px]"
                         />
                     </div>
-                    <Button
-                        onClick={createPage}
-                        className="bg-accent-primary hover:bg-accent-primary-hover text-on-color gap-2"
-                    >
-                        <Plus size={15} />
+                    <Button onClick={() => void createPage()} disabled={createMutation.isPending}>
+                        <Plus size={15} className="mr-1" />
                         Nueva página
                     </Button>
                 </div>
 
-                {workspacePages.length === 0 ? (
+                {isLoading ? (
+                    <div className="flex flex-col gap-2">
+                        {[1, 2, 3].map((i) => (
+                            <Skeleton key={i} className="h-12 w-full rounded-lg" />
+                        ))}
+                    </div>
+                ) : filteredPages.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-24 text-center">
-                        <div className="w-14 h-14 rounded-2xl bg-surface-2 border border-subtle flex items-center justify-center mb-4">
-                            <FileText size={24} className="text-placeholder" />
+                        <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border bg-muted">
+                            <FileText size={24} className="text-muted-foreground" />
                         </div>
-                        <h3 className="text-base font-semibold text-secondary mb-1">
+                        <h3 className="mb-1 text-base font-semibold">
                             {search ? 'Sin resultados' : 'Sin páginas aún'}
                         </h3>
-                        <p className="text-sm text-placeholder max-w-xs mb-6">
+                        <p className="mb-6 max-w-xs text-sm text-muted-foreground">
                             {search
                                 ? 'No se encontraron páginas con ese término.'
-                                : 'Crea tu primera página para documentar tu equipo.'}
+                                : 'Creá tu primera página para documentar tu equipo.'}
                         </p>
                         {!search && (
-                            <Button
-                                onClick={createPage}
-                                className="bg-accent-primary hover:bg-accent-primary-hover text-on-color gap-2"
-                            >
-                                <Plus size={15} />
+                            <Button onClick={() => void createPage()}>
+                                <Plus size={15} className="mr-1" />
                                 Crear primera página
                             </Button>
                         )}
                     </div>
                 ) : (
                     <div className="space-y-1">
-                        {workspacePages.map((page) => (
+                        {filteredPages.map((page) => (
                             <div
                                 key={page.id}
-                                className="group flex items-center gap-3 rounded-lg border border-subtle bg-surface-2 hover:bg-layer-1 transition-colors"
+                                className="group flex items-center gap-3 rounded-lg border bg-card transition-colors hover:bg-muted/40"
                             >
                                 <button
                                     type="button"
-                                    className="flex items-center gap-3 px-4 py-3 flex-1 min-w-0 text-left"
+                                    className="flex min-w-0 flex-1 items-center gap-3 px-4 py-3 text-left"
                                     onClick={() => void navigate(`/${workspaceSlug}/pages/${page.id}`)}
                                 >
-                                    <FileText size={16} className="text-tertiary shrink-0" aria-hidden="true" />
+                                    <FileText size={16} className="shrink-0 text-muted-foreground" aria-hidden="true" />
                                     <div className="min-w-0">
-                                        <p className="text-[13px] font-medium text-primary truncate">{page.title}</p>
-                                        <p className="text-[11px] text-placeholder">
-                                            {new Date(page.updatedAt).toLocaleDateString('es-ES', {
+                                        <p className="truncate text-[13px] font-medium">{page.title}</p>
+                                        <p className="text-[11px] text-muted-foreground">
+                                            {new Date(page.updatedAt).toLocaleDateString('es-AR', {
                                                 day: '2-digit',
                                                 month: 'short',
                                                 year: 'numeric',
                                             })}
+                                            {page.isLocked && ' · Bloqueada'}
                                         </p>
                                     </div>
                                 </button>
-                                <button
-                                    type="button"
-                                    onClick={() => deletePage(page.id)}
-                                    aria-label="Eliminar página"
-                                    className="opacity-0 group-hover:opacity-100 p-1 mr-3 rounded text-placeholder hover:text-primary transition-all shrink-0"
-                                >
-                                    <Trash2 size={13} />
-                                </button>
+                                <div className="mr-2 opacity-0 transition-opacity group-hover:opacity-100">
+                                    <DropdownMenu>
+                                        <DropdownMenuTrigger asChild>
+                                            <Button variant="ghost" size="icon" className="h-7 w-7">
+                                                <MoreHorizontal size={13} />
+                                            </Button>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent align="end">
+                                            <DropdownMenuItem
+                                                onClick={() =>
+                                                    duplicateMutation.mutate({
+                                                        id: page.id,
+                                                        title: `${page.title} (copia)`,
+                                                    })
+                                                }
+                                            >
+                                                Duplicar
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem
+                                                onClick={() => archiveMutation.mutate(page.id)}
+                                            >
+                                                Archivar
+                                            </DropdownMenuItem>
+                                            <DropdownMenuSeparator />
+                                            <DropdownMenuItem
+                                                className="text-destructive"
+                                                onClick={() => deleteMutation.mutate(page.id)}
+                                            >
+                                                Eliminar
+                                            </DropdownMenuItem>
+                                        </DropdownMenuContent>
+                                    </DropdownMenu>
+                                </div>
                             </div>
                         ))}
                     </div>

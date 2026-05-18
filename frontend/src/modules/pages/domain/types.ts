@@ -1,18 +1,34 @@
 export interface Page {
     id: string;
+    workspaceId: string;
     title: string;
-    content: string;
-    contentHtml: string;
-    workspaceSlug: string;
-    companyId?: string;
+    description: string;
+    isLocked: boolean;
+    isArchived: boolean;
+    ownedById: string;
+    ownedByName: string;
     createdAt: string;
     updatedAt: string;
-    createdBy?: string;
+    labelIds: string[];
+}
+
+export interface PageVersion {
+    id: string;
+    pageId: string;
+    description: string;
+    ownedById: string;
+    versionNumber: number;
+    createdAt: string;
 }
 
 export interface CreatePageData {
-    id?: string;
     title: string;
-    content?: string;
-    companyId?: string;
+    description?: string;
+    labelIds?: string[];
+}
+
+export interface UpdatePageData {
+    title?: string;
+    description?: string;
+    labelIds?: string[];
 }
