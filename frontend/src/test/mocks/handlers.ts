@@ -255,4 +255,53 @@ export const handlers = [
     new HttpResponse(null, { status: 204 })),
   http.post(`${BASE_URL}/api/workspaces/:slug/companies/:companyId/issues/bulk-update`, () =>
     new HttpResponse(null, { status: 204 })),
+
+  // Analytic Views
+  http.get(`${BASE_URL}/api/workspaces/:slug/analytics/views`, () => HttpResponse.json([])),
+  http.post(`${BASE_URL}/api/workspaces/:slug/analytics/views`, () =>
+    HttpResponse.json(
+      {
+        id: 'view-1',
+        name: 'Test',
+        description: null,
+        query: '{}',
+        isGlobal: false,
+        workspaceId: 'ws-1',
+        ownedById: 'user-1',
+        createdAt: new Date().toISOString(),
+      },
+      { status: 201 },
+    )),
+  http.patch(`${BASE_URL}/api/workspaces/:slug/analytics/views/:id`, () =>
+    HttpResponse.json({
+      id: 'view-1',
+      name: 'Test',
+      description: null,
+      query: '{}',
+      isGlobal: false,
+      workspaceId: 'ws-1',
+      ownedById: 'user-1',
+      createdAt: new Date().toISOString(),
+    })),
+  http.delete(`${BASE_URL}/api/workspaces/:slug/analytics/views/:id`, () =>
+    new HttpResponse(null, { status: 204 })),
+
+  // Exports
+  http.get(`${BASE_URL}/api/workspaces/:slug/exports`, () => HttpResponse.json([])),
+  http.post(`${BASE_URL}/api/workspaces/:slug/exports`, () =>
+    HttpResponse.json(
+      {
+        id: 'exp-1',
+        format: 'Csv',
+        status: 'Pending',
+        fileName: null,
+        downloadUrl: null,
+        errorMessage: null,
+        createdAt: new Date().toISOString(),
+        completedAt: null,
+      },
+      { status: 202 },
+    )),
+  http.get(`${BASE_URL}/api/workspaces/:slug/exports/:id/download`, () =>
+    new HttpResponse('id,title\n1,Test', { headers: { 'Content-Type': 'text/csv' } })),
 ]

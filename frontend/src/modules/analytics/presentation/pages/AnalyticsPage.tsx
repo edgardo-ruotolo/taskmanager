@@ -18,9 +18,28 @@ import {
     Bar,
     Cell,
 } from 'recharts';
+import { BookmarkPlus, Download, FileJson, FileSpreadsheet, FileText, Trash2 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Button } from '@/components/ui/button';
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogFooter,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
-import { useAnalyticsOverview } from '../../application/use-analytics';
+import {
+    useAnalyticsOverview,
+    useAnalyticViews,
+    useCreateAnalyticView,
+    useDeleteAnalyticView,
+    useExports,
+    useCreateExport,
+} from '../../application/use-analytics';
+import { analyticsRepository } from '../../infrastructure/analytics-repository';
 
 const TOOLTIP_STYLE = {
     backgroundColor: 'var(--bg-surface-2)',
@@ -230,10 +249,244 @@ function PriorityBarChart({ priorityData }: PriorityBarChartProps): React.ReactE
     );
 }
 
+interface SaveViewDialogProps {
+    open: boolean;
+    onOpenChange: (open: boolean) => void;
+    onSave: (name: string, description: string) => void;
+    isPending: boolean;
+}
+
+function SaveViewDialog({
+    open,
+    onOpenChange,
+    onSave,
+    isPending,
+}: SaveViewDialogProps): React.ReactElement {
+    const [name, setName] = useState('');
+    const [description, setDescription] = useState('');
+
+    const handleSave = (): void => {
+        if (!name.trim()) return;
+        onSave(name.trim(), description.trim());
+        setName('');
+        setDescription('');
+    };
+
+    return (
+        <Dialog open={open} onOpenChange={onOpenChange}>
+            <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                    <DialogTitle>Guardar vista</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4 py-2">
+                    <div className="space-y-1.5">
+                        <Label htmlFor="view-name">Nombre</Label>
+                        <Input
+                            id="view-name"
+                            value={name}
+                            onChange={(e) => setName(e.target.value)}
+                            placeholder="Ej: Issues por prioridad"
+                        />
+                    </div>
+                    <div className="space-y-1.5">
+                        <Label htmlFor="view-desc">Descripción (opcional)</Label>
+                        <Input
+                            id="view-desc"
+                            value={description}
+                            onChange={(e) => setDescription(e.target.value)}
+                            placeholder="Descripción de la vista"
+                        />
+                    </div>
+                </div>
+                <DialogFooter>
+                    <Button variant="outline" onClick={() => onOpenChange(false)}>
+                        Cancelar
+                    </Button>
+                    <Button onClick={handleSave} disabled={!name.trim() || isPending}>
+                        Guardar
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    );
+}
+
+interface SavedViewsPanelProps {
+    workspaceSlug: string;
+}
+
+function SavedViewsPanel({ workspaceSlug }: SavedViewsPanelProps): React.ReactElement {
+    const [dialogOpen, setDialogOpen] = useState(false);
+    const { data: views = [], isLoading } = useAnalyticViews(workspaceSlug);
+    const createView = useCreateAnalyticView(workspaceSlug);
+    const deleteView = useDeleteAnalyticView(workspaceSlug);
+
+    const handleSave = (name: string, description: string): void => {
+        createView.mutate(
+            { name, description: description || undefined },
+            { onSuccess: () => setDialogOpen(false) },
+        );
+    };
+
+    return (
+        <div className="border border-subtle rounded-lg p-4">
+            <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-semibold text-primary">Vistas guardadas</h3>
+                <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setDialogOpen(true)}
+                    className="h-7 text-xs gap-1.5"
+                >
+                    <BookmarkPlus className="size-3.5" />
+                    Guardar vista actual
+                </Button>
+            </div>
+
+            {isLoading ? (
+                <div className="space-y-2">
+                    <Skeleton className="h-8 rounded bg-layer-1" />
+                    <Skeleton className="h-8 rounded bg-layer-1" />
+                </div>
+            ) : views.length === 0 ? (
+                <p className="text-xs text-placeholder italic py-3 text-center">
+                    No hay vistas guardadas
+                </p>
+            ) : (
+                <ul className="space-y-1">
+                    {views.map((view) => (
+                        <li
+                            key={view.id}
+                            className="flex items-center justify-between px-2 py-1.5 rounded-sm hover:bg-layer-transparent-hover group"
+                        >
+                            <div className="min-w-0">
+                                <p className="text-[13px] text-primary truncate">{view.name}</p>
+                                {view.description && (
+                                    <p className="text-[11px] text-tertiary truncate">
+                                        {view.description}
+                                    </p>
+                                )}
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => deleteView.mutate(view.id)}
+                                className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-layer-2 text-tertiary hover:text-destructive"
+                                aria-label="Eliminar vista"
+                            >
+                                <Trash2 className="size-3.5" />
+                            </button>
+                        </li>
+                    ))}
+                </ul>
+            )}
+
+            <SaveViewDialog
+                open={dialogOpen}
+                onOpenChange={setDialogOpen}
+                onSave={handleSave}
+                isPending={createView.isPending}
+            />
+        </div>
+    );
+}
+
+const EXPORT_FORMATS = [
+    { id: 'Csv', label: 'CSV', icon: FileText },
+    { id: 'Xlsx', label: 'Excel', icon: FileSpreadsheet },
+    { id: 'Json', label: 'JSON', icon: FileJson },
+] as const;
+
+interface ExportPanelProps {
+    workspaceSlug: string;
+}
+
+function ExportPanel({ workspaceSlug }: ExportPanelProps): React.ReactElement {
+    const { data: exports = [], isLoading } = useExports(workspaceSlug);
+    const createExport = useCreateExport(workspaceSlug);
+
+    return (
+        <div className="border border-subtle rounded-lg p-4">
+            <div className="flex items-center gap-2 mb-3">
+                <Download className="size-4 text-secondary" />
+                <h3 className="text-sm font-semibold text-primary">Exportar datos</h3>
+            </div>
+
+            <div className="flex flex-wrap gap-2 mb-4">
+                {EXPORT_FORMATS.map(({ id, label, icon: Icon }) => (
+                    <Button
+                        key={id}
+                        size="sm"
+                        variant="outline"
+                        onClick={() => createExport.mutate({ format: id })}
+                        disabled={createExport.isPending}
+                        className="h-8 text-xs gap-1.5"
+                    >
+                        <Icon className="size-3.5" />
+                        {label}
+                    </Button>
+                ))}
+            </div>
+
+            <div>
+                <p className="text-[11px] text-tertiary uppercase tracking-wide mb-2">
+                    Exportaciones recientes
+                </p>
+                {isLoading ? (
+                    <div className="space-y-2">
+                        <Skeleton className="h-8 rounded bg-layer-1" />
+                    </div>
+                ) : exports.length === 0 ? (
+                    <p className="text-xs text-placeholder italic py-2 text-center">
+                        No hay exportaciones
+                    </p>
+                ) : (
+                    <ul className="space-y-1">
+                        {exports.map((exp) => (
+                            <li
+                                key={exp.id}
+                                className="flex items-center justify-between px-2 py-1.5 rounded-sm text-[12px]"
+                            >
+                                <span className="text-secondary">
+                                    {exp.format} —{' '}
+                                    <span
+                                        className={cn(
+                                            exp.status === 'Completed'
+                                                ? 'text-green-600'
+                                                : exp.status === 'Failed'
+                                                  ? 'text-destructive'
+                                                  : 'text-tertiary',
+                                        )}
+                                    >
+                                        {exp.status}
+                                    </span>
+                                </span>
+                                {exp.status === 'Completed' && (
+                                    <a
+                                        href={analyticsRepository.getExportDownloadUrl(
+                                            workspaceSlug,
+                                            exp.id,
+                                        )}
+                                        download
+                                        className="text-brand hover:underline text-[11px] flex items-center gap-1"
+                                    >
+                                        <Download className="size-3" />
+                                        Descargar
+                                    </a>
+                                )}
+                            </li>
+                        ))}
+                    </ul>
+                )}
+            </div>
+        </div>
+    );
+}
+
 export const AnalyticsPage = (): React.ReactElement => {
     const { workspaceSlug = '' } = useParams<{ workspaceSlug: string }>();
     const [activeTab, setActiveTab] = useState<TabId>('overview');
-    const { radarData, trendData, stateData, priorityData, data, isLoading } = useAnalyticsData(workspaceSlug);
+    const { radarData, trendData, stateData, priorityData, data, isLoading } =
+        useAnalyticsData(workspaceSlug);
 
     return (
         <div className="p-6 md:p-8">
@@ -405,6 +658,12 @@ export const AnalyticsPage = (): React.ReactElement => {
                                 </div>
                             </>
                         )}
+
+                        {/* Saved Views & Export panels — visible in both tabs */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <SavedViewsPanel workspaceSlug={workspaceSlug} />
+                            <ExportPanel workspaceSlug={workspaceSlug} />
+                        </div>
                     </div>
                 )}
             </div>
