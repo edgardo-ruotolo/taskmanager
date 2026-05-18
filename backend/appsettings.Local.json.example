@@ -1,0 +1,8 @@
+{
+  "ConnectionStrings": {
+    "Postgres": "Host=localhost;Port=5432;Database=taskmanager;Username=eruotolo;Password="
+  },
+  "Brevo": {
+    "ApiKey": "your-brevo-api-key-here"
+  }
+}

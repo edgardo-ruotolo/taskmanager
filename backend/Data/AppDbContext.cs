@@ -16,6 +16,7 @@ using TaskManager.Api.Modules.Notifications.Entities;
 using TaskManager.Api.Modules.ProjectModules.Entities;
 using TaskManager.Api.Modules.Pages.Entities;
 using TaskManager.Api.Modules.Recurring.Entities;
+using TaskManager.Api.Modules.Drafts.Entities;
 using TaskManager.Api.Modules.Stickies.Entities;
 using TaskManager.Api.Modules.States.Entities;
 using TaskManager.Api.Modules.Webhooks.Entities;
@@ -80,6 +81,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
     public DbSet<PageLabel> PageLabels => Set<PageLabel>();
     public DbSet<PageAccess> PageAccesses => Set<PageAccess>();
     public DbSet<Sticky> Stickies => Set<Sticky>();
+    public DbSet<DraftIssue> DraftIssues => Set<DraftIssue>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -93,10 +95,10 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
         builder.Entity<CompanyMember>().HasQueryFilter(e => !e.IsDeleted);
         builder.Entity<State>().HasQueryFilter(e => !e.IsDeleted);
         builder.Entity<StateGroup>().HasQueryFilter(e => !e.IsDeleted);
-        builder.Entity<Issue>().HasQueryFilter(e => !e.IsDeleted);
-        builder.Entity<Cycle>().HasQueryFilter(e => !e.IsDeleted);
+        builder.Entity<Issue>().HasQueryFilter(e => !e.IsDeleted && !e.IsArchived);
+        builder.Entity<Cycle>().HasQueryFilter(e => !e.IsDeleted && !e.IsArchived);
         builder.Entity<CycleIssue>().HasQueryFilter(e => !e.IsDeleted);
-        builder.Entity<ProjectModule>().HasQueryFilter(e => !e.IsDeleted);
+        builder.Entity<ProjectModule>().HasQueryFilter(e => !e.IsDeleted && !e.IsArchived);
         builder.Entity<ModuleIssue>().HasQueryFilter(e => !e.IsDeleted);
         builder.Entity<ModuleLink>().HasQueryFilter(e => !e.IsDeleted);
         builder.Entity<ModuleMember>().HasQueryFilter(e => !e.IsDeleted);
@@ -133,6 +135,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
         builder.Entity<PageLabel>().HasQueryFilter(e => !e.Page.IsDeleted);
 
         builder.Entity<Sticky>().HasQueryFilter(e => !e.IsDeleted);
+        builder.Entity<DraftIssue>().HasQueryFilter(e => !e.IsDeleted);
 
         builder.Entity<RecurringIssueTemplate>().HasQueryFilter(e => !e.IsDeleted);
         builder.Entity<RecurringIssueRun>().HasQueryFilter(e => !e.IsDeleted);

@@ -1,0 +1,56 @@
+using Microsoft.EntityFrameworkCore;
+using TaskManager.Api.Common.Exceptions;
+using TaskManager.Api.Data;
+using TaskManager.Api.Modules.Issues.Dtos;
+using TaskManager.Api.Modules.Issues.Entities;
+
+namespace TaskManager.Api.Modules.Issues.Services;
+
+public class IssueSubscriberService(AppDbContext db) : IIssueSubscriberService
+{
+    public async Task<List<IssueSubscriberDto>> GetSubscribersAsync(string workspaceSlug, Guid companyId, Guid issueId, CancellationToken ct = default)
+    {
+        var workspace = await db.Workspaces.FirstOrDefaultAsync(w => w.Slug == workspaceSlug, ct)
+            ?? throw new NotFoundException($"Workspace '{workspaceSlug}' not found.");
+
+        _ = await db.Issues.FirstOrDefaultAsync(i => i.Id == issueId && i.CompanyId == companyId && i.Company.WorkspaceId == workspace.Id, ct)
+            ?? throw new NotFoundException("Issue not found.");
+
+        return await db.IssueSubscribers
+            .Include(s => s.User)
+            .Where(s => s.IssueId == issueId)
+            .Select(s => new IssueSubscriberDto
+            {
+                UserId = s.UserId,
+                Username = s.User.UserName ?? "",
+                CreatedAt = s.CreatedAt
+            })
+            .ToListAsync(ct);
+    }
+
+    public async Task SubscribeAsync(string workspaceSlug, Guid companyId, Guid issueId, Guid userId, CancellationToken ct = default)
+    {
+        var workspace = await db.Workspaces.FirstOrDefaultAsync(w => w.Slug == workspaceSlug, ct)
+            ?? throw new NotFoundException($"Workspace '{workspaceSlug}' not found.");
+
+        _ = await db.Issues.FirstOrDefaultAsync(i => i.Id == issueId && i.CompanyId == companyId && i.Company.WorkspaceId == workspace.Id, ct)
+            ?? throw new NotFoundException("Issue not found.");
+
+        var exists = await db.IssueSubscribers.AnyAsync(s => s.IssueId == issueId && s.UserId == userId, ct);
+        if (exists) return;
+
+        db.IssueSubscribers.Add(new IssueSubscriber { IssueId = issueId, UserId = userId });
+        await db.SaveChangesAsync(ct);
+    }
+
+    public async Task UnsubscribeAsync(string workspaceSlug, Guid companyId, Guid issueId, Guid userId, CancellationToken ct = default)
+    {
+        var subscriber = await db.IssueSubscribers
+            .FirstOrDefaultAsync(s => s.IssueId == issueId && s.UserId == userId, ct);
+
+        if (subscriber is null) return;
+
+        db.IssueSubscribers.Remove(subscriber);
+        await db.SaveChangesAsync(ct);
+    }
+}
