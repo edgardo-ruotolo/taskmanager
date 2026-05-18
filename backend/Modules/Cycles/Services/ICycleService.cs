@@ -15,4 +15,7 @@ public interface ICycleService
     Task<List<CycleDto>> GetArchivedAsync(string workspaceSlug, Guid companyId, CancellationToken ct = default);
     Task ArchiveAsync(string workspaceSlug, Guid companyId, Guid cycleId, CancellationToken ct = default);
     Task UnarchiveAsync(string workspaceSlug, Guid companyId, Guid cycleId, CancellationToken ct = default);
+    Task TransferIssuesAsync(string workspaceSlug, Guid companyId, Guid sourceCycleId, Guid targetCycleId, CancellationToken ct = default);
+    Task<CycleProgressDto> GetProgressAsync(string workspaceSlug, Guid companyId, Guid cycleId, CancellationToken ct = default);
+    Task<CycleAnalyticsDto> GetAnalyticsAsync(string workspaceSlug, Guid companyId, Guid cycleId, CancellationToken ct = default);
 }

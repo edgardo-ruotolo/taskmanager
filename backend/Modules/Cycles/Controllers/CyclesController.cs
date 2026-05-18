@@ -88,4 +88,25 @@ public class CyclesController(ICycleService cycleService) : ControllerBase
         await cycleService.UnarchiveAsync(workspaceSlug, companyId, cycleId, ct);
         return NoContent();
     }
+
+    [HttpPost("{cycleId:guid}/transfer-issues")]
+    public async Task<IActionResult> TransferIssues(string workspaceSlug, Guid companyId, Guid cycleId, [FromBody] TransferCycleIssuesDto dto, CancellationToken ct = default)
+    {
+        await cycleService.TransferIssuesAsync(workspaceSlug, companyId, cycleId, dto.TargetCycleId, ct);
+        return NoContent();
+    }
+
+    [HttpGet("{cycleId:guid}/progress")]
+    public async Task<ActionResult<CycleProgressDto>> GetProgress(string workspaceSlug, Guid companyId, Guid cycleId, CancellationToken ct = default)
+    {
+        var result = await cycleService.GetProgressAsync(workspaceSlug, companyId, cycleId, ct);
+        return Ok(result);
+    }
+
+    [HttpGet("{cycleId:guid}/analytics")]
+    public async Task<ActionResult<CycleAnalyticsDto>> GetAnalytics(string workspaceSlug, Guid companyId, Guid cycleId, CancellationToken ct = default)
+    {
+        var result = await cycleService.GetAnalyticsAsync(workspaceSlug, companyId, cycleId, ct);
+        return Ok(result);
+    }
 }

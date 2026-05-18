@@ -20,6 +20,7 @@ using TaskManager.Api.Modules.Drafts.Entities;
 using TaskManager.Api.Modules.Stickies.Entities;
 using TaskManager.Api.Modules.States.Entities;
 using TaskManager.Api.Modules.Webhooks.Entities;
+using TaskManager.Api.Modules.Teams.Entities;
 using TaskManager.Api.Modules.Workspaces.Entities;
 
 namespace TaskManager.Api.Data;
@@ -82,6 +83,9 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
     public DbSet<PageAccess> PageAccesses => Set<PageAccess>();
     public DbSet<Sticky> Stickies => Set<Sticky>();
     public DbSet<DraftIssue> DraftIssues => Set<DraftIssue>();
+    public DbSet<WorkspaceTheme> WorkspaceThemes => Set<WorkspaceTheme>();
+    public DbSet<Team> Teams => Set<Team>();
+    public DbSet<TeamMember> TeamMembers => Set<TeamMember>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -136,6 +140,10 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
 
         builder.Entity<Sticky>().HasQueryFilter(e => !e.IsDeleted);
         builder.Entity<DraftIssue>().HasQueryFilter(e => !e.IsDeleted);
+
+        builder.Entity<WorkspaceTheme>().HasQueryFilter(e => !e.IsDeleted);
+        builder.Entity<Team>().HasQueryFilter(e => !e.IsDeleted);
+        builder.Entity<TeamMember>().HasQueryFilter(e => !e.IsDeleted);
 
         builder.Entity<RecurringIssueTemplate>().HasQueryFilter(e => !e.IsDeleted);
         builder.Entity<RecurringIssueRun>().HasQueryFilter(e => !e.IsDeleted);

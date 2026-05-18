@@ -4,6 +4,7 @@ using TaskManager.Api.Common.Pagination;
 using TaskManager.Api.Data;
 using TaskManager.Api.Modules.Cycles.Dtos;
 using TaskManager.Api.Modules.Cycles.Entities;
+using TaskManager.Api.Modules.States.Entities;
 
 namespace TaskManager.Api.Modules.Cycles.Services;
 
@@ -193,6 +194,115 @@ public class CycleService(AppDbContext db) : ICycleService
         cycle.IsArchived = false;
         cycle.ArchivedAt = null;
         await db.SaveChangesAsync(ct);
+    }
+
+    public async Task TransferIssuesAsync(string workspaceSlug, Guid companyId, Guid sourceCycleId, Guid targetCycleId, CancellationToken ct = default)
+    {
+        var workspace = await db.Workspaces.FirstOrDefaultAsync(w => w.Slug == workspaceSlug, ct)
+            ?? throw new NotFoundException($"Workspace '{workspaceSlug}' not found.");
+
+        _ = await db.Cycles
+            .FirstOrDefaultAsync(c => c.Id == sourceCycleId && c.CompanyId == companyId && c.Company.WorkspaceId == workspace.Id, ct)
+            ?? throw new NotFoundException("Source cycle not found.");
+
+        _ = await db.Cycles
+            .FirstOrDefaultAsync(c => c.Id == targetCycleId && c.CompanyId == companyId && c.Company.WorkspaceId == workspace.Id, ct)
+            ?? throw new NotFoundException("Target cycle not found.");
+
+        var incompleteCategories = new[] { StateCategory.Backlog, StateCategory.Unstarted, StateCategory.Started };
+
+        var sourceIssues = await db.CycleIssues
+            .Include(ci => ci.Issue)
+                .ThenInclude(i => i.State)
+            .Where(ci => ci.CycleId == sourceCycleId && incompleteCategories.Contains(ci.Issue.State.Category))
+            .ToListAsync(ct);
+
+        var existingTargetIssueIds = await db.CycleIssues
+            .Where(ci => ci.CycleId == targetCycleId)
+            .Select(ci => ci.IssueId)
+            .ToListAsync(ct);
+
+        foreach (var sourceIssue in sourceIssues)
+        {
+            sourceIssue.IsDeleted = true;
+            sourceIssue.DeletedAt = DateTime.UtcNow;
+
+            if (!existingTargetIssueIds.Contains(sourceIssue.IssueId))
+            {
+                db.CycleIssues.Add(new CycleIssue
+                {
+                    CycleId = targetCycleId,
+                    IssueId = sourceIssue.IssueId,
+                    AddedById = sourceIssue.AddedById
+                });
+            }
+        }
+
+        await db.SaveChangesAsync(ct);
+    }
+
+    public async Task<CycleProgressDto> GetProgressAsync(string workspaceSlug, Guid companyId, Guid cycleId, CancellationToken ct = default)
+    {
+        var workspace = await db.Workspaces.FirstOrDefaultAsync(w => w.Slug == workspaceSlug, ct)
+            ?? throw new NotFoundException($"Workspace '{workspaceSlug}' not found.");
+
+        _ = await db.Cycles
+            .FirstOrDefaultAsync(c => c.Id == cycleId && c.CompanyId == companyId && c.Company.WorkspaceId == workspace.Id, ct)
+            ?? throw new NotFoundException("Cycle not found.");
+
+        var issues = await db.CycleIssues
+            .Include(ci => ci.Issue)
+                .ThenInclude(i => i.State)
+            .Where(ci => ci.CycleId == cycleId)
+            .Select(ci => ci.Issue.State.Category)
+            .ToListAsync(ct);
+
+        var total = issues.Count;
+        var completed = issues.Count(c => c == StateCategory.Completed || c == StateCategory.Cancelled);
+        var inProgress = issues.Count(c => c == StateCategory.Started);
+        var pending = issues.Count(c => c == StateCategory.Backlog || c == StateCategory.Unstarted);
+
+        return new CycleProgressDto
+        {
+            TotalIssues = total,
+            CompletedIssues = completed,
+            InProgressIssues = inProgress,
+            PendingIssues = pending,
+            CompletionPercentage = total == 0 ? 0 : Math.Round((double)completed / total * 100, 2)
+        };
+    }
+
+    public async Task<CycleAnalyticsDto> GetAnalyticsAsync(string workspaceSlug, Guid companyId, Guid cycleId, CancellationToken ct = default)
+    {
+        var workspace = await db.Workspaces.FirstOrDefaultAsync(w => w.Slug == workspaceSlug, ct)
+            ?? throw new NotFoundException($"Workspace '{workspaceSlug}' not found.");
+
+        _ = await db.Cycles
+            .FirstOrDefaultAsync(c => c.Id == cycleId && c.CompanyId == companyId && c.Company.WorkspaceId == workspace.Id, ct)
+            ?? throw new NotFoundException("Cycle not found.");
+
+        var issues = await db.CycleIssues
+            .Include(ci => ci.Issue)
+                .ThenInclude(i => i.State)
+            .Where(ci => ci.CycleId == cycleId)
+            .Select(ci => new { ci.Issue.Priority, StateName = ci.Issue.State.Name, StateCategory = ci.Issue.State.Category })
+            .ToListAsync(ct);
+
+        var total = issues.Count;
+        var completed = issues.Count(i => i.StateCategory == StateCategory.Completed || i.StateCategory == StateCategory.Cancelled);
+
+        return new CycleAnalyticsDto
+        {
+            TotalIssues = total,
+            CompletedIssues = completed,
+            CompletionPercentage = total == 0 ? 0 : Math.Round((double)completed / total * 100, 2),
+            IssuesByPriority = issues
+                .GroupBy(i => i.Priority.ToString())
+                .ToDictionary(g => g.Key, g => g.Count()),
+            IssuesByState = issues
+                .GroupBy(i => i.StateName)
+                .ToDictionary(g => g.Key, g => g.Count())
+        };
     }
 
     private static CycleDto MapToDto(Cycle cycle) => new()
