@@ -99,6 +99,7 @@ builder.Services.AddScoped<IIssueViewService, IssueViewService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddScoped<IUserNotificationPreferenceService, UserNotificationPreferenceService>();
 builder.Services.AddScoped<IWebhookService, WebhookService>();
+builder.Services.AddScoped<IFileStorageService, LocalFileStorage>();
 builder.Services.AddScoped<IFileAssetService, FileAssetService>();
 builder.Services.AddScoped<IIssueTypeService, IssueTypeService>();
 builder.Services.AddScoped<IApiTokenService, ApiTokenService>();
@@ -146,6 +147,7 @@ if (app.Environment.IsDevelopment())
     app.UseCors();
 }
 
+app.UseStaticFiles();
 app.UseSerilogRequestLogging();
 app.UseMiddleware<ApiTokenAuthenticationMiddleware>();
 app.UseAuthentication();

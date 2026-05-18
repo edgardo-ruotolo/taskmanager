@@ -49,6 +49,25 @@ public class FileAssetsController(IFileAssetService fileAssetService, AppDbConte
         return CreatedAtAction(nameof(GetAssets), new { workspaceSlug }, asset);
     }
 
+    [HttpPost("upload")]
+    [Consumes("multipart/form-data")]
+    public async Task<ActionResult<FileAssetDto>> Upload(
+        string workspaceSlug,
+        IFormFile file,
+        [FromForm] string? entityType = null,
+        [FromForm] string? entityId = null,
+        CancellationToken ct = default)
+    {
+        var workspace = await db.Workspaces.FirstOrDefaultAsync(w => w.Slug == workspaceSlug, ct);
+        if (workspace is null) return NotFound();
+
+        if (file.Length == 0) return BadRequest("File is empty.");
+        if (file.Length > 50 * 1024 * 1024) return BadRequest("File too large (max 50 MB).");
+
+        var asset = await fileAssetService.UploadAsync(workspace.Id, CurrentUserId, file, entityType, entityId, ct);
+        return CreatedAtAction(nameof(GetAssets), new { workspaceSlug }, asset);
+    }
+
     [HttpDelete("{assetId:guid}")]
     public async Task<IActionResult> DeleteAsset(string workspaceSlug, Guid assetId, CancellationToken ct)
     {

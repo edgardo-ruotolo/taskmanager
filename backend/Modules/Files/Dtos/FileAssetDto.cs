@@ -11,4 +11,5 @@ public class FileAssetDto
     public Guid UploadedById { get; set; }
     public Guid WorkspaceId { get; set; }
     public DateTime CreatedAt { get; set; }
+    public string Url { get; set; } = "";
 }

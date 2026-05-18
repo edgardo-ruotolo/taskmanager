@@ -76,7 +76,8 @@ public class MappingProfile : Profile
         CreateMap<Webhook, WebhookDto>();
         CreateMap<CreateWebhookDto, Webhook>();
         CreateMap<WebhookLog, WebhookLogDto>();
-        CreateMap<FileAsset, FileAssetDto>();
+        CreateMap<FileAsset, FileAssetDto>()
+            .ForMember(d => d.Url, opt => opt.Ignore()); // Url is set manually in the service
         CreateMap<IssueType, IssueTypeDto>();
         CreateMap<CreateIssueTypeDto, IssueType>();
         CreateMap<ApiToken, ApiTokenDto>();
