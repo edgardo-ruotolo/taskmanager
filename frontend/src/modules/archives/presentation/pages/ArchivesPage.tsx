@@ -4,18 +4,17 @@ import { useParams } from 'react-router-dom';
 import { Archive, RefreshCw } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { toast } from 'sonner';
+import { Skeleton } from '@/components/ui/skeleton';
 import { PRIORITY_LABELS } from '@/modules/issues/domain/types';
 import type { IssuePriority } from '@/modules/issues/domain/types';
-
-// Archived items are fetched from these sources:
-// - Issues: items with completedAt + archived flag (currently there's no archive endpoint;
-//   we render a placeholder until the backend exposes one)
-// - Cycles: cycles with status Completed (approximation)
-// - Modules: modules with status Archived
-
-// Since the backend doesn't expose a dedicated archive endpoint yet, we show a
-// well-structured empty state for each tab with restore capability ready for wiring.
+import {
+    useArchivedCycles,
+    useArchivedIssues,
+    useArchivedModules,
+    useRestoreCycle,
+    useRestoreIssue,
+    useRestoreModule,
+} from '../../application/use-archives';
 
 type ArchiveTab = 'issues' | 'cycles' | 'modules';
 
@@ -43,10 +42,11 @@ interface ArchivedRowProps {
     id: string;
     label: string;
     meta?: string;
+    isPending: boolean;
     onRestore: (id: string) => void;
 }
 
-function ArchivedRow({ id, label, meta, onRestore }: ArchivedRowProps): React.ReactElement {
+function ArchivedRow({ id, label, meta, isPending, onRestore }: ArchivedRowProps): React.ReactElement {
     return (
         <div className="flex items-center gap-3 px-4 py-3 border-b border-subtle last:border-b-0 hover:bg-surface-2 transition-colors">
             <div className="flex-1 min-w-0">
@@ -57,11 +57,28 @@ function ArchivedRow({ id, label, meta, onRestore }: ArchivedRowProps): React.Re
                 size="sm"
                 variant="outline"
                 onClick={() => onRestore(id)}
+                disabled={isPending}
                 className="h-7 px-3 text-xs border-subtle text-secondary hover:text-primary gap-1.5 shrink-0"
             >
                 <RefreshCw size={12} />
                 Restaurar
             </Button>
+        </div>
+    );
+}
+
+function LoadingSkeleton(): React.ReactElement {
+    return (
+        <div className="border border-subtle rounded-lg overflow-hidden">
+            {[1, 2, 3].map(n => (
+                <div key={n} className="flex items-center gap-3 px-4 py-3 border-b border-subtle last:border-b-0">
+                    <div className="flex-1 space-y-1.5">
+                        <Skeleton className="h-4 w-2/3" />
+                        <Skeleton className="h-3 w-1/3" />
+                    </div>
+                    <Skeleton className="h-7 w-20" />
+                </div>
+            ))}
         </div>
     );
 }
@@ -73,21 +90,13 @@ export const ArchivesPage = (): React.ReactElement => {
     }>();
     const [activeTab, setActiveTab] = useState<ArchiveTab>('issues');
 
-    // Placeholder restore handler — replace with actual mutation when backend endpoint is available
-    const handleRestore = (kind: ArchiveTab, id: string): void => {
-        void kind;
-        void id;
-        toast.info('Restaurar: funcionalidad pendiente de endpoint en backend');
-    };
+    const { data: archivedIssues = [], isLoading: loadingIssues } = useArchivedIssues(workspaceSlug, companyId);
+    const { data: archivedCycles = [], isLoading: loadingCycles } = useArchivedCycles(workspaceSlug, companyId);
+    const { data: archivedModules = [], isLoading: loadingModules } = useArchivedModules(workspaceSlug, companyId);
 
-    // Placeholder: no items until backend exposes archive endpoints
-    // Replace archivedIssues/archivedCycles/archivedModules with real queries when available
-    const archivedIssues: Array<{ id: string; sequenceId: number; title: string; stateName: string; stateColor: string; priority: number }> = [];
-    const archivedCycles: Array<{ id: string; name: string; issueCount: number }> = [];
-    const archivedModules: Array<{ id: string; name: string; issueCount: number }> = [];
-
-    void workspaceSlug;
-    void companyId;
+    const restoreIssueMutation = useRestoreIssue(workspaceSlug, companyId);
+    const restoreCycleMutation = useRestoreCycle(workspaceSlug, companyId);
+    const restoreModuleMutation = useRestoreModule(workspaceSlug, companyId);
 
     return (
         <div className="p-6 md:p-8">
@@ -134,7 +143,9 @@ export const ArchivesPage = (): React.ReactElement => {
                     </TabsList>
 
                     <TabsContent value="issues">
-                        {archivedIssues.length === 0 ? (
+                        {loadingIssues ? (
+                            <LoadingSkeleton />
+                        ) : archivedIssues.length === 0 ? (
                             <EmptyArchive label="tareas" />
                         ) : (
                             <div className="border border-subtle rounded-lg overflow-hidden">
@@ -144,7 +155,8 @@ export const ArchivesPage = (): React.ReactElement => {
                                         id={issue.id}
                                         label={`ISS-${issue.sequenceId} — ${issue.title}`}
                                         meta={`${issue.stateName} · ${PRIORITY_LABELS[issue.priority as IssuePriority]}`}
-                                        onRestore={(id) => handleRestore('issues', id)}
+                                        isPending={restoreIssueMutation.isPending}
+                                        onRestore={(id) => restoreIssueMutation.mutate(id)}
                                     />
                                 ))}
                             </div>
@@ -152,7 +164,9 @@ export const ArchivesPage = (): React.ReactElement => {
                     </TabsContent>
 
                     <TabsContent value="cycles">
-                        {archivedCycles.length === 0 ? (
+                        {loadingCycles ? (
+                            <LoadingSkeleton />
+                        ) : archivedCycles.length === 0 ? (
                             <EmptyArchive label="ciclos" />
                         ) : (
                             <div className="border border-subtle rounded-lg overflow-hidden">
@@ -162,7 +176,8 @@ export const ArchivesPage = (): React.ReactElement => {
                                         id={cycle.id}
                                         label={cycle.name}
                                         meta={`${cycle.issueCount} issue${cycle.issueCount !== 1 ? 's' : ''}`}
-                                        onRestore={(id) => handleRestore('cycles', id)}
+                                        isPending={restoreCycleMutation.isPending}
+                                        onRestore={(id) => restoreCycleMutation.mutate(id)}
                                     />
                                 ))}
                             </div>
@@ -170,7 +185,9 @@ export const ArchivesPage = (): React.ReactElement => {
                     </TabsContent>
 
                     <TabsContent value="modules">
-                        {archivedModules.length === 0 ? (
+                        {loadingModules ? (
+                            <LoadingSkeleton />
+                        ) : archivedModules.length === 0 ? (
                             <EmptyArchive label="módulos" />
                         ) : (
                             <div className="border border-subtle rounded-lg overflow-hidden">
@@ -180,7 +197,8 @@ export const ArchivesPage = (): React.ReactElement => {
                                         id={mod.id}
                                         label={mod.name}
                                         meta={`${mod.issueCount} issue${mod.issueCount !== 1 ? 's' : ''}`}
-                                        onRestore={(id) => handleRestore('modules', id)}
+                                        isPending={restoreModuleMutation.isPending}
+                                        onRestore={(id) => restoreModuleMutation.mutate(id)}
                                     />
                                 ))}
                             </div>

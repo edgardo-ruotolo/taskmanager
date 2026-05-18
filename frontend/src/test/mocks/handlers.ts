@@ -89,4 +89,61 @@ export const handlers = [
       labelIds: [],
     })
   }),
+
+  // Archives — issues
+  http.get(`${BASE_URL}/api/workspaces/:slug/companies/:companyId/issues/archived`, () =>
+    HttpResponse.json([])),
+  http.post(`${BASE_URL}/api/workspaces/:slug/companies/:companyId/issues/:id/archive`, () =>
+    new HttpResponse(null, { status: 204 })),
+  http.post(`${BASE_URL}/api/workspaces/:slug/companies/:companyId/issues/:id/unarchive`, () =>
+    new HttpResponse(null, { status: 204 })),
+
+  // Archives — cycles
+  http.get(`${BASE_URL}/api/workspaces/:slug/companies/:companyId/cycles/archived`, () =>
+    HttpResponse.json([])),
+  http.post(`${BASE_URL}/api/workspaces/:slug/companies/:companyId/cycles/:id/archive`, () =>
+    new HttpResponse(null, { status: 204 })),
+  http.post(`${BASE_URL}/api/workspaces/:slug/companies/:companyId/cycles/:id/unarchive`, () =>
+    new HttpResponse(null, { status: 204 })),
+
+  // Archives — modules
+  http.get(`${BASE_URL}/api/workspaces/:slug/companies/:companyId/modules/archived`, () =>
+    HttpResponse.json([])),
+  http.post(`${BASE_URL}/api/workspaces/:slug/companies/:companyId/modules/:id/archive`, () =>
+    new HttpResponse(null, { status: 204 })),
+  http.post(`${BASE_URL}/api/workspaces/:slug/companies/:companyId/modules/:id/unarchive`, () =>
+    new HttpResponse(null, { status: 204 })),
+
+  // Drafts
+  http.get(`${BASE_URL}/api/workspaces/:slug/drafts`, () => HttpResponse.json([])),
+  http.post(`${BASE_URL}/api/workspaces/:slug/drafts`, () =>
+    HttpResponse.json(
+      {
+        id: 'draft-1',
+        title: 'Test draft',
+        companyId: 'company-1',
+        priority: 0,
+        description: null,
+        stateId: null,
+        stateName: null,
+        ownedById: 'user-1',
+        assigneeId: null,
+        dueDate: null,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+      { status: 201 },
+    )),
+  http.delete(`${BASE_URL}/api/workspaces/:slug/drafts/:id`, () =>
+    new HttpResponse(null, { status: 204 })),
+  http.post(`${BASE_URL}/api/workspaces/:slug/drafts/:id/publish`, () =>
+    HttpResponse.json({ id: 'issue-1', title: 'Published' })),
+
+  // Bulk operations
+  http.post(`${BASE_URL}/api/workspaces/:slug/companies/:companyId/issues/bulk-archive`, () =>
+    new HttpResponse(null, { status: 204 })),
+  http.post(`${BASE_URL}/api/workspaces/:slug/companies/:companyId/issues/bulk-delete`, () =>
+    new HttpResponse(null, { status: 204 })),
+  http.post(`${BASE_URL}/api/workspaces/:slug/companies/:companyId/issues/bulk-update`, () =>
+    new HttpResponse(null, { status: 204 })),
 ]
