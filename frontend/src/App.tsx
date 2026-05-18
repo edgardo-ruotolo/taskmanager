@@ -76,6 +76,10 @@ const FavoritesPage = lazy(() => import('@/modules/favorites/presentation/pages/
 const PagesPage = lazy(() => import('@/modules/pages/presentation/pages/PagesPage').then(m => ({ default: m.PagesPage })));
 const PageDetailPage = lazy(() => import('@/modules/pages/presentation/pages/PageDetailPage').then(m => ({ default: m.PageDetailPage })));
 
+// Recurring pages
+const RecurringListPage = lazy(() => import('@/modules/recurring/presentation/pages/RecurringListPage').then(m => ({ default: m.RecurringListPage })));
+const RecurringDetailPage = lazy(() => import('@/modules/recurring/presentation/pages/RecurringDetailPage').then(m => ({ default: m.RecurringDetailPage })));
+
 // God Mode pages
 const GodModeGeneralPage = lazy(() => import('@/modules/admin/presentation/pages/GodModeGeneralPage').then(m => ({ default: m.GodModeGeneralPage })));
 const GodModeEmailPage = lazy(() => import('@/modules/admin/presentation/pages/GodModeEmailPage').then(m => ({ default: m.GodModeEmailPage })));
@@ -128,6 +132,8 @@ export const App = (): React.ReactElement => (
                     <Route path="settings/views" element={<IssueViewsPage />} />
                     <Route path="settings/views/:viewId" element={<IssueViewDetailPage />} />
                     <Route path="settings/tokens" element={<ApiTokensPage />} />
+                    <Route path="recurring" element={<RecurringListPage />} />
+                    <Route path="recurring/:recurringId" element={<RecurringDetailPage />} />
                 </Route>
             </Route>
             <Route path="/onboarding" element={<OnboardingPage />} />
