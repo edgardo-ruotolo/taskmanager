@@ -21,9 +21,14 @@ public class CompanyService(AppDbContext db, IMapper mapper, IEmailService email
         if (identifierExists)
             throw new ValidationException($"Identifier '{dto.Identifier}' already exists in this workspace.");
 
+        var defaultStateGroup = await db.StateGroups.IgnoreQueryFilters()
+            .FirstOrDefaultAsync(g => g.IsDefault, ct)
+            ?? throw new NotFoundException("No default state group found. Run the state seeder first.");
+
         var company = mapper.Map<Company>(dto);
         company.WorkspaceId = workspace.Id;
         company.OwnerId = userId;
+        company.StateGroupId = defaultStateGroup.Id;
         db.Companies.Add(company);
 
         db.CompanyMembers.Add(new CompanyMember

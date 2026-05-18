@@ -132,7 +132,7 @@ builder.Services.AddHangfireServer();
 
 if (builder.Environment.IsDevelopment())
     builder.Services.AddCors(o => o.AddDefaultPolicy(p =>
-        p.WithOrigins("http://localhost:5173")
+        p.WithOrigins("http://localhost:5173", "http://localhost:5174", "http://localhost:5175")
          .AllowAnyMethod()
          .AllowAnyHeader()
          .AllowCredentials()));
