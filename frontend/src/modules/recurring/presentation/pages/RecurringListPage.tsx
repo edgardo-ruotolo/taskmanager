@@ -53,10 +53,10 @@ export function RecurringListPage(): React.ReactElement {
                 </div>
 
                 {/* Toolbar */}
-                <div className="flex h-11 w-full items-center gap-2.5 border-b px-5">
-                    <Search className="h-3.5 w-3.5 flex-shrink-0 text-muted-foreground" />
+                <div className="flex h-11 w-full items-center gap-2.5 border-b border-subtle px-5">
+                    <Search className="h-3.5 w-3.5 flex-shrink-0 text-placeholder" />
                     <Input
-                        className="h-full w-full border-0 bg-transparent p-0 text-sm shadow-none placeholder:text-muted-foreground focus-visible:ring-0"
+                        className="h-full w-full border-0 bg-transparent p-0 text-sm shadow-none placeholder:text-placeholder focus-visible:ring-0 text-primary"
                         value={query}
                         onChange={(e) => setQuery(e.target.value)}
                         placeholder="Buscar tareas recurrentes..."
@@ -69,8 +69,8 @@ export function RecurringListPage(): React.ReactElement {
                                 onClick={() => setStatusFilter(s.value)}
                                 className={`rounded-md px-2 py-1 text-xs font-medium transition-colors ${
                                     statusFilter === s.value
-                                        ? 'bg-primary/10 text-primary'
-                                        : 'text-muted-foreground hover:text-foreground'
+                                        ? 'bg-accent-subtle text-accent-primary'
+                                        : 'text-placeholder hover:text-primary hover:bg-layer-transparent-hover'
                                 }`}
                             >
                                 {s.label}
@@ -88,16 +88,16 @@ export function RecurringListPage(): React.ReactElement {
                     </div>
                 ) : filtered.length === 0 ? (
                     <div className="flex h-full flex-col items-center justify-center gap-4 text-center">
-                        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-muted">
-                            <Repeat2 className="h-7 w-7 text-muted-foreground" />
+                        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-layer-1">
+                            <Repeat2 className="h-7 w-7 text-placeholder" />
                         </div>
                         <div>
-                            <p className="text-sm font-medium">
+                            <p className="text-sm font-medium text-primary">
                                 {query || statusFilter !== 'all'
                                     ? 'Sin resultados'
                                     : 'No hay tareas recurrentes'}
                             </p>
-                            <p className="mt-1 text-xs text-muted-foreground">
+                            <p className="mt-1 text-xs text-placeholder">
                                 {query || statusFilter !== 'all'
                                     ? 'Intentá con otro filtro o búsqueda'
                                     : 'Creá tu primera tarea recurrente para automatizar trabajo repetitivo'}

@@ -9,7 +9,6 @@ import {
     LayoutList,
     BarChart2,
     RotateCcw,
-    Archive,
     Ellipsis,
     Plus,
     ChevronRight,
@@ -45,16 +44,14 @@ const ALL_CONFIGURABLE_ITEMS: Omit<ConfigurableItem, 'to'>[] = [
     { id: 'cycles', icon: RotateCcw, label: 'Recurrentes' },
     { id: 'views', icon: LayoutList, label: 'Vistas' },
     { id: 'analytics', icon: BarChart2, label: 'Análisis' },
-    { id: 'archives', icon: Archive, label: 'Archivos' },
 ];
 
 function makeRoute(id: string, slug: string): string {
     switch (id) {
         case 'companies': return `/${slug}/companies`;
-        case 'cycles': return `/${slug}/companies`;
+        case 'cycles': return `/${slug}/recurring`;
         case 'views': return `/${slug}/settings/views`;
         case 'analytics': return `/${slug}/analytics`;
-        case 'archives': return `/${slug}/companies`;
         default: return `/${slug}`;
     }
 }

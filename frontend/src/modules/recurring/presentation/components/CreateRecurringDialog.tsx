@@ -55,7 +55,7 @@ export function CreateRecurringDialog({
 
     return (
         <Dialog open={isOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
-            <DialogContent className="max-w-2xl p-0">
+            <DialogContent className="max-w-2xl p-0 bg-surface-1 border-subtle text-primary">
                 <RecurringForm
                     workspaceSlug={workspaceSlug}
                     data={data}

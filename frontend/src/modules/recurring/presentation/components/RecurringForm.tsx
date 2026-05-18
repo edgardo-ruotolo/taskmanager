@@ -121,19 +121,19 @@ export function RecurringForm({ workspaceSlug, data, prefill, onSubmit, onClose 
     return (
         <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col">
             {/* Header */}
-            <div className="flex items-center justify-between border-b px-5 py-4">
+            <div className="flex items-center justify-between border-b border-subtle px-5 py-4">
                 <div className="flex items-center gap-3">
                     <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-violet-100 dark:bg-violet-900/30">
                         <Repeat2 className="h-4 w-4 text-violet-600 dark:text-violet-400" />
                     </div>
-                    <h3 className="text-base font-semibold">
+                    <h3 className="text-base font-semibold text-primary">
                         {data ? 'Editar tarea recurrente' : 'Nueva tarea recurrente'}
                     </h3>
                 </div>
                 <button
                     type="button"
                     onClick={onClose}
-                    className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+                    className="rounded p-1 text-placeholder hover:bg-layer-1-hover hover:text-primary transition-colors duration-150"
                 >
                     <X className="h-4 w-4" />
                 </button>
@@ -143,35 +143,35 @@ export function RecurringForm({ workspaceSlug, data, prefill, onSubmit, onClose 
             <div className="flex flex-col gap-y-4 overflow-y-auto px-5 py-4" style={{ maxHeight: 'calc(80vh - 120px)' }}>
                 {/* Name */}
                 <div className="flex flex-col gap-y-1">
-                    <Label htmlFor="name">Nombre</Label>
+                    <Label htmlFor="name" className="text-secondary">Nombre</Label>
                     <Input
                         id="name"
                         {...register('name')}
                         placeholder="Nombre de la tarea recurrente"
-                        className={errors.name ? 'border-destructive' : ''}
+                        className={`bg-layer-1 border-subtle text-primary placeholder:text-placeholder ${errors.name ? 'border-destructive' : ''}`}
                     />
                     {errors.name && <p className="text-xs text-destructive">{errors.name.message}</p>}
                 </div>
 
                 {/* Description */}
                 <div className="flex flex-col gap-y-1">
-                    <Label htmlFor="description">Descripción</Label>
+                    <Label htmlFor="description" className="text-secondary">Descripción</Label>
                     <Textarea
                         id="description"
                         {...register('descriptionHtml')}
                         placeholder="Descripción opcional"
-                        className="min-h-[80px]"
+                        className="min-h-[80px] bg-layer-1 border-subtle text-primary placeholder:text-placeholder"
                     />
                 </div>
 
                 {/* Recurrence Section */}
-                <div className="flex flex-col gap-y-3 rounded-lg border p-4">
-                    <h4 className="text-sm font-semibold">Recurrencia</h4>
+                <div className="flex flex-col gap-y-3 rounded-lg border border-subtle p-4">
+                    <h4 className="text-sm font-semibold text-primary">Recurrencia</h4>
 
                     <div className="grid grid-cols-2 gap-3">
                         {/* Frequency */}
                         <div className="flex flex-col gap-y-1">
-                            <Label>Frecuencia</Label>
+                            <Label className="text-secondary">Frecuencia</Label>
                             <Controller
                                 name="frequency"
                                 control={control}
@@ -194,7 +194,7 @@ export function RecurringForm({ workspaceSlug, data, prefill, onSubmit, onClose 
 
                         {/* Interval */}
                         <div className="flex flex-col gap-y-1">
-                            <Label className="flex items-center gap-1">
+                            <Label className="flex items-center gap-1 text-secondary">
                                 Intervalo
                                 <FieldHelp text="Cada cuántas unidades de frecuencia se repite" />
                             </Label>
@@ -202,6 +202,7 @@ export function RecurringForm({ workspaceSlug, data, prefill, onSubmit, onClose 
                                 type="number"
                                 {...register('interval', { valueAsNumber: true })}
                                 min={1}
+                                className="bg-layer-1 border-subtle text-primary"
                             />
                         </div>
                     </div>
@@ -231,8 +232,8 @@ export function RecurringForm({ workspaceSlug, data, prefill, onSubmit, onClose 
                                                 }}
                                                 className={`rounded-md px-3 py-1 text-xs font-medium transition-colors ${
                                                     (field.value ?? []).includes(day.value)
-                                                        ? 'bg-primary text-primary-foreground'
-                                                        : 'border text-muted-foreground hover:bg-muted'
+                                                        ? 'bg-accent-primary text-on-color'
+                                                        : 'border border-subtle text-placeholder hover:bg-layer-1 hover:text-primary'
                                                 }`}
                                             >
                                                 {day.label}
@@ -247,7 +248,7 @@ export function RecurringForm({ workspaceSlug, data, prefill, onSubmit, onClose 
                     {/* Day of month */}
                     {frequency === 'Monthly' && (
                         <div className="flex flex-col gap-y-1">
-                            <Label className="flex items-center gap-1">
+                            <Label className="flex items-center gap-1 text-secondary">
                                 Día del mes
                                 <FieldHelp text="Entre 1 y 31" />
                             </Label>
@@ -256,7 +257,7 @@ export function RecurringForm({ workspaceSlug, data, prefill, onSubmit, onClose 
                                 {...register('dayOfMonth', { valueAsNumber: true })}
                                 min={1}
                                 max={31}
-                                className="w-32"
+                                className="w-32 bg-layer-1 border-subtle text-primary"
                             />
                         </div>
                     )}
@@ -264,7 +265,7 @@ export function RecurringForm({ workspaceSlug, data, prefill, onSubmit, onClose 
                     {/* Month of year */}
                     {frequency === 'Yearly' && (
                         <div className="flex flex-col gap-y-1">
-                            <Label className="flex items-center gap-1">
+                            <Label className="flex items-center gap-1 text-secondary">
                                 Mes del año
                                 <FieldHelp text="Entre 1 (enero) y 12 (diciembre)" />
                             </Label>
@@ -273,68 +274,68 @@ export function RecurringForm({ workspaceSlug, data, prefill, onSubmit, onClose 
                                 {...register('monthOfYear', { valueAsNumber: true })}
                                 min={1}
                                 max={12}
-                                className="w-32"
+                                className="w-32 bg-layer-1 border-subtle text-primary"
                             />
                         </div>
                     )}
 
                     <div className="grid grid-cols-2 gap-3">
                         <div className="flex flex-col gap-y-1">
-                            <Label className="flex items-center gap-1">
+                            <Label className="flex items-center gap-1 text-secondary">
                                 Hora de ejecución
                                 <FieldHelp text="Hora en que se genera la tarea" />
                             </Label>
-                            <Input type="time" {...register('runAtTime')} />
+                            <Input type="time" {...register('runAtTime')} className="bg-layer-1 border-subtle text-primary" />
                         </div>
                         <div className="flex flex-col gap-y-1">
-                            <Label className="flex items-center gap-1">
+                            <Label className="flex items-center gap-1 text-secondary">
                                 Hora límite
                                 <FieldHelp text="Ventana de tolerancia de ejecución" />
                             </Label>
-                            <Input type="time" {...register('endTime')} />
+                            <Input type="time" {...register('endTime')} className="bg-layer-1 border-subtle text-primary" />
                         </div>
                     </div>
 
                     <div className="grid grid-cols-2 gap-3">
                         <div className="flex flex-col gap-y-1">
-                            <Label className="flex items-center gap-1">
+                            <Label className="flex items-center gap-1 text-secondary">
                                 Comienza el
                                 <FieldHelp text="Primera fecha de ejecución" />
                             </Label>
                             <Input
                                 type="date"
                                 {...register('startsOn')}
-                                className={errors.startsOn ? 'border-destructive' : ''}
+                                className={`bg-layer-1 border-subtle text-primary ${errors.startsOn ? 'border-destructive' : ''}`}
                             />
                             {errors.startsOn && (
                                 <p className="text-xs text-destructive">{errors.startsOn.message}</p>
                             )}
                         </div>
                         <div className="flex flex-col gap-y-1">
-                            <Label className="flex items-center gap-1">
+                            <Label className="flex items-center gap-1 text-secondary">
                                 Termina el
                                 <FieldHelp text="Opcional — fecha de fin de la recurrencia" />
                             </Label>
-                            <Input type="date" {...register('endsOn')} />
+                            <Input type="date" {...register('endsOn')} className="bg-layer-1 border-subtle text-primary" />
                         </div>
                     </div>
 
                     <div className="flex flex-col gap-y-1">
-                        <Label className="flex items-center gap-1">
+                        <Label className="flex items-center gap-1 text-secondary">
                             Zona horaria
                             <FieldHelp text="Ej: America/Santiago, UTC" />
                         </Label>
-                        <Input {...register('timezone')} placeholder="America/Argentina/Buenos_Aires" />
+                        <Input {...register('timezone')} placeholder="America/Argentina/Buenos_Aires" className="bg-layer-1 border-subtle text-primary placeholder:text-placeholder" />
                     </div>
                 </div>
 
                 {/* Issue template section */}
-                <div className="flex flex-col gap-y-3 rounded-lg border p-4">
-                    <h4 className="text-sm font-semibold">Plantilla de tarea</h4>
+                <div className="flex flex-col gap-y-3 rounded-lg border border-subtle p-4">
+                    <h4 className="text-sm font-semibold text-primary">Plantilla de tarea</h4>
 
                     <div className="grid grid-cols-2 gap-3">
                         <div className="flex flex-col gap-y-1">
-                            <Label>Prioridad</Label>
+                            <Label className="text-secondary">Prioridad</Label>
                             <Controller
                                 name="priority"
                                 control={control}
@@ -355,7 +356,7 @@ export function RecurringForm({ workspaceSlug, data, prefill, onSubmit, onClose 
                             />
                         </div>
                         <div className="flex flex-col gap-y-1">
-                            <Label>Grupo de estado</Label>
+                            <Label className="text-secondary">Grupo de estado</Label>
                             <Controller
                                 name="stateGroup"
                                 control={control}
@@ -401,8 +402,8 @@ export function RecurringForm({ workspaceSlug, data, prefill, onSubmit, onClose 
                                                 }}
                                                 className={`rounded-md px-3 py-1 text-xs font-medium transition-colors ${
                                                     (field.value ?? []).includes(company.id)
-                                                        ? 'bg-primary text-primary-foreground'
-                                                        : 'border text-muted-foreground hover:bg-muted'
+                                                        ? 'bg-accent-primary text-on-color'
+                                                        : 'border border-subtle text-placeholder hover:bg-layer-1 hover:text-primary'
                                                 }`}
                                             >
                                                 {company.identifier} {company.name}
@@ -419,23 +420,25 @@ export function RecurringForm({ workspaceSlug, data, prefill, onSubmit, onClose 
 
                     <div className="grid grid-cols-2 gap-3">
                         <div className="flex flex-col gap-y-1">
-                            <Label className="flex items-center gap-1">
+                            <Label className="flex items-center gap-1 text-secondary">
                                 Offset fecha inicio (días)
                                 <FieldHelp text="Días desde la ejecución para la fecha de inicio de la tarea" />
                             </Label>
                             <Input
                                 type="number"
                                 {...register('startDateOffsetDays', { valueAsNumber: true })}
+                                className="bg-layer-1 border-subtle text-primary"
                             />
                         </div>
                         <div className="flex flex-col gap-y-1">
-                            <Label className="flex items-center gap-1">
+                            <Label className="flex items-center gap-1 text-secondary">
                                 Offset fecha objetivo (días)
                                 <FieldHelp text="Días desde la ejecución para la fecha objetivo de la tarea" />
                             </Label>
                             <Input
                                 type="number"
                                 {...register('targetDateOffsetDays', { valueAsNumber: true })}
+                                className="bg-layer-1 border-subtle text-primary"
                             />
                         </div>
                     </div>
@@ -443,11 +446,11 @@ export function RecurringForm({ workspaceSlug, data, prefill, onSubmit, onClose 
             </div>
 
             {/* Footer */}
-            <div className="flex justify-end gap-2 border-t px-5 py-4">
-                <Button variant="outline" type="button" onClick={onClose}>
+            <div className="flex justify-end gap-2 border-t border-subtle px-5 py-4">
+                <Button variant="ghost" type="button" onClick={onClose} className="text-secondary hover:text-primary">
                     Cancelar
                 </Button>
-                <Button type="submit" disabled={isSubmitting}>
+                <Button type="submit" disabled={isSubmitting} className="bg-accent-primary hover:bg-accent-primary-hover text-on-color">
                     {isSubmitting
                         ? data
                             ? 'Guardando...'
