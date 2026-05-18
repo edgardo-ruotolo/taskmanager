@@ -89,6 +89,9 @@ const DraftsPage = lazy(() => import('@/modules/drafts/presentation/pages/Drafts
 // Teams pages
 const TeamsPage = lazy(() => import('@/modules/teams/presentation/pages/TeamsPage').then(m => ({ default: m.TeamsPage })));
 
+// Integrations pages
+const IntegrationsPage = lazy(() => import('@/modules/integrations/presentation/pages/IntegrationsPage').then(m => ({ default: m.IntegrationsPage })));
+
 // Space / Deploy Boards pages
 const PublicSpacePage = lazy(() => import('@/modules/space/presentation/pages/PublicSpacePage').then(m => ({ default: m.PublicSpacePage })));
 const DeployBoardsPage = lazy(() => import('@/modules/space/presentation/pages/DeployBoardsPage').then(m => ({ default: m.DeployBoardsPage })));
@@ -148,6 +151,7 @@ export const App = (): React.ReactElement => (
                     <Route path="settings/views/:viewId" element={<IssueViewDetailPage />} />
                     <Route path="settings/tokens" element={<ApiTokensPage />} />
                     <Route path="settings/teams" element={<TeamsPage />} />
+                    <Route path="settings/integrations" element={<IntegrationsPage />} />
                     <Route path="recurring" element={<RecurringListPage />} />
                     <Route path="recurring/:recurringId" element={<RecurringDetailPage />} />
                     <Route path="search" element={<SearchPage />} />

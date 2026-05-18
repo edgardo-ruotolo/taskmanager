@@ -20,6 +20,7 @@ import {
     Download,
     Palette,
     ImageIcon,
+    Plug,
 } from 'lucide-react';
 import { UnsplashPicker } from '@/modules/unsplash/presentation/components/UnsplashPicker';
 import type { UnsplashPhoto } from '@/modules/unsplash/domain/types';
@@ -76,6 +77,7 @@ const ADMIN_ITEMS: SettingsNavItem[] = [
 const DEV_ITEMS: SettingsNavItem[] = [
     { to: 'webhooks', label: 'Webhooks', icon: Webhook },
     { to: 'tokens', label: 'Tokens de API', icon: Key },
+    { to: 'integrations', label: 'Integraciones', icon: Plug },
 ];
 
 function SettingsSidebar({ activeTab, onTabChange }: { activeTab: string; onTabChange: (tab: string) => void }): React.ReactElement {
@@ -524,6 +526,24 @@ function TokensTab(): React.ReactElement {
     );
 }
 
+function IntegrationsTab(): React.ReactElement {
+    return (
+        <div className="space-y-6">
+            <SectionHeader
+                title="Integraciones"
+                description="Conecta TaskManager con GitHub, Slack y otras herramientas."
+            />
+            <p className="text-sm text-placeholder">
+                Configura las integraciones desde{' '}
+                <NavLink to="../settings/integrations" className="text-accent-primary hover:underline">
+                    la página de Integraciones
+                </NavLink>
+                .
+            </p>
+        </div>
+    );
+}
+
 const THEME_MODES = [
     { value: 'light', label: 'Claro' },
     { value: 'dark', label: 'Oscuro' },
@@ -685,6 +705,8 @@ export const WorkspaceSettingsPage = (): React.ReactElement => {
                 return <WebhooksTab />;
             case 'tokens':
                 return <TokensTab />;
+            case 'integrations':
+                return <IntegrationsTab />;
             default:
                 return <GeneralTab workspaceSlug={slug} />;
         }
