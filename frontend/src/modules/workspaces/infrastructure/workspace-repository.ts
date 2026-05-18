@@ -8,6 +8,7 @@ import type {
     WorkspaceInvitation,
     CreateInvitationData,
 } from '../domain/types';
+import type { WorkspaceTheme, UpdateWorkspaceThemeData } from '../domain/theme-types';
 
 export const workspaceRepository = {
     getAll: (): Promise<PagedResult<Workspace>> =>
@@ -36,4 +37,8 @@ export const workspaceRepository = {
         apiClient.delete(`/api/workspaces/${slug}/invitations/${id}`).then(() => undefined),
     acceptInvitation: (slug: string, token: string): Promise<void> =>
         apiClient.post(`/api/workspaces/${slug}/invitations/${token}/accept`).then(() => undefined),
+    getTheme: (workspaceSlug: string): Promise<WorkspaceTheme> =>
+        apiClient.get<WorkspaceTheme>(`/api/workspaces/${workspaceSlug}/theme`).then((r) => r.data),
+    updateTheme: (workspaceSlug: string, data: UpdateWorkspaceThemeData): Promise<WorkspaceTheme> =>
+        apiClient.patch<WorkspaceTheme>(`/api/workspaces/${workspaceSlug}/theme`, data).then((r) => r.data),
 };

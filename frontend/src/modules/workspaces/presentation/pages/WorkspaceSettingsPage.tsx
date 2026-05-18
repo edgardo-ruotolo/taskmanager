@@ -18,6 +18,7 @@ import {
     Key,
     CreditCard,
     Download,
+    Palette,
 } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -36,8 +37,9 @@ import {
 } from '@/components/ui/alert-dialog';
 import { cn } from '@/lib/utils';
 import { workspaceRepository } from '../../infrastructure/workspace-repository';
-import { WORKSPACES_KEY, workspaceMembersKey, workspaceInvitationsKey } from '../../application/use-workspaces';
+import { WORKSPACES_KEY, workspaceMembersKey, workspaceInvitationsKey, useWorkspaceTheme, useUpdateWorkspaceTheme } from '../../application/use-workspaces';
 import type { WorkspaceMember } from '../../domain/types';
+import type { UpdateWorkspaceThemeData } from '../../domain/theme-types';
 
 const settingsSchema = z.object({
     name: z.string().min(1, 'Requerido').max(255),
@@ -63,6 +65,7 @@ interface SettingsNavItem {
 const ADMIN_ITEMS: SettingsNavItem[] = [
     { to: 'general', label: 'General', icon: Settings },
     { to: 'members', label: 'Miembros', icon: Users },
+    { to: 'theme', label: 'Tema', icon: Palette },
     { to: 'billing', label: 'Facturación', icon: CreditCard },
     { to: 'exports', label: 'Exportaciones', icon: Download },
 ];
@@ -474,6 +477,123 @@ function TokensTab(): React.ReactElement {
     );
 }
 
+const THEME_MODES = [
+    { value: 'light', label: 'Claro' },
+    { value: 'dark', label: 'Oscuro' },
+    { value: 'system', label: 'Sistema' },
+] as const;
+
+interface ColorState {
+    primaryColor: string;
+    textColor: string;
+    backgroundColor: string;
+    sidebarColor: string;
+    accentColor: string;
+}
+
+const COLOR_FIELDS: { key: keyof ColorState; label: string }[] = [
+    { key: 'primaryColor', label: 'Color primario' },
+    { key: 'textColor', label: 'Color de texto' },
+    { key: 'backgroundColor', label: 'Fondo' },
+    { key: 'sidebarColor', label: 'Sidebar' },
+    { key: 'accentColor', label: 'Acento' },
+];
+
+function ThemeTab({ workspaceSlug }: { workspaceSlug: string }): React.ReactElement {
+    const { data: theme } = useWorkspaceTheme(workspaceSlug);
+    const updateTheme = useUpdateWorkspaceTheme(workspaceSlug);
+
+    const [mode, setMode] = useState<'light' | 'dark' | 'system'>(theme?.theme ?? 'system');
+
+    const [colors, setColors] = useState<ColorState>({
+        primaryColor: theme?.primaryColor ?? '#6366f1',
+        textColor: theme?.textColor ?? '#ffffff',
+        backgroundColor: theme?.backgroundColor ?? '#0d0d12',
+        sidebarColor: theme?.sidebarColor ?? '#1a1a23',
+        accentColor: theme?.accentColor ?? '#6366f1',
+    });
+
+    const handleSave = (): void => {
+        const data: UpdateWorkspaceThemeData = {
+            theme: mode,
+            primaryColor: colors.primaryColor,
+            textColor: colors.textColor,
+            backgroundColor: colors.backgroundColor,
+            sidebarColor: colors.sidebarColor,
+            accentColor: colors.accentColor,
+        };
+        updateTheme.mutate(data);
+    };
+
+    return (
+        <div className="space-y-6">
+            <SectionHeader
+                title="Tema del workspace"
+                description="Personaliza los colores y el modo de apariencia del workspace."
+            />
+
+            <div className="space-y-4 max-w-lg">
+                <div>
+                    <p className="text-sm font-medium text-secondary mb-2">Modo</p>
+                    <div className="flex gap-2">
+                        {THEME_MODES.map((m) => (
+                            <button
+                                key={m.value}
+                                type="button"
+                                onClick={() => setMode(m.value)}
+                                className={cn(
+                                    'flex-1 py-2 rounded-md text-sm font-medium border transition-colors',
+                                    mode === m.value
+                                        ? 'bg-accent-primary text-on-color border-accent-primary'
+                                        : 'bg-layer-1 text-secondary border-subtle hover:bg-layer-2',
+                                )}
+                            >
+                                {m.label}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+
+                <div>
+                    <p className="text-sm font-medium text-secondary mb-3">Colores</p>
+                    <div className="space-y-3">
+                        {COLOR_FIELDS.map(({ key, label }) => (
+                            <div key={key} className="flex items-center gap-3">
+                                <label htmlFor={`color-${key}`} className="text-sm text-secondary w-36 shrink-0">
+                                    {label}
+                                </label>
+                                <div className="flex items-center gap-2 flex-1">
+                                    <input
+                                        id={`color-${key}`}
+                                        type="color"
+                                        value={colors[key] ?? '#000000'}
+                                        onChange={(e) => setColors((prev) => ({ ...prev, [key]: e.target.value }))}
+                                        className="w-8 h-8 rounded cursor-pointer border border-subtle bg-transparent"
+                                    />
+                                    <Input
+                                        value={colors[key] ?? ''}
+                                        onChange={(e) => setColors((prev) => ({ ...prev, [key]: e.target.value }))}
+                                        className="bg-layer-1 border-subtle text-primary font-mono text-xs h-8"
+                                        maxLength={7}
+                                    />
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+
+                <Button
+                    onClick={handleSave}
+                    className="bg-accent-primary hover:bg-accent-primary-hover text-on-color"
+                    disabled={updateTheme.isPending}
+                >
+                    {updateTheme.isPending ? 'Guardando...' : 'Guardar tema'}
+                </Button>
+            </div>
+        </div>
+    );
+}
+
 function DisabledTab({ title, description }: { title: string; description: string }): React.ReactElement {
     return (
         <div className="space-y-6">
@@ -498,6 +618,8 @@ export const WorkspaceSettingsPage = (): React.ReactElement => {
                 return <GeneralTab workspaceSlug={slug} />;
             case 'members':
                 return <MembersTab workspaceSlug={slug} />;
+            case 'theme':
+                return <ThemeTab workspaceSlug={slug} />;
             case 'billing':
                 return (
                     <DisabledTab

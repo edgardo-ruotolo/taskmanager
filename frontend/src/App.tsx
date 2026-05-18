@@ -86,6 +86,9 @@ const SearchPage = lazy(() => import('@/modules/search/presentation/pages/Search
 // Drafts pages
 const DraftsPage = lazy(() => import('@/modules/drafts/presentation/pages/DraftsPage').then(m => ({ default: m.DraftsPage })));
 
+// Teams pages
+const TeamsPage = lazy(() => import('@/modules/teams/presentation/pages/TeamsPage').then(m => ({ default: m.TeamsPage })));
+
 // God Mode pages
 const GodModeGeneralPage = lazy(() => import('@/modules/admin/presentation/pages/GodModeGeneralPage').then(m => ({ default: m.GodModeGeneralPage })));
 const GodModeEmailPage = lazy(() => import('@/modules/admin/presentation/pages/GodModeEmailPage').then(m => ({ default: m.GodModeEmailPage })));
@@ -138,6 +141,7 @@ export const App = (): React.ReactElement => (
                     <Route path="settings/views" element={<IssueViewsPage />} />
                     <Route path="settings/views/:viewId" element={<IssueViewDetailPage />} />
                     <Route path="settings/tokens" element={<ApiTokensPage />} />
+                    <Route path="settings/teams" element={<TeamsPage />} />
                     <Route path="recurring" element={<RecurringListPage />} />
                     <Route path="recurring/:recurringId" element={<RecurringDetailPage />} />
                     <Route path="search" element={<SearchPage />} />

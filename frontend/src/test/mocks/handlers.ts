@@ -160,6 +160,94 @@ export const handlers = [
   http.delete(`${BASE_URL}/api/workspaces/:slug/files/:id`, () =>
     new HttpResponse(null, { status: 204 })),
 
+  // Teams
+  http.get(`${BASE_URL}/api/workspaces/:slug/teams`, () => HttpResponse.json([])),
+  http.post(`${BASE_URL}/api/workspaces/:slug/teams`, () =>
+    HttpResponse.json(
+      {
+        id: 'team-1',
+        name: 'Test Team',
+        memberCount: 0,
+        workspaceId: 'ws-1',
+        createdById: 'user-1',
+        description: null,
+        identifier: null,
+        logoUrl: null,
+        createdAt: new Date().toISOString(),
+      },
+      { status: 201 },
+    )),
+  http.get(`${BASE_URL}/api/workspaces/:slug/teams/:id`, () =>
+    HttpResponse.json({
+      id: 'team-1',
+      name: 'Test Team',
+      memberCount: 0,
+      workspaceId: 'ws-1',
+      createdById: 'user-1',
+      description: null,
+      identifier: null,
+      logoUrl: null,
+      createdAt: new Date().toISOString(),
+    })),
+  http.patch(`${BASE_URL}/api/workspaces/:slug/teams/:id`, () =>
+    HttpResponse.json({
+      id: 'team-1',
+      name: 'Test Team',
+      memberCount: 0,
+      workspaceId: 'ws-1',
+      createdById: 'user-1',
+      description: null,
+      identifier: null,
+      logoUrl: null,
+      createdAt: new Date().toISOString(),
+    })),
+  http.delete(`${BASE_URL}/api/workspaces/:slug/teams/:id`, () => new HttpResponse(null, { status: 204 })),
+  http.get(`${BASE_URL}/api/workspaces/:slug/teams/:id/members`, () => HttpResponse.json([])),
+  http.post(`${BASE_URL}/api/workspaces/:slug/teams/:id/members`, () => new HttpResponse(null, { status: 204 })),
+  http.delete(`${BASE_URL}/api/workspaces/:slug/teams/:id/members/:userId`, () => new HttpResponse(null, { status: 204 })),
+
+  // Workspace theme
+  http.get(`${BASE_URL}/api/workspaces/:slug/theme`, () =>
+    HttpResponse.json({
+      workspaceId: 'ws-1',
+      theme: 'system',
+      primaryColor: null,
+      textColor: null,
+      backgroundColor: null,
+      sidebarColor: null,
+      accentColor: null,
+    })),
+  http.patch(`${BASE_URL}/api/workspaces/:slug/theme`, () =>
+    HttpResponse.json({
+      workspaceId: 'ws-1',
+      theme: 'system',
+      primaryColor: null,
+      textColor: null,
+      backgroundColor: null,
+      sidebarColor: null,
+      accentColor: null,
+    })),
+
+  // Cycle analytics
+  http.get(`${BASE_URL}/api/workspaces/:slug/companies/:companyId/cycles/:id/progress`, () =>
+    HttpResponse.json({
+      totalIssues: 0,
+      completedIssues: 0,
+      inProgressIssues: 0,
+      pendingIssues: 0,
+      completionPercentage: 0,
+    })),
+  http.get(`${BASE_URL}/api/workspaces/:slug/companies/:companyId/cycles/:id/analytics`, () =>
+    HttpResponse.json({
+      totalIssues: 0,
+      completedIssues: 0,
+      completionPercentage: 0,
+      issuesByPriority: {},
+      issuesByState: {},
+    })),
+  http.post(`${BASE_URL}/api/workspaces/:slug/companies/:companyId/cycles/:id/transfer-issues`, () =>
+    new HttpResponse(null, { status: 204 })),
+
   // Bulk operations
   http.post(`${BASE_URL}/api/workspaces/:slug/companies/:companyId/issues/bulk-archive`, () =>
     new HttpResponse(null, { status: 204 })),

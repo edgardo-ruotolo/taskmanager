@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useCycles, useCycleIssues } from '../../application/use-cycles';
+import { useCycleProgress } from '../../application/use-cycle-analytics';
 import { useCompany } from '@/modules/companies/application/use-companies';
 import { IssuePeekOverview } from '@/modules/issues/presentation/components/IssuePeekOverview';
 import type { Issue } from '@/modules/issues/domain/types';
@@ -243,14 +244,23 @@ function VelocitySection({ cycle, analytics }: VelocitySectionProps): React.Reac
     );
 }
 
+interface ServerProgress {
+    totalIssues: number;
+    completedIssues: number;
+    inProgressIssues: number;
+    pendingIssues: number;
+    completionPercentage: number;
+}
+
 interface AnalyticsSidebarProps {
     isLoading: boolean;
     analytics: IssueAnalytics;
     description: string | null | undefined;
+    serverProgress: ServerProgress | null;
     cycle: Cycle | null;
 }
 
-function AnalyticsSidebar({ isLoading, analytics, description, cycle }: AnalyticsSidebarProps): React.ReactElement {
+function AnalyticsSidebar({ isLoading, analytics, description, cycle, serverProgress }: AnalyticsSidebarProps): React.ReactElement {
     return (
         <aside className="w-[300px] shrink-0 border-l border-subtle bg-surface-1 overflow-y-auto p-5 space-y-6">
             <div>
@@ -269,6 +279,34 @@ function AnalyticsSidebar({ isLoading, analytics, description, cycle }: Analytic
                     </>
                 )}
             </div>
+
+            {serverProgress && (
+                <div>
+                    <p className="text-xs font-semibold text-placeholder uppercase tracking-wider mb-3">Desglose</p>
+                    <div className="space-y-1.5">
+                        <div className="flex items-center justify-between px-3 py-2 bg-surface-2 rounded-md">
+                            <span className="text-xs text-secondary">Total</span>
+                            <span className="text-xs font-semibold text-primary">{serverProgress.totalIssues}</span>
+                        </div>
+                        <div className="flex items-center justify-between px-3 py-2 bg-surface-2 rounded-md">
+                            <span className="text-xs text-secondary">Completadas</span>
+                            <span className="text-xs font-semibold text-green-400">{serverProgress.completedIssues}</span>
+                        </div>
+                        <div className="flex items-center justify-between px-3 py-2 bg-surface-2 rounded-md">
+                            <span className="text-xs text-secondary">En progreso</span>
+                            <span className="text-xs font-semibold text-blue-400">{serverProgress.inProgressIssues}</span>
+                        </div>
+                        <div className="flex items-center justify-between px-3 py-2 bg-surface-2 rounded-md">
+                            <span className="text-xs text-secondary">Pendientes</span>
+                            <span className="text-xs font-semibold text-secondary">{serverProgress.pendingIssues}</span>
+                        </div>
+                        <div className="flex items-center justify-between px-3 py-2 bg-surface-2 rounded-md">
+                            <span className="text-xs text-secondary">Completado</span>
+                            <span className="text-xs font-semibold text-primary">{serverProgress.completionPercentage}%</span>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {!isLoading && cycle && <BurndownSection cycle={cycle} analytics={analytics} />}
             {!isLoading && cycle && <VelocitySection cycle={cycle} analytics={analytics} />}
@@ -322,6 +360,7 @@ export const CycleDetailPage = (): React.ReactElement => {
     const { data: cycles, isLoading: cyclesLoading } = useCycles(workspaceSlug, companyId);
     const { data: issueRefs, isLoading: issuesLoading } = useCycleIssues(workspaceSlug, companyId, cycleId);
     const { data: company } = useCompany(workspaceSlug, companyId);
+    const { data: cycleProgress } = useCycleProgress(workspaceSlug, companyId, cycleId);
 
     const cycle = cycles?.find((c) => c.id === cycleId) ?? null;
     const issues = issueRefs ?? [];
@@ -451,6 +490,7 @@ export const CycleDetailPage = (): React.ReactElement => {
                     analytics={analytics}
                     description={cycle?.description}
                     cycle={cycle}
+                    serverProgress={cycleProgress ?? null}
                 />
             </div>
 
