@@ -78,7 +78,9 @@ builder.Services.AddScoped<RequireWorkspaceAdminAttribute>();
 builder.Services.AddScoped<RequireCompanyMemberAttribute>();
 builder.Services.AddScoped<RequireCompanyAdminAttribute>();
 
-builder.Services.AddHttpClient<IEmailService, BrevoEmailService>();
+builder.Services.AddScoped<IEmailService, LogOnlyEmailService>();
+// To use Brevo for real email delivery, comment the line above and uncomment:
+// builder.Services.AddHttpClient<IEmailService, BrevoEmailService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IWorkspaceService, WorkspaceService>();
 builder.Services.AddScoped<IWorkspaceActivityService, WorkspaceActivityService>();

@@ -189,7 +189,7 @@ public class WorkspaceService(AppDbContext db, IMapper mapper, IEmailService ema
 
         var frontendUrl = configuration["App:FrontendUrl"] ?? "http://localhost:5173";
         var inviteLink = $"{frontendUrl}/invitations/workspace/{invitation.Token}";
-        await emailService.SendWorkspaceInvitationAsync(normalizedEmail, workspace.Name, inviteLink, ct);
+        await emailService.SendWorkspaceInvitationAsync(normalizedEmail, string.Empty, workspace.Name, inviteLink, ct);
 
         return mapper.Map<WorkspaceInvitationDto>(invitation);
     }

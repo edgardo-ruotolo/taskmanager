@@ -65,7 +65,7 @@ public class AuthService(
         var encodedToken = Uri.EscapeDataString(token);
         var resetLink = $"http://localhost:5173/reset-password?email={Uri.EscapeDataString(user.Email!)}&token={encodedToken}";
 
-        await emailService.SendPasswordResetAsync(user.Email!, resetLink, ct);
+        await emailService.SendPasswordResetAsync(user.Email!, user.FirstName ?? user.UserName ?? string.Empty, resetLink, ct);
     }
 
     public async Task ResetPasswordAsync(ResetPasswordDto dto, CancellationToken ct = default)
