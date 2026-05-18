@@ -24,6 +24,7 @@ import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/modules/auth/application/auth-store';
 import { RichTextEditor } from '@/shared/components/RichTextEditor';
 import type { IssueRelationType } from '../../domain/types';
+import { FileAttachments } from '@/modules/files/presentation/components/FileAttachments';
 import { IssuePriorityBadge } from '../components/IssuePriorityBadge';
 import { IssueStateBadge } from '../components/IssueStateBadge';
 import {
@@ -852,6 +853,17 @@ export const IssueDetailPage = (): React.ReactElement => {
                                 companyId={companyId}
                                 issueId={issueId}
                                 companyIdentifier={companyIdentifier}
+                            />
+                        </div>
+
+                        <Separator className="bg-subtle mb-5" />
+
+                        {/* Attachments */}
+                        <div className="mb-5">
+                            <FileAttachments
+                                workspaceSlug={workspaceSlug}
+                                entityType="issue"
+                                entityId={issue.id}
                             />
                         </div>
 

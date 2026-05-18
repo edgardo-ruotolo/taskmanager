@@ -139,6 +139,27 @@ export const handlers = [
   http.post(`${BASE_URL}/api/workspaces/:slug/drafts/:id/publish`, () =>
     HttpResponse.json({ id: 'issue-1', title: 'Published' })),
 
+  // Files / attachments
+  http.get(`${BASE_URL}/api/workspaces/:slug/files`, () => HttpResponse.json([])),
+  http.post(`${BASE_URL}/api/workspaces/:slug/files/upload`, () =>
+    HttpResponse.json(
+      {
+        id: 'file-1',
+        fileName: 'test.txt',
+        contentType: 'text/plain',
+        sizeBytes: 1024,
+        entityType: 'issue',
+        entityId: 'issue-1',
+        uploadedById: 'user-1',
+        workspaceId: 'ws-1',
+        createdAt: new Date().toISOString(),
+        url: 'http://localhost:5000/uploads/test.txt',
+      },
+      { status: 201 },
+    )),
+  http.delete(`${BASE_URL}/api/workspaces/:slug/files/:id`, () =>
+    new HttpResponse(null, { status: 204 })),
+
   // Bulk operations
   http.post(`${BASE_URL}/api/workspaces/:slug/companies/:companyId/issues/bulk-archive`, () =>
     new HttpResponse(null, { status: 204 })),
