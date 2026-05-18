@@ -23,6 +23,8 @@ using TaskManager.Api.Modules.States.Dtos;
 using TaskManager.Api.Modules.States.Entities;
 using TaskManager.Api.Modules.Estimates.Dtos;
 using TaskManager.Api.Modules.Estimates.Entities;
+using TaskManager.Api.Modules.Space.Dtos;
+using TaskManager.Api.Modules.Space.Entities;
 using TaskManager.Api.Modules.Webhooks.Dtos;
 using TaskManager.Api.Modules.Webhooks.Entities;
 using TaskManager.Api.Modules.Workspaces.Dtos;
@@ -93,5 +95,7 @@ public class MappingProfile : Profile
         CreateMap<RecurringIssueTemplate, RecurringTemplateDto>();
         CreateMap<CreateRecurringTemplateDto, RecurringIssueTemplate>();
         CreateMap<RecurringIssueRun, RecurringRunDto>();
+
+        CreateMap<DeployBoard, DeployBoardDto>();
     }
 }
