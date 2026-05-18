@@ -41,7 +41,6 @@ interface ConfigurableItem extends NavItemDef {
 
 const ALL_CONFIGURABLE_ITEMS: Omit<ConfigurableItem, 'to'>[] = [
     { id: 'companies', icon: Building2, label: 'Empresas' },
-    { id: 'cycles', icon: RotateCcw, label: 'Recurrentes' },
     { id: 'views', icon: LayoutList, label: 'Vistas' },
     { id: 'analytics', icon: BarChart2, label: 'Análisis' },
 ];
@@ -49,7 +48,6 @@ const ALL_CONFIGURABLE_ITEMS: Omit<ConfigurableItem, 'to'>[] = [
 function makeRoute(id: string, slug: string): string {
     switch (id) {
         case 'companies': return `/${slug}/companies`;
-        case 'cycles': return `/${slug}/recurring`;
         case 'views': return `/${slug}/settings/views`;
         case 'analytics': return `/${slug}/analytics`;
         default: return `/${slug}`;
@@ -259,6 +257,7 @@ export function PrimarySidebar({ moreOpen = false, onMoreToggle }: PrimarySideba
         { to: `/${slug}/pages`, icon: FileText, label: 'Páginas' },
         { to: `/${slug}/stickies`, icon: StickyNote, label: 'Notas adhesivas' },
         { to: `/${slug}/activity`, icon: User, label: 'Tu trabajo' },
+        { to: `/${slug}/recurring`, icon: RotateCcw, label: 'Recurrentes' },
     ];
 
     const workspaceNavItems: ConfigurableItem[] = ALL_CONFIGURABLE_ITEMS
