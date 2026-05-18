@@ -33,6 +33,7 @@ using TaskManager.Api.Modules.Drafts.Services;
 using TaskManager.Api.Modules.Exporter.Jobs;
 using TaskManager.Api.Modules.Workspaces.Services;
 using TaskManager.Api.Common.Ai;
+using TaskManager.Api.Common.Telemetry;
 
 Log.Logger = new LoggerConfiguration()
     .WriteTo.Console()
@@ -118,6 +119,8 @@ builder.Services.AddScoped<IRecurringDispatcher, RecurringDispatcher>();
 builder.Services.AddScoped<IDraftService, DraftService>();
 builder.Services.AddScoped<ExportJob>();
 builder.Services.AddScoped<IAiProvider, StubAiProvider>();
+builder.Services.AddSingleton<ITelemetryProvider, NoOpTelemetryProvider>();
+// To use PostHog or another provider, replace NoOpTelemetryProvider with a real implementation above.
 
 var pgConnectionString = builder.Configuration.GetConnectionString("Postgres")!;
 builder.Services.AddHangfire(cfg => cfg

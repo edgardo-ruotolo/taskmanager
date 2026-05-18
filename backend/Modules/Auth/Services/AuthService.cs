@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using TaskManager.Api.Common.Email;
 using TaskManager.Api.Common.Exceptions;
+using TaskManager.Api.Common.Telemetry;
 using TaskManager.Api.Data;
 using TaskManager.Api.Modules.Auth.Dtos;
 using TaskManager.Api.Modules.Auth.Entities;
@@ -14,7 +15,8 @@ public class AuthService(
     SignInManager<User> signInManager,
     IMapper mapper,
     IEmailService emailService,
-    AppDbContext db) : IAuthService
+    AppDbContext db,
+    ITelemetryProvider telemetry) : IAuthService
 {
     public async Task<UserDto> RegisterAsync(RegisterDto dto, CancellationToken ct = default)
     {
@@ -34,6 +36,8 @@ public class AuthService(
             throw new ValidationException(errors);
         }
 
+        telemetry.IdentifyUser(user.Id.ToString(), new Dictionary<string, object> { ["email"] = user.Email! });
+
         return await MapUserDtoAsync(user);
     }
 
@@ -45,6 +49,8 @@ public class AuthService(
         var result = await signInManager.PasswordSignInAsync(user, dto.Password, isPersistent: true, lockoutOnFailure: false);
         if (!result.Succeeded)
             throw new ValidationException("Invalid credentials.");
+
+        telemetry.CaptureEvent("user_login", user.Id.ToString());
 
         return await MapUserDtoAsync(user);
     }
