@@ -16,6 +16,7 @@ using TaskManager.Api.Modules.Notifications.Entities;
 using TaskManager.Api.Modules.ProjectModules.Entities;
 using TaskManager.Api.Modules.Pages.Entities;
 using TaskManager.Api.Modules.Recurring.Entities;
+using TaskManager.Api.Modules.Stickies.Entities;
 using TaskManager.Api.Modules.States.Entities;
 using TaskManager.Api.Modules.Webhooks.Entities;
 using TaskManager.Api.Modules.Workspaces.Entities;
@@ -78,6 +79,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
     public DbSet<PageVersion> PageVersions => Set<PageVersion>();
     public DbSet<PageLabel> PageLabels => Set<PageLabel>();
     public DbSet<PageAccess> PageAccesses => Set<PageAccess>();
+    public DbSet<Sticky> Stickies => Set<Sticky>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -129,6 +131,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
         builder.Entity<PageAccess>().HasQueryFilter(e => !e.Page.IsDeleted);
         builder.Entity<PageLabel>().HasKey(x => new { x.PageId, x.LabelId });
         builder.Entity<PageLabel>().HasQueryFilter(e => !e.Page.IsDeleted);
+
+        builder.Entity<Sticky>().HasQueryFilter(e => !e.IsDeleted);
 
         builder.Entity<RecurringIssueTemplate>().HasQueryFilter(e => !e.IsDeleted);
         builder.Entity<RecurringIssueRun>().HasQueryFilter(e => !e.IsDeleted);

@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using TaskManager.Api.Data;
@@ -11,9 +12,11 @@ using TaskManager.Api.Data;
 namespace TaskManager.Api.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260508150502_AddInvitations")]
+    partial class AddInvitations
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -21,21 +24,6 @@ namespace TaskManager.Api.Migrations
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
-
-            modelBuilder.Entity("IssueRecurringIssueRun", b =>
-                {
-                    b.Property<Guid>("BlockedByIssuesId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("RecurringIssueRunId")
-                        .HasColumnType("uuid");
-
-                    b.HasKey("BlockedByIssuesId", "RecurringIssueRunId");
-
-                    b.HasIndex("RecurringIssueRunId");
-
-                    b.ToTable("recurring_issue_run_blocked_issues", (string)null);
-                });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRole<System.Guid>", b =>
                 {
@@ -165,54 +153,6 @@ namespace TaskManager.Api.Migrations
                     b.HasKey("UserId", "LoginProvider", "Name");
 
                     b.ToTable("AspNetUserTokens", (string)null);
-                });
-
-            modelBuilder.Entity("TaskManager.Api.Modules.Admin.Entities.InstanceConfiguration", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("AdminEmail")
-                        .HasColumnType("text");
-
-                    b.Property<string>("BrevoApiKey")
-                        .HasColumnType("text");
-
-                    b.Property<string>("CloudinaryApiKey")
-                        .HasColumnType("text");
-
-                    b.Property<string>("CloudinaryApiSecret")
-                        .HasColumnType("text");
-
-                    b.Property<string>("CloudinaryCloudName")
-                        .HasColumnType("text");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateTime?>("DeletedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("InstanceName")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("boolean");
-
-                    b.Property<bool>("IsSetupDone")
-                        .HasColumnType("boolean");
-
-                    b.Property<bool>("IsSignUpEnabled")
-                        .HasColumnType("boolean");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("InstanceConfigurations");
                 });
 
             modelBuilder.Entity("TaskManager.Api.Modules.Auth.Entities.ApiActivityLog", b =>
@@ -498,9 +438,6 @@ namespace TaskManager.Api.Migrations
                     b.Property<Guid>("OwnerId")
                         .HasColumnType("uuid");
 
-                    b.Property<Guid>("StateGroupId")
-                        .HasColumnType("uuid");
-
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -510,8 +447,6 @@ namespace TaskManager.Api.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("OwnerId");
-
-                    b.HasIndex("StateGroupId");
 
                     b.HasIndex("WorkspaceId", "Identifier")
                         .IsUnique();
@@ -764,49 +699,6 @@ namespace TaskManager.Api.Migrations
                     b.ToTable("EstimatePoints");
                 });
 
-            modelBuilder.Entity("TaskManager.Api.Modules.Favorites.Entities.Favorite", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateTime?>("DeletedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid>("EntityId")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("EntityType")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("boolean");
-
-                    b.Property<int>("Sequence")
-                        .HasColumnType("integer");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("WorkspaceId")
-                        .HasColumnType("uuid");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("UserId");
-
-                    b.HasIndex("WorkspaceId");
-
-                    b.ToTable("Favorites");
-                });
-
             modelBuilder.Entity("TaskManager.Api.Modules.Files.Entities.FileAsset", b =>
                 {
                     b.Property<Guid>("Id")
@@ -861,68 +753,6 @@ namespace TaskManager.Api.Migrations
                     b.HasIndex("WorkspaceId");
 
                     b.ToTable("FileAssets");
-                });
-
-            modelBuilder.Entity("TaskManager.Api.Modules.Intake.Entities.IntakeIssue", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid?>("AcceptedAsIssueId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("CompanyId")
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("DeclineReason")
-                        .HasColumnType("text");
-
-                    b.Property<DateTime?>("DeletedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("Description")
-                        .HasColumnType("text");
-
-                    b.Property<Guid?>("DuplicateOfIssueId")
-                        .HasColumnType("uuid");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("boolean");
-
-                    b.Property<DateTime?>("ReviewedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid?>("ReviewedByUserId")
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime?>("SnoozedUntil")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("Source")
-                        .HasColumnType("text");
-
-                    b.Property<int>("Status")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("SubmitterEmail")
-                        .HasColumnType("text");
-
-                    b.Property<string>("Title")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("CompanyId");
-
-                    b.ToTable("IntakeIssues");
                 });
 
             modelBuilder.Entity("TaskManager.Api.Modules.Issues.Entities.CommentReaction", b =>
@@ -1099,21 +929,6 @@ namespace TaskManager.Api.Migrations
                     b.ToTable("IssueActivities");
                 });
 
-            modelBuilder.Entity("TaskManager.Api.Modules.Issues.Entities.IssueAssignee", b =>
-                {
-                    b.Property<Guid>("IssueId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uuid");
-
-                    b.HasKey("IssueId", "UserId");
-
-                    b.HasIndex("UserId");
-
-                    b.ToTable("IssueAssignees");
-                });
-
             modelBuilder.Entity("TaskManager.Api.Modules.Issues.Entities.IssueComment", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1155,21 +970,6 @@ namespace TaskManager.Api.Migrations
                     b.HasIndex("ParentId");
 
                     b.ToTable("IssueComments");
-                });
-
-            modelBuilder.Entity("TaskManager.Api.Modules.Issues.Entities.IssueLabel", b =>
-                {
-                    b.Property<Guid>("IssueId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("LabelId")
-                        .HasColumnType("uuid");
-
-                    b.HasKey("IssueId", "LabelId");
-
-                    b.HasIndex("LabelId");
-
-                    b.ToTable("IssueLabels");
                 });
 
             modelBuilder.Entity("TaskManager.Api.Modules.Issues.Entities.IssueLink", b =>
@@ -1376,20 +1176,16 @@ namespace TaskManager.Api.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
-                    b.Property<Guid?>("CompanyId")
-                        .HasColumnType("uuid");
-
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("CreatedById")
+                        .HasColumnType("uuid");
 
                     b.Property<DateTime?>("DeletedAt")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("Description")
-                        .HasColumnType("text");
-
-                    b.Property<string>("DisplayPropertiesJson")
-                        .IsRequired()
                         .HasColumnType("text");
 
                     b.Property<string>("FiltersJson")
@@ -1399,23 +1195,13 @@ namespace TaskManager.Api.Migrations
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("boolean");
 
-                    b.Property<bool>("IsPublic")
+                    b.Property<bool>("IsGlobal")
                         .HasColumnType("boolean");
-
-                    b.Property<string>("Layout")
-                        .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasDefaultValue("list");
 
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(255)
                         .HasColumnType("character varying(255)");
-
-                    b.Property<Guid>("OwnerId")
-                        .HasColumnType("uuid");
 
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
@@ -1425,9 +1211,7 @@ namespace TaskManager.Api.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("CompanyId");
-
-                    b.HasIndex("OwnerId");
+                    b.HasIndex("CreatedById");
 
                     b.HasIndex("WorkspaceId");
 
@@ -1557,144 +1341,6 @@ namespace TaskManager.Api.Migrations
                         .IsUnique();
 
                     b.ToTable("UserNotificationPreferences");
-                });
-
-            modelBuilder.Entity("TaskManager.Api.Modules.Pages.Entities.Page", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateTime?>("DeletedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("Description")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<bool>("IsArchived")
-                        .HasColumnType("boolean");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("boolean");
-
-                    b.Property<bool>("IsLocked")
-                        .HasColumnType("boolean");
-
-                    b.Property<Guid>("OwnedById")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("Title")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid>("WorkspaceId")
-                        .HasColumnType("uuid");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("OwnedById");
-
-                    b.HasIndex("WorkspaceId");
-
-                    b.ToTable("Pages");
-                });
-
-            modelBuilder.Entity("TaskManager.Api.Modules.Pages.Entities.PageAccess", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateTime?>("DeletedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("boolean");
-
-                    b.Property<Guid>("MemberId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("PageId")
-                        .HasColumnType("uuid");
-
-                    b.Property<int>("Role")
-                        .HasColumnType("integer");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("MemberId");
-
-                    b.HasIndex("PageId");
-
-                    b.ToTable("PageAccesses");
-                });
-
-            modelBuilder.Entity("TaskManager.Api.Modules.Pages.Entities.PageLabel", b =>
-                {
-                    b.Property<Guid>("PageId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("LabelId")
-                        .HasColumnType("uuid");
-
-                    b.HasKey("PageId", "LabelId");
-
-                    b.HasIndex("LabelId");
-
-                    b.ToTable("PageLabels");
-                });
-
-            modelBuilder.Entity("TaskManager.Api.Modules.Pages.Entities.PageVersion", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateTime?>("DeletedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("Description")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("boolean");
-
-                    b.Property<Guid>("OwnedById")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("PageId")
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<int>("VersionNumber")
-                        .HasColumnType("integer");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("OwnedById");
-
-                    b.HasIndex("PageId");
-
-                    b.ToTable("PageVersions");
                 });
 
             modelBuilder.Entity("TaskManager.Api.Modules.ProjectModules.Entities.ModuleIssue", b =>
@@ -1860,248 +1506,11 @@ namespace TaskManager.Api.Migrations
                     b.ToTable("ProjectModules");
                 });
 
-            modelBuilder.Entity("TaskManager.Api.Modules.Recurring.Entities.RecurringIssueRun", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateTime?>("DeletedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("ErrorMessage")
-                        .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("text")
-                        .HasDefaultValue("");
-
-                    b.Property<DateTime?>("ExecutedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("boolean");
-
-                    b.Property<DateTime>("ScheduledFor")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<Guid>("TemplateId")
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid>("WorkspaceId")
-                        .HasColumnType("uuid");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("TemplateId");
-
-                    b.HasIndex("WorkspaceId");
-
-                    b.ToTable("RecurringIssueRuns");
-                });
-
-            modelBuilder.Entity("TaskManager.Api.Modules.Recurring.Entities.RecurringIssueRunIssue", b =>
-                {
-                    b.Property<Guid>("RunId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("IssueId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("CompanyId")
-                        .HasColumnType("uuid");
-
-                    b.HasKey("RunId", "IssueId");
-
-                    b.HasIndex("CompanyId");
-
-                    b.HasIndex("IssueId");
-
-                    b.ToTable("RecurringIssueRunIssues");
-                });
-
-            modelBuilder.Entity("TaskManager.Api.Modules.Recurring.Entities.RecurringIssueTemplate", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("BlockPolicy")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid>("CreatedById")
-                        .HasColumnType("uuid");
-
-                    b.Property<int?>("DayOfMonth")
-                        .HasColumnType("integer");
-
-                    b.PrimitiveCollection<int[]>("DaysOfWeek")
-                        .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("jsonb")
-                        .HasDefaultValueSql("'[]'::jsonb");
-
-                    b.Property<DateTime?>("DeletedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("DescriptionHtml")
-                        .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("text")
-                        .HasDefaultValue("");
-
-                    b.Property<TimeOnly?>("EndTime")
-                        .HasColumnType("time without time zone");
-
-                    b.Property<DateOnly?>("EndsOn")
-                        .HasColumnType("date");
-
-                    b.Property<string>("Frequency")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<int>("Interval")
-                        .HasColumnType("integer");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("boolean");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("boolean");
-
-                    b.Property<bool>("IsPaused")
-                        .HasColumnType("boolean");
-
-                    b.Property<DateTime?>("LastRunAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<int?>("MonthOfYear")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(255)
-                        .HasColumnType("character varying(255)");
-
-                    b.Property<DateTime?>("NextRunAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("Priority")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)");
-
-                    b.Property<TimeOnly>("RunAtTime")
-                        .HasColumnType("time without time zone");
-
-                    b.Property<int>("SequenceId")
-                        .HasColumnType("integer");
-
-                    b.Property<bool>("SkipNextRun")
-                        .HasColumnType("boolean");
-
-                    b.Property<int>("StartDateOffsetDays")
-                        .HasColumnType("integer");
-
-                    b.Property<DateOnly>("StartsOn")
-                        .HasColumnType("date");
-
-                    b.Property<string>("StateGroup")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)");
-
-                    b.Property<int>("TargetDateOffsetDays")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("Timezone")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid>("WorkspaceId")
-                        .HasColumnType("uuid");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("CreatedById");
-
-                    b.HasIndex("WorkspaceId", "SequenceId")
-                        .IsUnique();
-
-                    b.ToTable("RecurringIssueTemplates");
-                });
-
-            modelBuilder.Entity("TaskManager.Api.Modules.Recurring.Entities.RecurringIssueTemplateAssignee", b =>
-                {
-                    b.Property<Guid>("TemplateId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("AssigneeId")
-                        .HasColumnType("uuid");
-
-                    b.HasKey("TemplateId", "AssigneeId");
-
-                    b.HasIndex("AssigneeId");
-
-                    b.ToTable("RecurringIssueTemplateAssignees");
-                });
-
-            modelBuilder.Entity("TaskManager.Api.Modules.Recurring.Entities.RecurringIssueTemplateCompany", b =>
-                {
-                    b.Property<Guid>("TemplateId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("CompanyId")
-                        .HasColumnType("uuid");
-
-                    b.HasKey("TemplateId", "CompanyId");
-
-                    b.HasIndex("CompanyId");
-
-                    b.ToTable("RecurringIssueTemplateCompanies");
-                });
-
-            modelBuilder.Entity("TaskManager.Api.Modules.Recurring.Entities.RecurringIssueTemplateLabel", b =>
-                {
-                    b.Property<Guid>("TemplateId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("LabelId")
-                        .HasColumnType("uuid");
-
-                    b.HasKey("TemplateId", "LabelId");
-
-                    b.HasIndex("LabelId");
-
-                    b.ToTable("RecurringIssueTemplateLabels");
-                });
-
             modelBuilder.Entity("TaskManager.Api.Modules.States.Entities.State", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
-
-                    b.Property<string>("Category")
-                        .IsRequired()
-                        .HasColumnType("text");
 
                     b.Property<string>("Color")
                         .IsRequired()
@@ -2113,6 +1522,10 @@ namespace TaskManager.Api.Migrations
 
                     b.Property<DateTime?>("DeletedAt")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Group")
+                        .IsRequired()
+                        .HasColumnType("text");
 
                     b.Property<bool>("IsDefault")
                         .HasColumnType("boolean");
@@ -2128,100 +1541,12 @@ namespace TaskManager.Api.Migrations
                     b.Property<float>("Sequence")
                         .HasColumnType("real");
 
-                    b.Property<Guid>("StateGroupId")
-                        .HasColumnType("uuid");
-
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("StateGroupId");
 
                     b.ToTable("States");
-                });
-
-            modelBuilder.Entity("TaskManager.Api.Modules.States.Entities.StateGroup", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateTime?>("DeletedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("Description")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)");
-
-                    b.Property<bool>("IsDefault")
-                        .HasColumnType("boolean");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("boolean");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("StateGroups");
-                });
-
-            modelBuilder.Entity("TaskManager.Api.Modules.Stickies.Entities.Sticky", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("Color")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateTime?>("DeletedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("Description")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("boolean");
-
-                    b.Property<Guid>("OwnedById")
-                        .HasColumnType("uuid");
-
-                    b.Property<int>("SortOrder")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("Title")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid>("WorkspaceId")
-                        .HasColumnType("uuid");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("OwnedById");
-
-                    b.HasIndex("WorkspaceId");
-
-                    b.ToTable("Stickies");
                 });
 
             modelBuilder.Entity("TaskManager.Api.Modules.Webhooks.Entities.Webhook", b =>
@@ -2376,58 +1701,6 @@ namespace TaskManager.Api.Migrations
                     b.ToTable("Workspaces");
                 });
 
-            modelBuilder.Entity("TaskManager.Api.Modules.Workspaces.Entities.WorkspaceActivity", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("Action")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<Guid>("ActorId")
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateTime?>("DeletedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid?>("EntityId")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("EntityTitle")
-                        .HasColumnType("text");
-
-                    b.Property<string>("EntityType")
-                        .HasColumnType("text");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("boolean");
-
-                    b.Property<string>("NewValue")
-                        .HasColumnType("text");
-
-                    b.Property<string>("OldValue")
-                        .HasColumnType("text");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid>("WorkspaceId")
-                        .HasColumnType("uuid");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ActorId");
-
-                    b.HasIndex("WorkspaceId");
-
-                    b.ToTable("WorkspaceActivities");
-                });
-
             modelBuilder.Entity("TaskManager.Api.Modules.Workspaces.Entities.WorkspaceInvitation", b =>
                 {
                     b.Property<Guid>("Id")
@@ -2514,21 +1787,6 @@ namespace TaskManager.Api.Migrations
                         .IsUnique();
 
                     b.ToTable("WorkspaceMembers");
-                });
-
-            modelBuilder.Entity("IssueRecurringIssueRun", b =>
-                {
-                    b.HasOne("TaskManager.Api.Modules.Issues.Entities.Issue", null)
-                        .WithMany()
-                        .HasForeignKey("BlockedByIssuesId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("TaskManager.Api.Modules.Recurring.Entities.RecurringIssueRun", null)
-                        .WithMany()
-                        .HasForeignKey("RecurringIssueRunId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<System.Guid>", b =>
@@ -2623,12 +1881,6 @@ namespace TaskManager.Api.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("TaskManager.Api.Modules.States.Entities.StateGroup", "StateGroup")
-                        .WithMany()
-                        .HasForeignKey("StateGroupId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
                     b.HasOne("TaskManager.Api.Modules.Workspaces.Entities.Workspace", "Workspace")
                         .WithMany()
                         .HasForeignKey("WorkspaceId")
@@ -2636,8 +1888,6 @@ namespace TaskManager.Api.Migrations
                         .IsRequired();
 
                     b.Navigation("Owner");
-
-                    b.Navigation("StateGroup");
 
                     b.Navigation("Workspace");
                 });
@@ -2732,25 +1982,6 @@ namespace TaskManager.Api.Migrations
                     b.Navigation("Estimate");
                 });
 
-            modelBuilder.Entity("TaskManager.Api.Modules.Favorites.Entities.Favorite", b =>
-                {
-                    b.HasOne("TaskManager.Api.Modules.Auth.Entities.User", "User")
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("TaskManager.Api.Modules.Workspaces.Entities.Workspace", "Workspace")
-                        .WithMany()
-                        .HasForeignKey("WorkspaceId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("User");
-
-                    b.Navigation("Workspace");
-                });
-
             modelBuilder.Entity("TaskManager.Api.Modules.Files.Entities.FileAsset", b =>
                 {
                     b.HasOne("TaskManager.Api.Modules.Auth.Entities.User", "UploadedBy")
@@ -2768,17 +1999,6 @@ namespace TaskManager.Api.Migrations
                     b.Navigation("UploadedBy");
 
                     b.Navigation("Workspace");
-                });
-
-            modelBuilder.Entity("TaskManager.Api.Modules.Intake.Entities.IntakeIssue", b =>
-                {
-                    b.HasOne("TaskManager.Api.Modules.Companies.Entities.Company", "Company")
-                        .WithMany()
-                        .HasForeignKey("CompanyId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("Company");
                 });
 
             modelBuilder.Entity("TaskManager.Api.Modules.Issues.Entities.CommentReaction", b =>
@@ -2886,25 +2106,6 @@ namespace TaskManager.Api.Migrations
                     b.Navigation("Issue");
                 });
 
-            modelBuilder.Entity("TaskManager.Api.Modules.Issues.Entities.IssueAssignee", b =>
-                {
-                    b.HasOne("TaskManager.Api.Modules.Issues.Entities.Issue", "Issue")
-                        .WithMany("Assignees")
-                        .HasForeignKey("IssueId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("TaskManager.Api.Modules.Auth.Entities.User", "User")
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Issue");
-
-                    b.Navigation("User");
-                });
-
             modelBuilder.Entity("TaskManager.Api.Modules.Issues.Entities.IssueComment", b =>
                 {
                     b.HasOne("TaskManager.Api.Modules.Auth.Entities.User", "Author")
@@ -2929,25 +2130,6 @@ namespace TaskManager.Api.Migrations
                     b.Navigation("Issue");
 
                     b.Navigation("Parent");
-                });
-
-            modelBuilder.Entity("TaskManager.Api.Modules.Issues.Entities.IssueLabel", b =>
-                {
-                    b.HasOne("TaskManager.Api.Modules.Issues.Entities.Issue", "Issue")
-                        .WithMany("Labels")
-                        .HasForeignKey("IssueId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("TaskManager.Api.Modules.Labels.Entities.Label", "Label")
-                        .WithMany()
-                        .HasForeignKey("LabelId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Issue");
-
-                    b.Navigation("Label");
                 });
 
             modelBuilder.Entity("TaskManager.Api.Modules.Issues.Entities.IssueLink", b =>
@@ -3050,14 +2232,9 @@ namespace TaskManager.Api.Migrations
 
             modelBuilder.Entity("TaskManager.Api.Modules.Issues.Entities.IssueView", b =>
                 {
-                    b.HasOne("TaskManager.Api.Modules.Companies.Entities.Company", "Company")
+                    b.HasOne("TaskManager.Api.Modules.Auth.Entities.User", "CreatedBy")
                         .WithMany()
-                        .HasForeignKey("CompanyId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.HasOne("TaskManager.Api.Modules.Auth.Entities.User", "Owner")
-                        .WithMany()
-                        .HasForeignKey("OwnerId")
+                        .HasForeignKey("CreatedById")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
@@ -3067,9 +2244,7 @@ namespace TaskManager.Api.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.Navigation("Company");
-
-                    b.Navigation("Owner");
+                    b.Navigation("CreatedBy");
 
                     b.Navigation("Workspace");
                 });
@@ -3112,82 +2287,6 @@ namespace TaskManager.Api.Migrations
                         .IsRequired();
 
                     b.Navigation("User");
-                });
-
-            modelBuilder.Entity("TaskManager.Api.Modules.Pages.Entities.Page", b =>
-                {
-                    b.HasOne("TaskManager.Api.Modules.Auth.Entities.User", "OwnedBy")
-                        .WithMany()
-                        .HasForeignKey("OwnedById")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("TaskManager.Api.Modules.Workspaces.Entities.Workspace", "Workspace")
-                        .WithMany()
-                        .HasForeignKey("WorkspaceId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("OwnedBy");
-
-                    b.Navigation("Workspace");
-                });
-
-            modelBuilder.Entity("TaskManager.Api.Modules.Pages.Entities.PageAccess", b =>
-                {
-                    b.HasOne("TaskManager.Api.Modules.Auth.Entities.User", "Member")
-                        .WithMany()
-                        .HasForeignKey("MemberId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("TaskManager.Api.Modules.Pages.Entities.Page", "Page")
-                        .WithMany("Access")
-                        .HasForeignKey("PageId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Member");
-
-                    b.Navigation("Page");
-                });
-
-            modelBuilder.Entity("TaskManager.Api.Modules.Pages.Entities.PageLabel", b =>
-                {
-                    b.HasOne("TaskManager.Api.Modules.Labels.Entities.Label", "Label")
-                        .WithMany()
-                        .HasForeignKey("LabelId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("TaskManager.Api.Modules.Pages.Entities.Page", "Page")
-                        .WithMany("PageLabels")
-                        .HasForeignKey("PageId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Label");
-
-                    b.Navigation("Page");
-                });
-
-            modelBuilder.Entity("TaskManager.Api.Modules.Pages.Entities.PageVersion", b =>
-                {
-                    b.HasOne("TaskManager.Api.Modules.Auth.Entities.User", "OwnedBy")
-                        .WithMany()
-                        .HasForeignKey("OwnedById")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("TaskManager.Api.Modules.Pages.Entities.Page", "Page")
-                        .WithMany("Versions")
-                        .HasForeignKey("PageId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("OwnedBy");
-
-                    b.Navigation("Page");
                 });
 
             modelBuilder.Entity("TaskManager.Api.Modules.ProjectModules.Entities.ModuleIssue", b =>
@@ -3258,158 +2357,6 @@ namespace TaskManager.Api.Migrations
                     b.Navigation("Owner");
                 });
 
-            modelBuilder.Entity("TaskManager.Api.Modules.Recurring.Entities.RecurringIssueRun", b =>
-                {
-                    b.HasOne("TaskManager.Api.Modules.Recurring.Entities.RecurringIssueTemplate", "Template")
-                        .WithMany("Runs")
-                        .HasForeignKey("TemplateId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("TaskManager.Api.Modules.Workspaces.Entities.Workspace", "Workspace")
-                        .WithMany()
-                        .HasForeignKey("WorkspaceId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Template");
-
-                    b.Navigation("Workspace");
-                });
-
-            modelBuilder.Entity("TaskManager.Api.Modules.Recurring.Entities.RecurringIssueRunIssue", b =>
-                {
-                    b.HasOne("TaskManager.Api.Modules.Companies.Entities.Company", "Company")
-                        .WithMany()
-                        .HasForeignKey("CompanyId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("TaskManager.Api.Modules.Issues.Entities.Issue", "Issue")
-                        .WithMany()
-                        .HasForeignKey("IssueId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("TaskManager.Api.Modules.Recurring.Entities.RecurringIssueRun", "Run")
-                        .WithMany("GeneratedIssues")
-                        .HasForeignKey("RunId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Company");
-
-                    b.Navigation("Issue");
-
-                    b.Navigation("Run");
-                });
-
-            modelBuilder.Entity("TaskManager.Api.Modules.Recurring.Entities.RecurringIssueTemplate", b =>
-                {
-                    b.HasOne("TaskManager.Api.Modules.Auth.Entities.User", "CreatedBy")
-                        .WithMany()
-                        .HasForeignKey("CreatedById")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("TaskManager.Api.Modules.Workspaces.Entities.Workspace", "Workspace")
-                        .WithMany()
-                        .HasForeignKey("WorkspaceId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("CreatedBy");
-
-                    b.Navigation("Workspace");
-                });
-
-            modelBuilder.Entity("TaskManager.Api.Modules.Recurring.Entities.RecurringIssueTemplateAssignee", b =>
-                {
-                    b.HasOne("TaskManager.Api.Modules.Auth.Entities.User", "Assignee")
-                        .WithMany()
-                        .HasForeignKey("AssigneeId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("TaskManager.Api.Modules.Recurring.Entities.RecurringIssueTemplate", "Template")
-                        .WithMany("Assignees")
-                        .HasForeignKey("TemplateId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Assignee");
-
-                    b.Navigation("Template");
-                });
-
-            modelBuilder.Entity("TaskManager.Api.Modules.Recurring.Entities.RecurringIssueTemplateCompany", b =>
-                {
-                    b.HasOne("TaskManager.Api.Modules.Companies.Entities.Company", "Company")
-                        .WithMany()
-                        .HasForeignKey("CompanyId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("TaskManager.Api.Modules.Recurring.Entities.RecurringIssueTemplate", "Template")
-                        .WithMany("Companies")
-                        .HasForeignKey("TemplateId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Company");
-
-                    b.Navigation("Template");
-                });
-
-            modelBuilder.Entity("TaskManager.Api.Modules.Recurring.Entities.RecurringIssueTemplateLabel", b =>
-                {
-                    b.HasOne("TaskManager.Api.Modules.Labels.Entities.Label", "Label")
-                        .WithMany()
-                        .HasForeignKey("LabelId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("TaskManager.Api.Modules.Recurring.Entities.RecurringIssueTemplate", "Template")
-                        .WithMany("Labels")
-                        .HasForeignKey("TemplateId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Label");
-
-                    b.Navigation("Template");
-                });
-
-            modelBuilder.Entity("TaskManager.Api.Modules.States.Entities.State", b =>
-                {
-                    b.HasOne("TaskManager.Api.Modules.States.Entities.StateGroup", "StateGroup")
-                        .WithMany("States")
-                        .HasForeignKey("StateGroupId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("StateGroup");
-                });
-
-            modelBuilder.Entity("TaskManager.Api.Modules.Stickies.Entities.Sticky", b =>
-                {
-                    b.HasOne("TaskManager.Api.Modules.Auth.Entities.User", "OwnedBy")
-                        .WithMany()
-                        .HasForeignKey("OwnedById")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("TaskManager.Api.Modules.Workspaces.Entities.Workspace", "Workspace")
-                        .WithMany()
-                        .HasForeignKey("WorkspaceId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("OwnedBy");
-
-                    b.Navigation("Workspace");
-                });
-
             modelBuilder.Entity("TaskManager.Api.Modules.Webhooks.Entities.Webhook", b =>
                 {
                     b.HasOne("TaskManager.Api.Modules.Auth.Entities.User", "CreatedBy")
@@ -3449,25 +2396,6 @@ namespace TaskManager.Api.Migrations
                         .IsRequired();
 
                     b.Navigation("Owner");
-                });
-
-            modelBuilder.Entity("TaskManager.Api.Modules.Workspaces.Entities.WorkspaceActivity", b =>
-                {
-                    b.HasOne("TaskManager.Api.Modules.Auth.Entities.User", "Actor")
-                        .WithMany()
-                        .HasForeignKey("ActorId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("TaskManager.Api.Modules.Workspaces.Entities.Workspace", "Workspace")
-                        .WithMany()
-                        .HasForeignKey("WorkspaceId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Actor");
-
-                    b.Navigation("Workspace");
                 });
 
             modelBuilder.Entity("TaskManager.Api.Modules.Workspaces.Entities.WorkspaceInvitation", b =>
@@ -3519,11 +2447,7 @@ namespace TaskManager.Api.Migrations
                 {
                     b.Navigation("Activities");
 
-                    b.Navigation("Assignees");
-
                     b.Navigation("Comments");
-
-                    b.Navigation("Labels");
 
                     b.Navigation("Reactions");
 
@@ -3537,15 +2461,6 @@ namespace TaskManager.Api.Migrations
                     b.Navigation("Replies");
                 });
 
-            modelBuilder.Entity("TaskManager.Api.Modules.Pages.Entities.Page", b =>
-                {
-                    b.Navigation("Access");
-
-                    b.Navigation("PageLabels");
-
-                    b.Navigation("Versions");
-                });
-
             modelBuilder.Entity("TaskManager.Api.Modules.ProjectModules.Entities.ProjectModule", b =>
                 {
                     b.Navigation("Links");
@@ -3553,27 +2468,6 @@ namespace TaskManager.Api.Migrations
                     b.Navigation("Members");
 
                     b.Navigation("ModuleIssues");
-                });
-
-            modelBuilder.Entity("TaskManager.Api.Modules.Recurring.Entities.RecurringIssueRun", b =>
-                {
-                    b.Navigation("GeneratedIssues");
-                });
-
-            modelBuilder.Entity("TaskManager.Api.Modules.Recurring.Entities.RecurringIssueTemplate", b =>
-                {
-                    b.Navigation("Assignees");
-
-                    b.Navigation("Companies");
-
-                    b.Navigation("Labels");
-
-                    b.Navigation("Runs");
-                });
-
-            modelBuilder.Entity("TaskManager.Api.Modules.States.Entities.StateGroup", b =>
-                {
-                    b.Navigation("States");
                 });
 
             modelBuilder.Entity("TaskManager.Api.Modules.Webhooks.Entities.Webhook", b =>

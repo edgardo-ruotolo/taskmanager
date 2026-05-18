@@ -2,21 +2,24 @@ export type StickyColor = 'yellow' | 'pink' | 'green' | 'blue' | 'orange' | 'pur
 
 export interface Sticky {
     id: string;
+    workspaceId: string;
+    ownedById: string;
     title: string;
-    content: string;
+    description: string;
     color: StickyColor;
+    sortOrder: number;
     createdAt: string;
     updatedAt: string;
 }
 
 export interface CreateStickyData {
     title: string;
-    content?: string;
+    description?: string;
     color: StickyColor;
 }
 
 export interface UpdateStickyData {
     title?: string;
-    content?: string;
+    description?: string;
     color?: StickyColor;
 }

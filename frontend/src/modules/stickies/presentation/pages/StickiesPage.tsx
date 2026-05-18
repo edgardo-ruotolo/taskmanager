@@ -1,6 +1,7 @@
 import type React from 'react';
-import { useState, useEffect } from 'react';
-import { Plus, X, StickyNote, Search, GripVertical } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { useParams } from 'react-router-dom';
+import { GripVertical, Plus, Search, StickyNote, X } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -16,10 +17,15 @@ import {
 } from '@/components/ui/dialog';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { cn } from '@/lib/utils';
-import { useStickiesStore } from '../../application/stickies-store';
+import {
+    useCreateSticky,
+    useDeleteSticky,
+    useReorderStickies,
+    useStickies,
+    useUpdateSticky,
+} from '../../application/use-stickies';
 import type { Sticky, StickyColor, CreateStickyData } from '../../domain/types';
 
-// ---------- DnD helpers ----------
 interface DragState {
     dragId: string | null;
     dragOverId: string | null;
@@ -47,24 +53,16 @@ const COLORS: StickyColor[] = ['yellow', 'pink', 'green', 'blue', 'orange', 'pur
 
 const createSchema = z.object({
     title: z.string().min(1, 'El título es requerido').max(100),
-    content: z.string().optional(),
+    description: z.string().optional(),
     color: z.enum(['yellow', 'pink', 'green', 'blue', 'orange', 'purple']),
 });
 type CreateFormData = z.infer<typeof createSchema>;
 
 function formatDate(dateStr: string): string {
-    return new Date(dateStr).toLocaleDateString('es-ES', {
-        day: '2-digit',
-        month: 'short',
-    });
+    return new Date(dateStr).toLocaleDateString('es-AR', { day: '2-digit', month: 'short' });
 }
 
-interface ColorPickerProps {
-    value: StickyColor;
-    onChange: (color: StickyColor) => void;
-}
-
-function ColorPicker({ value, onChange }: ColorPickerProps): React.ReactElement {
+function ColorPicker({ value, onChange }: { value: StickyColor; onChange: (c: StickyColor) => void }): React.ReactElement {
     return (
         <div className="flex gap-2">
             {COLORS.map((c) => (
@@ -74,9 +72,9 @@ function ColorPicker({ value, onChange }: ColorPickerProps): React.ReactElement 
                     onClick={() => onChange(c)}
                     aria-label={c}
                     className={cn(
-                        'w-6 h-6 rounded-full transition-transform',
+                        'h-6 w-6 rounded-full transition-transform',
                         COLOR_BUTTON_MAP[c],
-                        value === c ? 'ring-2 ring-white ring-offset-1 ring-offset-canvas scale-110' : 'hover:scale-110',
+                        value === c ? 'scale-110 ring-2 ring-white ring-offset-1' : 'hover:scale-110',
                     )}
                 />
             ))}
@@ -84,12 +82,17 @@ function ColorPicker({ value, onChange }: ColorPickerProps): React.ReactElement 
     );
 }
 
-function CreateStickyDialog(): React.ReactElement {
+function CreateStickyDialog({ workspaceSlug }: { workspaceSlug: string }): React.ReactElement {
     const [open, setOpen] = useState(false);
     const [selectedColor, setSelectedColor] = useState<StickyColor>('yellow');
-    const addSticky = useStickiesStore((s) => s.addSticky);
+    const createMutation = useCreateSticky(workspaceSlug);
 
-    const { register, handleSubmit, reset, formState: { errors } } = useForm<CreateFormData>({
+    const {
+        register,
+        handleSubmit,
+        reset,
+        formState: { errors },
+    } = useForm<CreateFormData>({
         resolver: zodResolver(createSchema),
         defaultValues: { color: 'yellow' },
     });
@@ -97,10 +100,10 @@ function CreateStickyDialog(): React.ReactElement {
     const onSubmit = (data: CreateFormData): void => {
         const payload: CreateStickyData = {
             title: data.title,
-            content: data.content || undefined,
+            description: data.description ?? undefined,
             color: selectedColor,
         };
-        addSticky(payload);
+        createMutation.mutate(payload);
         reset();
         setSelectedColor('yellow');
         setOpen(false);
@@ -109,52 +112,103 @@ function CreateStickyDialog(): React.ReactElement {
     return (
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
-                <Button className="bg-accent-primary hover:bg-accent-primary-hover text-on-color gap-2">
-                    <Plus size={15} />
+                <Button>
+                    <Plus size={15} className="mr-1" />
                     Nueva nota
                 </Button>
             </DialogTrigger>
-            <DialogContent className="bg-surface-1 border-subtle">
+            <DialogContent>
                 <DialogHeader>
-                    <DialogTitle className="text-primary">Nueva nota</DialogTitle>
+                    <DialogTitle>Nueva nota</DialogTitle>
                 </DialogHeader>
-                <form onSubmit={handleSubmit(onSubmit)} className="space-y-3 mt-2">
+                <form onSubmit={handleSubmit(onSubmit)} className="mt-2 space-y-3">
                     <div>
-                        <Input
-                            {...register('title')}
-                            placeholder="Título *"
-                            className="bg-layer-1/50 border-subtle text-primary placeholder:text-placeholder"
-                        />
+                        <Input {...register('title')} placeholder="Título *" />
                         {errors.title && (
-                            <p className="text-xs text-red-400 mt-1">{errors.title.message}</p>
+                            <p className="mt-1 text-xs text-destructive">{errors.title.message}</p>
                         )}
                     </div>
                     <Textarea
-                        {...register('content')}
+                        {...register('description')}
                         placeholder="Contenido (opcional)"
                         rows={4}
-                        className="bg-layer-1/50 border-subtle text-primary placeholder:text-placeholder resize-none"
+                        className="resize-none"
                     />
                     <div>
-                        <p className="text-xs text-placeholder mb-2">Color</p>
+                        <p className="mb-2 text-xs text-muted-foreground">Color</p>
                         <ColorPicker value={selectedColor} onChange={setSelectedColor} />
                     </div>
                     <div className="flex justify-end gap-2 pt-1">
-                        <Button
-                            type="button"
-                            variant="outline"
-                            onClick={() => setOpen(false)}
-                            className="border-subtle text-tertiary"
-                        >
+                        <Button type="button" variant="outline" onClick={() => setOpen(false)}>
                             Cancelar
                         </Button>
-                        <Button type="submit" className="bg-accent-primary hover:bg-accent-primary-hover text-on-color">
+                        <Button type="submit" disabled={createMutation.isPending}>
                             Crear
                         </Button>
                     </div>
                 </form>
             </DialogContent>
         </Dialog>
+    );
+}
+
+function EditStickySheet({
+    sticky,
+    open,
+    onClose,
+    workspaceSlug,
+}: {
+    sticky: Sticky | null;
+    open: boolean;
+    onClose: () => void;
+    workspaceSlug: string;
+}): React.ReactElement | null {
+    const updateMutation = useUpdateSticky(workspaceSlug);
+    const [title, setTitle] = useState('');
+    const [description, setDescription] = useState('');
+    const [color, setColor] = useState<StickyColor>('yellow');
+
+    useEffect(() => {
+        if (sticky) {
+            setTitle(sticky.title);
+            setDescription(sticky.description);
+            setColor(sticky.color);
+        }
+    }, [sticky]);
+
+    const handleSave = (): void => {
+        if (!sticky) return;
+        updateMutation.mutate({ id: sticky.id, data: { title, description, color } });
+        onClose();
+    };
+
+    if (!sticky) return null;
+
+    return (
+        <Sheet open={open} onOpenChange={onClose}>
+            <SheetContent className="w-96">
+                <SheetHeader>
+                    <SheetTitle>Editar nota</SheetTitle>
+                </SheetHeader>
+                <div className="mt-4 space-y-3">
+                    <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Título" />
+                    <Textarea
+                        value={description}
+                        onChange={(e) => setDescription(e.target.value)}
+                        placeholder="Contenido"
+                        rows={8}
+                        className="resize-none"
+                    />
+                    <div>
+                        <p className="mb-2 text-xs text-muted-foreground">Color</p>
+                        <ColorPicker value={color} onChange={setColor} />
+                    </div>
+                    <Button onClick={handleSave} className="w-full" disabled={updateMutation.isPending}>
+                        Guardar
+                    </Button>
+                </div>
+            </SheetContent>
+        </Sheet>
     );
 }
 
@@ -187,14 +241,13 @@ function StickyCard({
             onDrop={onDrop}
             onDragEnd={onDragEnd}
             className={cn(
-                'relative rounded-lg border transition-all duration-150 list-none',
+                'relative list-none rounded-lg border transition-all duration-150',
                 COLOR_MAP[sticky.color],
-                isDragOver && 'ring-2 ring-accent-primary ring-offset-2 ring-offset-canvas scale-[1.02]',
+                isDragOver && 'scale-[1.02] ring-2 ring-primary ring-offset-2',
             )}
         >
-            {/* Drag handle */}
             <div
-                className="absolute top-2 left-2 text-placeholder opacity-0 group-hover:opacity-100 cursor-grab active:cursor-grabbing z-10"
+                className="absolute left-2 top-2 z-10 cursor-grab text-muted-foreground opacity-0 group-hover:opacity-100 active:cursor-grabbing"
                 aria-hidden="true"
             >
                 <GripVertical size={13} />
@@ -206,94 +259,34 @@ function StickyCard({
                     onDelete();
                 }}
                 aria-label="Eliminar nota"
-                className="absolute top-2 right-2 text-placeholder hover:text-primary transition-colors z-10"
+                className="absolute right-2 top-2 z-10 text-muted-foreground transition-colors hover:text-foreground"
             >
                 <X size={13} />
             </button>
             <button
                 type="button"
                 onClick={onClick}
-                className="w-full text-left p-4 pr-7 pl-6 transition-transform hover:scale-[1.01]"
-                aria-label={`Editar sticky: ${sticky.title}`}
+                className="w-full p-4 pl-6 pr-7 text-left transition-transform hover:scale-[1.01]"
+                aria-label={`Editar nota: ${sticky.title}`}
             >
-                <p className="text-sm font-semibold text-primary mb-1 line-clamp-2">{sticky.title}</p>
-                {sticky.content && (
-                    <p className="text-xs text-secondary line-clamp-4 whitespace-pre-wrap">{sticky.content}</p>
+                <p className="mb-1 line-clamp-2 text-sm font-semibold">{sticky.title}</p>
+                {sticky.description && (
+                    <p className="line-clamp-4 whitespace-pre-wrap text-xs text-muted-foreground">
+                        {sticky.description}
+                    </p>
                 )}
-                <p className="text-xs text-placeholder mt-2">{formatDate(sticky.updatedAt)}</p>
+                <p className="mt-2 text-xs text-muted-foreground">{formatDate(sticky.updatedAt)}</p>
             </button>
         </li>
     );
 }
 
-interface EditStickySheetProps {
-    sticky: Sticky | null;
-    open: boolean;
-    onClose: () => void;
-}
+export function StickiesPage(): React.ReactElement {
+    const { workspaceSlug = '' } = useParams<{ workspaceSlug: string }>();
+    const { data: stickies = [] } = useStickies(workspaceSlug);
+    const deleteMutation = useDeleteSticky(workspaceSlug);
+    const reorderMutation = useReorderStickies(workspaceSlug);
 
-function EditStickySheet({ sticky, open, onClose }: EditStickySheetProps): React.ReactElement | null {
-    const updateSticky = useStickiesStore((s) => s.updateSticky);
-    const [title, setTitle] = useState('');
-    const [content, setContent] = useState('');
-    const [color, setColor] = useState<StickyColor>('yellow');
-
-    useEffect(() => {
-        if (sticky) {
-            setTitle(sticky.title);
-            setContent(sticky.content);
-            setColor(sticky.color);
-        }
-    }, [sticky]);
-
-    const handleSave = (): void => {
-        if (!sticky) return;
-        updateSticky(sticky.id, { title, content, color });
-        onClose();
-    };
-
-    if (!sticky) return null;
-
-    return (
-        <Sheet open={open} onOpenChange={onClose}>
-            <SheetContent className="bg-surface-1 border-subtle w-96">
-                <SheetHeader>
-                    <SheetTitle className="text-primary">Editar nota</SheetTitle>
-                </SheetHeader>
-                <div className="space-y-3 mt-4">
-                    <Input
-                        value={title}
-                        onChange={(e) => setTitle(e.target.value)}
-                        placeholder="Título"
-                        className="bg-layer-1/50 border-subtle text-primary"
-                    />
-                    <Textarea
-                        value={content}
-                        onChange={(e) => setContent(e.target.value)}
-                        placeholder="Contenido"
-                        rows={8}
-                        className="bg-layer-1/50 border-subtle text-primary resize-none"
-                    />
-                    <div>
-                        <p className="text-xs text-placeholder mb-2">Color</p>
-                        <ColorPicker value={color} onChange={setColor} />
-                    </div>
-                    <Button
-                        onClick={handleSave}
-                        className="w-full bg-accent-primary hover:bg-accent-primary-hover text-on-color"
-                    >
-                        Guardar
-                    </Button>
-                </div>
-            </SheetContent>
-        </Sheet>
-    );
-}
-
-export const StickiesPage = (): React.ReactElement => {
-    const stickies = useStickiesStore((s) => s.stickies);
-    const deleteSticky = useStickiesStore((s) => s.deleteSticky);
-    const reorderStickies = useStickiesStore((s) => s.reorderStickies);
     const [editingSticky, setEditingSticky] = useState<Sticky | null>(null);
     const [search, setSearch] = useState('');
     const [dragState, setDragState] = useState<DragState>({ dragId: null, dragOverId: null });
@@ -302,7 +295,7 @@ export const StickiesPage = (): React.ReactElement => {
         ? stickies.filter(
               (s) =>
                   s.title.toLowerCase().includes(search.toLowerCase()) ||
-                  s.content?.toLowerCase().includes(search.toLowerCase()),
+                  s.description?.toLowerCase().includes(search.toLowerCase()),
           )
         : stickies;
 
@@ -334,14 +327,7 @@ export const StickiesPage = (): React.ReactElement => {
         }
         const [removed] = newOrder.splice(fromIdx, 1);
         newOrder.splice(toIdx, 0, removed);
-        // Merge with stickies not in filteredStickies (when searching)
-        if (search) {
-            const filtered = new Set(filteredStickies.map((s) => s.id));
-            const rest = stickies.filter((s) => !filtered.has(s.id));
-            reorderStickies([...newOrder, ...rest]);
-        } else {
-            reorderStickies(newOrder);
-        }
+        reorderMutation.mutate(newOrder.map((s) => s.id));
         setDragState({ dragId: null, dragOverId: null });
     };
 
@@ -351,62 +337,59 @@ export const StickiesPage = (): React.ReactElement => {
 
     return (
         <div className="p-6 md:p-8">
-            <div className="max-w-6xl mx-auto">
-                <div className="flex items-center justify-between mb-6 gap-4">
-                    <h1 className="text-xl font-semibold text-primary shrink-0">Notas</h1>
-                    <div className="relative flex-1 max-w-xs">
+            <div className="mx-auto max-w-6xl">
+                <div className="mb-6 flex items-center justify-between gap-4">
+                    <h1 className="shrink-0 text-xl font-semibold">Notas</h1>
+                    <div className="relative max-w-xs flex-1">
                         <Search
                             size={14}
-                            className="absolute left-3 top-1/2 -translate-y-1/2 text-placeholder"
+                            className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
                             aria-hidden="true"
                         />
                         <Input
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
                             placeholder="Buscar notas..."
-                            className="pl-8 h-8 text-[13px] bg-layer-1 border-subtle text-primary placeholder:text-placeholder"
+                            className="h-8 pl-8 text-[13px]"
                         />
                     </div>
-                    <CreateStickyDialog />
+                    <CreateStickyDialog workspaceSlug={workspaceSlug} />
                 </div>
 
                 {filteredStickies.length === 0 ? (
                     search ? (
-                        /* Search empty state */
-                        <div className="flex flex-col items-center justify-center py-24 text-center animate-fade-in">
-                            <div className="w-14 h-14 rounded-2xl bg-surface-2 border border-subtle flex items-center justify-center mb-4">
-                                <StickyNote size={24} className="text-placeholder" />
+                        <div className="flex flex-col items-center justify-center py-24 text-center">
+                            <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border bg-muted">
+                                <StickyNote size={24} className="text-muted-foreground" />
                             </div>
-                            <h3 className="text-base font-semibold text-secondary mb-1">Sin resultados</h3>
-                            <p className="text-sm text-placeholder max-w-xs">
+                            <h3 className="mb-1 text-base font-semibold">Sin resultados</h3>
+                            <p className="max-w-xs text-sm text-muted-foreground">
                                 No se encontraron notas con ese término.
                             </p>
                         </div>
                     ) : (
-                        /* Illustrated empty state — matches Plane */
-                        <div className="flex flex-col items-center text-center animate-fade-in pt-8">
-                            <h2 className="text-xl font-semibold text-primary max-w-xl mb-2">
-                                Las notas adhesivas son notas rápidas y tareas pendientes que anotas al vuelo.
+                        <div className="flex flex-col items-center pt-8 text-center">
+                            <h2 className="mb-2 max-w-xl text-xl font-semibold">
+                                Las notas adhesivas son notas rápidas y tareas pendientes que anotás al vuelo.
                             </h2>
-                            <p className="text-sm text-tertiary max-w-lg mb-8">
-                                Captura tus pensamientos e ideas sin esfuerzo creando notas adhesivas a las que puedes acceder en cualquier momento y desde cualquier lugar.
+                            <p className="mb-8 max-w-lg text-sm text-muted-foreground">
+                                Capturá tus pensamientos e ideas sin esfuerzo creando notas adhesivas a las que podés acceder en cualquier momento.
                             </p>
-                            {/* Placeholder illustration */}
-                            <div className="w-full max-w-2xl h-40 bg-layer-1 rounded-xl border border-subtle flex items-center justify-center mb-6">
-                                <StickyNote size={48} className="text-placeholder opacity-40" />
+                            <div className="mb-6 flex h-40 w-full max-w-2xl items-center justify-center rounded-xl border bg-muted">
+                                <StickyNote size={48} className="text-muted-foreground opacity-40" />
                             </div>
-                            <CreateStickyDialog />
+                            <CreateStickyDialog workspaceSlug={workspaceSlug} />
                         </div>
                     )
                 ) : (
-                    <ul className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 list-none p-0 m-0">
+                    <ul className="m-0 grid list-none grid-cols-2 gap-4 p-0 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
                         {filteredStickies.map((sticky) => (
                             <div key={sticky.id} className="group">
                                 <StickyCard
                                     sticky={sticky}
                                     isDragOver={dragState.dragOverId === sticky.id}
                                     onClick={() => setEditingSticky(sticky)}
-                                    onDelete={() => deleteSticky(sticky.id)}
+                                    onDelete={() => deleteMutation.mutate(sticky.id)}
                                     onDragStart={(e) => handleDragStart(e, sticky.id)}
                                     onDragOver={(e) => handleDragOver(e, sticky.id)}
                                     onDrop={(e) => handleDrop(e, sticky.id)}
@@ -422,7 +405,8 @@ export const StickiesPage = (): React.ReactElement => {
                 sticky={editingSticky}
                 open={editingSticky !== null}
                 onClose={() => setEditingSticky(null)}
+                workspaceSlug={workspaceSlug}
             />
         </div>
     );
-};
+}
