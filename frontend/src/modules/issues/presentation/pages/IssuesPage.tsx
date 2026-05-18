@@ -40,6 +40,7 @@ import type { State } from '@/modules/states/domain/types';
 import { PRIORITY_LABELS } from '../../domain/types';
 import type { IssuePriority } from '../../domain/types';
 import { CreateIssueDialog } from '../components/CreateIssueDialog';
+import { IssueListPdfExport } from '@/modules/pdf/presentation/components/IssueListPdfExport';
 import { IssueRow } from '../components/IssueRow';
 import { IssuePriorityBadge } from '../components/IssuePriorityBadge';
 import { IssueFilters } from '../components/IssueFilters';
@@ -763,6 +764,13 @@ export const IssuesPage = (): React.ReactElement => {
                                 <CalendarDays size={15} />
                             </ViewToggleButton>
                         </div>
+
+                        {hasIssues && (
+                            <IssueListPdfExport
+                                issues={issues}
+                                companyIdentifier={companyIdentifier}
+                            />
+                        )}
 
                         <CreateIssueDialog
                             workspaceSlug={workspaceSlug}

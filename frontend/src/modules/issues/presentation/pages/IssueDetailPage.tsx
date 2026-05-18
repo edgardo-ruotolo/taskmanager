@@ -14,6 +14,8 @@ import {
     Copy,
     Check,
 } from 'lucide-react';
+import { AiSubIssueGenerator } from '@/modules/ai/presentation/components/AiSubIssueGenerator';
+import { IssuePdfExport } from '@/modules/pdf/presentation/components/IssuePdfExport';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -778,6 +780,18 @@ export const IssueDetailPage = (): React.ReactElement => {
 
                     {/* Right: actions */}
                     <div className="flex items-center gap-2 shrink-0">
+                        <IssuePdfExport
+                            issue={{
+                                sequenceId: issue.sequenceId,
+                                title: issue.title,
+                                description: issue.description,
+                                stateName: issue.stateName,
+                                priority: issue.priority,
+                                createdAt: issue.createdAt,
+                                dueDate: issue.dueDate ?? undefined,
+                            }}
+                            identifier={issueIdentifier}
+                        />
                         <CopyLinkButton url={window.location.href} />
                     </div>
                 </div>
@@ -963,6 +977,23 @@ export const IssueDetailPage = (): React.ReactElement => {
                                         {formatRelativeTime(issue.updatedAt)}
                                     </span>
                                 </PropertyRow>
+                            </div>
+                        </div>
+
+                        {/* AI Tools */}
+                        <div className="border border-subtle rounded-lg bg-surface-1 overflow-hidden mt-4">
+                            <div className="px-4 py-3 border-b border-subtle">
+                                <p className="text-xs font-semibold text-placeholder uppercase tracking-wider">
+                                    Herramientas IA
+                                </p>
+                            </div>
+                            <div className="px-4 py-3">
+                                <AiSubIssueGenerator
+                                    issueId={issue.id}
+                                    issueTitle={issue.title}
+                                    issueDescription={issue.description ?? ''}
+                                    workspaceSlug={workspaceSlug}
+                                />
                             </div>
                         </div>
 

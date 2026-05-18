@@ -19,7 +19,10 @@ import {
     CreditCard,
     Download,
     Palette,
+    ImageIcon,
 } from 'lucide-react';
+import { UnsplashPicker } from '@/modules/unsplash/presentation/components/UnsplashPicker';
+import type { UnsplashPhoto } from '@/modules/unsplash/domain/types';
 import { Separator } from '@/components/ui/separator';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
@@ -148,6 +151,7 @@ const RoleBadge = ({ role }: { role: WorkspaceMember['role'] }): React.ReactElem
 
 function GeneralTab({ workspaceSlug }: { workspaceSlug: string }): React.ReactElement {
     const qc = useQueryClient();
+    const [coverPhoto, setCoverPhoto] = useState<UnsplashPhoto | null>(null);
 
     const settingsForm = useForm<SettingsForm>({ resolver: zodResolver(settingsSchema) });
 
@@ -206,6 +210,49 @@ function GeneralTab({ workspaceSlug }: { workspaceSlug: string }): React.ReactEl
                     </Button>
                 </form>
             </Form>
+
+            {/* Cover image */}
+            <div className="space-y-4 pt-2">
+                <SectionHeader
+                    title="Imagen del workspace"
+                    description="Elige una imagen de portada para personalizar tu workspace."
+                />
+                <div className="flex flex-col gap-3 max-w-lg">
+                    {coverPhoto ? (
+                        <div className="relative w-full aspect-video rounded-lg overflow-hidden border border-subtle">
+                            <img
+                                src={coverPhoto.url}
+                                alt="Imagen del workspace"
+                                className="w-full h-full object-cover"
+                            />
+                            <div className="absolute inset-0 bg-black/30 flex items-end p-3">
+                                <p className="text-white text-xs">
+                                    Foto por {coverPhoto.authorName}
+                                </p>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="flex items-center justify-center w-full aspect-video rounded-lg border border-dashed border-subtle bg-surface-1 text-placeholder">
+                            <div className="flex flex-col items-center gap-2">
+                                <ImageIcon size={24} />
+                                <span className="text-xs">Sin imagen seleccionada</span>
+                            </div>
+                        </div>
+                    )}
+                    <UnsplashPicker
+                        onSelect={(photo) => setCoverPhoto(photo)}
+                        trigger={
+                            <button
+                                type="button"
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs border border-subtle text-secondary hover:text-primary hover:bg-surface-2 transition-colors w-fit"
+                            >
+                                <ImageIcon size={13} />
+                                {coverPhoto ? 'Cambiar imagen' : 'Elegir imagen'}
+                            </button>
+                        }
+                    />
+                </div>
+            </div>
 
             {/* Danger zone */}
             <div className="space-y-4 pt-4">
