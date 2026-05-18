@@ -286,6 +286,17 @@ export const handlers = [
   http.delete(`${BASE_URL}/api/workspaces/:slug/analytics/views/:id`, () =>
     new HttpResponse(null, { status: 204 })),
 
+  // Home widgets
+  http.get(`${BASE_URL}/api/workspaces/:slug/home/recent-visits`, () => HttpResponse.json([])),
+  http.post(`${BASE_URL}/api/workspaces/:slug/home/track-visit`, () => new HttpResponse(null, { status: 204 })),
+  http.get(`${BASE_URL}/api/workspaces/:slug/home/quick-links`, () => HttpResponse.json([])),
+  http.post(`${BASE_URL}/api/workspaces/:slug/home/quick-links`, () =>
+    HttpResponse.json(
+      { id: 'ql-1', title: 'Test Link', url: 'https://example.com', description: null, icon: null, sequence: 1, createdAt: new Date().toISOString() },
+      { status: 201 },
+    )),
+  http.delete(`${BASE_URL}/api/workspaces/:slug/home/quick-links/:id`, () => new HttpResponse(null, { status: 204 })),
+
   // Exports
   http.get(`${BASE_URL}/api/workspaces/:slug/exports`, () => HttpResponse.json([])),
   http.post(`${BASE_URL}/api/workspaces/:slug/exports`, () =>
