@@ -26,6 +26,7 @@ using TaskManager.Api.Modules.Home.Entities;
 using TaskManager.Api.Modules.Space.Entities;
 using TaskManager.Api.Modules.Teams.Entities;
 using TaskManager.Api.Modules.Workspaces.Entities;
+using TaskManager.Api.Modules.Integrations.Entities;
 
 namespace TaskManager.Api.Data;
 
@@ -95,6 +96,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
     public DbSet<UserRecentVisit> UserRecentVisits => Set<UserRecentVisit>();
     public DbSet<WorkspaceQuickLink> WorkspaceQuickLinks => Set<WorkspaceQuickLink>();
     public DbSet<DeployBoard> DeployBoards => Set<DeployBoard>();
+    public DbSet<WorkspaceIntegration> WorkspaceIntegrations => Set<WorkspaceIntegration>();
+    public DbSet<GitHubRepository> GitHubRepositories => Set<GitHubRepository>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -158,6 +161,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
         builder.Entity<UserRecentVisit>().HasQueryFilter(e => !e.IsDeleted);
         builder.Entity<WorkspaceQuickLink>().HasQueryFilter(e => !e.IsDeleted);
         builder.Entity<DeployBoard>().HasQueryFilter(e => !e.IsDeleted);
+        builder.Entity<WorkspaceIntegration>().HasQueryFilter(e => !e.IsDeleted);
+        builder.Entity<GitHubRepository>().HasQueryFilter(e => !e.IsDeleted);
 
         builder.Entity<RecurringIssueTemplate>().HasQueryFilter(e => !e.IsDeleted);
         builder.Entity<RecurringIssueRun>().HasQueryFilter(e => !e.IsDeleted);

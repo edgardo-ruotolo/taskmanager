@@ -29,6 +29,8 @@ using TaskManager.Api.Modules.Webhooks.Dtos;
 using TaskManager.Api.Modules.Webhooks.Entities;
 using TaskManager.Api.Modules.Workspaces.Dtos;
 using TaskManager.Api.Modules.Workspaces.Entities;
+using TaskManager.Api.Modules.Integrations.Dtos;
+using TaskManager.Api.Modules.Integrations.Entities;
 
 namespace TaskManager.Api.Data;
 
@@ -97,5 +99,9 @@ public class MappingProfile : Profile
         CreateMap<RecurringIssueRun, RecurringRunDto>();
 
         CreateMap<DeployBoard, DeployBoardDto>();
+
+        CreateMap<WorkspaceIntegration, WorkspaceIntegrationDto>();
+        CreateMap<GitHubRepository, GitHubRepositoryDto>();
+        CreateMap<CreateGitHubRepositoryDto, GitHubRepository>();
     }
 }
