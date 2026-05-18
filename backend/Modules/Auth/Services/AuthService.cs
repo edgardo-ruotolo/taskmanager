@@ -1,7 +1,9 @@
 using AutoMapper;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using TaskManager.Api.Common.Email;
 using TaskManager.Api.Common.Exceptions;
+using TaskManager.Api.Data;
 using TaskManager.Api.Modules.Auth.Dtos;
 using TaskManager.Api.Modules.Auth.Entities;
 
@@ -11,7 +13,8 @@ public class AuthService(
     UserManager<User> userManager,
     SignInManager<User> signInManager,
     IMapper mapper,
-    IEmailService emailService) : IAuthService
+    IEmailService emailService,
+    AppDbContext db) : IAuthService
 {
     public async Task<UserDto> RegisterAsync(RegisterDto dto, CancellationToken ct = default)
     {
@@ -127,6 +130,50 @@ public class AuthService(
 
         await userManager.UpdateAsync(user);
         await signInManager.SignOutAsync();
+    }
+
+    public async Task SendMagicLinkAsync(MagicLinkRequestDto dto, CancellationToken ct = default)
+    {
+        var user = await userManager.FindByEmailAsync(dto.Email);
+        // Silently return if user not found — do not reveal if email exists
+        if (user is null) return;
+
+        var token = Guid.NewGuid().ToString("N");
+        var magicLink = new MagicLinkToken
+        {
+            Email = dto.Email,
+            Token = token,
+            ExpiresAt = DateTime.UtcNow.AddMinutes(15)
+        };
+
+        db.MagicLinkTokens.Add(magicLink);
+        await db.SaveChangesAsync(ct);
+
+        var url = $"http://localhost:3000/magic-link/{token}";
+        var name = user.FirstName ?? user.UserName ?? string.Empty;
+        await emailService.SendMagicLinkAsync(user.Email!, name, url, ct);
+    }
+
+    public async Task<UserDto> VerifyMagicLinkAsync(MagicLinkVerifyDto dto, HttpContext httpContext, CancellationToken ct = default)
+    {
+        var magicToken = await db.MagicLinkTokens
+            .FirstOrDefaultAsync(t => t.Token == dto.Token, ct);
+
+        if (magicToken is null || magicToken.IsUsed || magicToken.ExpiresAt < DateTime.UtcNow)
+            throw new ValidationException("Magic link is invalid or has expired.");
+
+        var user = await userManager.FindByEmailAsync(magicToken.Email)
+            ?? throw new NotFoundException("User not found.");
+
+        // Mark token as used
+        magicToken.IsUsed = true;
+        magicToken.UsedAt = DateTime.UtcNow;
+        await db.SaveChangesAsync(ct);
+
+        // Sign in the user via cookie auth (same as normal login)
+        await signInManager.SignInAsync(user, isPersistent: true);
+
+        return await MapUserDtoAsync(user);
     }
 
     private async Task<UserDto> MapUserDtoAsync(User user)

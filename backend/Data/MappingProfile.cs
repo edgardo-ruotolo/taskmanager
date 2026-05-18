@@ -31,6 +31,10 @@ using TaskManager.Api.Modules.Workspaces.Dtos;
 using TaskManager.Api.Modules.Workspaces.Entities;
 using TaskManager.Api.Modules.Integrations.Dtos;
 using TaskManager.Api.Modules.Integrations.Entities;
+using TaskManager.Api.Modules.Importer.Dtos;
+using TaskManager.Api.Modules.Importer.Entities;
+using TaskManager.Api.Modules.TimeTracking.Dtos;
+using TaskManager.Api.Modules.TimeTracking.Entities;
 
 namespace TaskManager.Api.Data;
 
@@ -103,5 +107,10 @@ public class MappingProfile : Profile
         CreateMap<WorkspaceIntegration, WorkspaceIntegrationDto>();
         CreateMap<GitHubRepository, GitHubRepositoryDto>();
         CreateMap<CreateGitHubRepositoryDto, GitHubRepository>();
+
+        CreateMap<ImporterHistory, ImporterHistoryDto>();
+        CreateMap<IssueWorklog, WorklogDto>()
+            .ForMember(d => d.UserDisplayName, o => o.MapFrom(s => s.User != null ? (s.User.DisplayName ?? s.User.UserName) : null))
+            .ForMember(d => d.UserEmail, o => o.MapFrom(s => s.User != null ? s.User.Email : null));
     }
 }

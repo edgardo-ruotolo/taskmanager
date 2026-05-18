@@ -27,6 +27,8 @@ using TaskManager.Api.Modules.Space.Entities;
 using TaskManager.Api.Modules.Teams.Entities;
 using TaskManager.Api.Modules.Workspaces.Entities;
 using TaskManager.Api.Modules.Integrations.Entities;
+using TaskManager.Api.Modules.Importer.Entities;
+using TaskManager.Api.Modules.TimeTracking.Entities;
 
 namespace TaskManager.Api.Data;
 
@@ -98,6 +100,9 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
     public DbSet<DeployBoard> DeployBoards => Set<DeployBoard>();
     public DbSet<WorkspaceIntegration> WorkspaceIntegrations => Set<WorkspaceIntegration>();
     public DbSet<GitHubRepository> GitHubRepositories => Set<GitHubRepository>();
+    public DbSet<ImporterHistory> ImporterHistories => Set<ImporterHistory>();
+    public DbSet<IssueWorklog> IssueWorklogs => Set<IssueWorklog>();
+    public DbSet<MagicLinkToken> MagicLinkTokens => Set<MagicLinkToken>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -163,6 +168,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
         builder.Entity<DeployBoard>().HasQueryFilter(e => !e.IsDeleted);
         builder.Entity<WorkspaceIntegration>().HasQueryFilter(e => !e.IsDeleted);
         builder.Entity<GitHubRepository>().HasQueryFilter(e => !e.IsDeleted);
+        builder.Entity<ImporterHistory>().HasQueryFilter(e => !e.IsDeleted);
+        builder.Entity<IssueWorklog>().HasQueryFilter(e => !e.IsDeleted);
 
         builder.Entity<RecurringIssueTemplate>().HasQueryFilter(e => !e.IsDeleted);
         builder.Entity<RecurringIssueRun>().HasQueryFilter(e => !e.IsDeleted);

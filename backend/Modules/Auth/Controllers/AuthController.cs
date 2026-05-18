@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using TaskManager.Api.Modules.Auth.Dtos;
 using TaskManager.Api.Modules.Auth.Services;
+// MagicLinkRequestDto and MagicLinkVerifyDto are in the same Dtos namespace
 
 namespace TaskManager.Api.Modules.Auth.Controllers;
 
@@ -81,5 +82,52 @@ public class AuthController(IAuthService authService) : ControllerBase
     {
         await authService.DeactivateAccountAsync(CurrentUserId, HttpContext, ct);
         return NoContent();
+    }
+
+    // ── Magic Link ──────────────────────────────────────────────────────────
+
+    [HttpPost("magic-link")]
+    [AllowAnonymous]
+    public async Task<IActionResult> RequestMagicLink([FromBody] MagicLinkRequestDto dto, CancellationToken ct)
+    {
+        await authService.SendMagicLinkAsync(dto, ct);
+        return Ok(new { message = "Si el email existe, recibirás un enlace." });
+    }
+
+    [HttpPost("magic-link/verify")]
+    [AllowAnonymous]
+    public async Task<ActionResult<UserDto>> VerifyMagicLink([FromBody] MagicLinkVerifyDto dto, CancellationToken ct)
+    {
+        var user = await authService.VerifyMagicLinkAsync(dto, HttpContext, ct);
+        return Ok(user);
+    }
+
+    // ── OAuth Skeleton ──────────────────────────────────────────────────────
+
+    [HttpGet("oauth/{provider}/authorize")]
+    [AllowAnonymous]
+    public IActionResult OAuthAuthorize(string provider)
+    {
+        var stubUrl = provider.ToLowerInvariant() switch
+        {
+            "github" => "https://github.com/login/oauth/authorize",
+            _ => "https://accounts.google.com/o/oauth2/v2/auth"
+        };
+
+        return Ok(new
+        {
+            url = stubUrl,
+            message = "OAuth no configurado en este entorno. Configure las credenciales en appsettings."
+        });
+    }
+
+    [HttpGet("oauth/{provider}/callback")]
+    [AllowAnonymous]
+    public IActionResult OAuthCallback(string provider, [FromQuery] string? code, [FromQuery] string? state)
+    {
+        return BadRequest(new
+        {
+            message = $"OAuth callback no configurado. Proporcione credenciales reales de {provider}."
+        });
     }
 }
