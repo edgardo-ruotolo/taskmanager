@@ -80,6 +80,12 @@ const PageDetailPage = lazy(() => import('@/modules/pages/presentation/pages/Pag
 const RecurringListPage = lazy(() => import('@/modules/recurring/presentation/pages/RecurringListPage').then(m => ({ default: m.RecurringListPage })));
 const RecurringDetailPage = lazy(() => import('@/modules/recurring/presentation/pages/RecurringDetailPage').then(m => ({ default: m.RecurringDetailPage })));
 
+// Search page
+const SearchPage = lazy(() => import('@/modules/search/presentation/pages/SearchPage').then(m => ({ default: m.SearchPage })));
+
+// Drafts pages
+const DraftsPage = lazy(() => import('@/modules/drafts/presentation/pages/DraftsPage').then(m => ({ default: m.DraftsPage })));
+
 // God Mode pages
 const GodModeGeneralPage = lazy(() => import('@/modules/admin/presentation/pages/GodModeGeneralPage').then(m => ({ default: m.GodModeGeneralPage })));
 const GodModeEmailPage = lazy(() => import('@/modules/admin/presentation/pages/GodModeEmailPage').then(m => ({ default: m.GodModeEmailPage })));
@@ -134,6 +140,8 @@ export const App = (): React.ReactElement => (
                     <Route path="settings/tokens" element={<ApiTokensPage />} />
                     <Route path="recurring" element={<RecurringListPage />} />
                     <Route path="recurring/:recurringId" element={<RecurringDetailPage />} />
+                    <Route path="search" element={<SearchPage />} />
+                    <Route path="drafts" element={<DraftsPage />} />
                 </Route>
             </Route>
             <Route path="/onboarding" element={<OnboardingPage />} />
