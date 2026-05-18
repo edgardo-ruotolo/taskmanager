@@ -30,6 +30,7 @@ using TaskManager.Api.Modules.Intake.Services;
 using TaskManager.Api.Modules.Recurring.Services;
 using TaskManager.Api.Modules.Webhooks.Services;
 using TaskManager.Api.Modules.Drafts.Services;
+using TaskManager.Api.Modules.Exporter.Jobs;
 using TaskManager.Api.Modules.Workspaces.Services;
 
 Log.Logger = new LoggerConfiguration()
@@ -112,6 +113,7 @@ builder.Services.AddScoped<IRecurringService, RecurringService>();
 builder.Services.AddScoped<IRecurringExecutor, RecurringExecutor>();
 builder.Services.AddScoped<IRecurringDispatcher, RecurringDispatcher>();
 builder.Services.AddScoped<IDraftService, DraftService>();
+builder.Services.AddScoped<ExportJob>();
 
 var pgConnectionString = builder.Configuration.GetConnectionString("Postgres")!;
 builder.Services.AddHangfire(cfg => cfg
