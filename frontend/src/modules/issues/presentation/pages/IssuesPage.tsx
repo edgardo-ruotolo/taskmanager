@@ -16,7 +16,6 @@ import {
     Layers,
     Sparkles,
 } from 'lucide-react';
-import { toast } from 'sonner';
 import {
     DndContext,
     DragOverlay,
@@ -41,7 +40,9 @@ import { PriorityDot } from '@/components/ui/priority-dot';
 import { cn } from '@/lib/utils';
 import { useIssues, useCreateIssue, useUpdateIssue } from '../../application/use-issues';
 import { useCompanyStates } from '@/modules/states/application/use-states';
-import { useCompany } from '@/modules/companies/application/use-companies';
+import { useCompany, useCompanyMembers } from '@/modules/companies/application/use-companies';
+import { useAuthMe } from '@/modules/auth/application/use-auth-me';
+import { ApprovalRequiredDialog } from '../components/ApprovalRequiredDialog';
 import type { Issue } from '../../domain/types';
 import type { State } from '@/modules/states/domain/types';
 import { PRIORITY_LABELS } from '../../domain/types';
@@ -764,6 +765,19 @@ function KanbanView({ issues, states, companyIdentifier, onIssueClick, workspace
     const [activeIssueId, setActiveIssueId] = useState<string | null>(null);
     const [localIssues, setLocalIssues] = useState<Issue[]>(issues);
     const { mutate: updateIssue } = useUpdateIssue(workspaceSlug, companyId);
+    const { data: currentUser } = useAuthMe();
+    const { data: companyMembers } = useCompanyMembers(workspaceSlug, companyId);
+    const [approvalDialog, setApprovalDialog] = useState<{
+        issueId: string;
+        targetStateId: string;
+        targetStateName: string;
+    } | null>(null);
+
+    const canApproveInCompany = (() => {
+        if (currentUser?.isSuperAdmin) return true;
+        const me = companyMembers?.find((m) => m.userId === currentUser?.id);
+        return me?.role === 'Admin' || me?.role === 'Lead';
+    })();
 
     // Sync from server only when server data changes (not during drag)
     useEffect(() => {
@@ -810,7 +824,14 @@ function KanbanView({ issues, states, companyIdentifier, onIssueClick, workspace
         if (!movedIssue || !originalIssue || movedIssue.stateId === originalIssue.stateId) return;
 
         if (movedIssue.requiresAdminApproval && movedIssue.approvalRequiredStateIds.includes(movedIssue.stateId)) {
-            toast.error('Esta tarea requiere aprobación de Admin o Lead para moverse a este estado.');
+            const target = states.find((s) => s.id === movedIssue.stateId);
+            setApprovalDialog({
+                issueId,
+                targetStateId: movedIssue.stateId,
+                targetStateName: target?.name ?? '',
+            });
+            setLocalIssues(issues);
+            return;
         }
 
         updateIssue(
@@ -873,6 +894,20 @@ function KanbanView({ issues, states, companyIdentifier, onIssueClick, workspace
                     />
                 ) : null}
             </DragOverlay>
+            {approvalDialog ? (
+                <ApprovalRequiredDialog
+                    open
+                    onOpenChange={(open) => {
+                        if (!open) setApprovalDialog(null);
+                    }}
+                    workspaceSlug={workspaceSlug}
+                    companyId={companyId}
+                    issueId={approvalDialog.issueId}
+                    targetStateId={approvalDialog.targetStateId}
+                    targetStateName={approvalDialog.targetStateName}
+                    canApprove={canApproveInCompany}
+                />
+            ) : null}
         </DndContext>
     );
 }

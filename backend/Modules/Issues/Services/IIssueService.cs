@@ -9,6 +9,7 @@ public interface IIssueService
     Task<PagedResult<IssueDto>> GetAllAsync(string workspaceSlug, Guid companyId, int page, int pageSize, CancellationToken ct = default);
     Task<IssueDto> GetByIdAsync(string workspaceSlug, Guid companyId, Guid issueId, CancellationToken ct = default);
     Task<IssueDto> UpdateAsync(string workspaceSlug, Guid companyId, Guid issueId, UpdateIssueDto dto, Guid currentUserId, CancellationToken ct = default);
+    Task<IssueDto> ApproveAsync(string workspaceSlug, Guid companyId, Guid issueId, Guid targetStateId, Guid currentUserId, CancellationToken ct = default);
     Task DeleteAsync(string workspaceSlug, Guid companyId, Guid issueId, CancellationToken ct = default);
     Task AddAssigneeAsync(string workspaceSlug, Guid companyId, Guid issueId, Guid userId, CancellationToken ct = default);
     Task RemoveAssigneeAsync(string workspaceSlug, Guid companyId, Guid issueId, Guid userId, CancellationToken ct = default);

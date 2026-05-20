@@ -10,4 +10,5 @@ public class UserDto
     public string? DisplayName { get; set; }
     public string? AvatarUrl { get; set; }
     public List<string> Roles { get; set; } = [];
+    public bool IsSuperAdmin { get; set; }
 }

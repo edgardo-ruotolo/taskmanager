@@ -25,6 +25,13 @@ public class RequireCompanyAdminAttribute : Attribute, IAsyncActionFilter
             return;
         }
 
+        if (context.HttpContext.User.IsSuperAdmin())
+        {
+            context.HttpContext.Items["CompanyRole"] = CompanyRole.Admin;
+            await next();
+            return;
+        }
+
         var db = context.HttpContext.RequestServices.GetRequiredService<AppDbContext>();
         var member = await db.CompanyMembers
             .FirstOrDefaultAsync(m =>

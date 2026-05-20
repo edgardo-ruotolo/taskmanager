@@ -7,7 +7,7 @@ using TaskManager.Api.Modules.Admin.Services;
 namespace TaskManager.Api.Modules.Admin.Controllers;
 
 [ApiController]
-[Authorize(Roles = "Admin")]
+[Authorize(Roles = "SuperAdmin")]
 [Route("api/admin/audit-logs")]
 public class AdminAuditLogsController(IAdminAuditService auditService) : ControllerBase
 {

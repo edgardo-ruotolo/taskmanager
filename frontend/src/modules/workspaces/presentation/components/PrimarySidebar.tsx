@@ -244,7 +244,7 @@ export function PrimarySidebar(): React.ReactElement {
         expandCompany,
     } = useSidebarStore();
     const { data: user } = useAuthMe();
-    const isAdmin = user?.roles?.includes('Admin') === true;
+    const isAdmin = user?.isSuperAdmin === true || user?.roles?.includes('SuperAdmin') === true;
     const slug = workspaceSlug ?? '';
     const { data: companies } = useCompanies(slug);
 

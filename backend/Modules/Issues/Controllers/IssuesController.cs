@@ -1,9 +1,12 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
 using TaskManager.Api.Common.Auth;
 using TaskManager.Api.Common.Authorization;
 using Microsoft.EntityFrameworkCore;
 using TaskManager.Api.Common.Pagination;
+using TaskManager.Api.Hubs;
+using TaskManager.Api.Modules.Companies.Entities;
 using TaskManager.Api.Modules.Files.Dtos;
 using TaskManager.Api.Modules.Files.Services;
 using TaskManager.Api.Modules.Issues.Dtos;
@@ -21,7 +24,8 @@ public class IssuesController(
     IIssueMentionService mentionService,
     IFileAssetService fileAssetService,
     IIssueArchiveService archiveService,
-    ICurrentUser currentUser) : ControllerBase
+    ICurrentUser currentUser,
+    IHubContext<IssueHub> issueHub) : ControllerBase
 {
 
     [HttpPost]
@@ -64,6 +68,22 @@ public class IssuesController(
     {
         await issueService.DeleteAsync(workspaceSlug, companyId, issueId, ct);
         return NoContent();
+    }
+
+    [HttpPost("{issueId:guid}/approve")]
+    public async Task<ActionResult<IssueDto>> Approve(
+        string workspaceSlug, Guid companyId, Guid issueId, [FromBody] ApproveIssueDto dto, CancellationToken ct)
+    {
+        var role = HttpContext.Items["CompanyRole"] as CompanyRole?;
+        if (role is null || (role != CompanyRole.Admin && role != CompanyRole.Lead))
+            return Forbid();
+
+        var issue = await issueService.ApproveAsync(workspaceSlug, companyId, issueId, dto.TargetStateId, currentUser.UserId, ct);
+
+        await issueHub.Clients.Group($"issue:{issueId}").SendAsync("IssueApproved", issue, ct);
+        await issueHub.Clients.Group($"company:{companyId}").SendAsync("IssueApproved", issue, ct);
+
+        return Ok(issue);
     }
 
     [HttpPost("{issueId:guid}/assignees")]

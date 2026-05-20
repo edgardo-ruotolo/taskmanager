@@ -16,7 +16,7 @@ namespace TaskManager.Api.Modules.Admin.Controllers;
 
 [ApiController]
 [Route("api/admin")]
-[Authorize(Roles = "Admin")]
+[Authorize(Roles = "SuperAdmin")]
 public class AdminController(
     IInstanceConfigService configService,
     AppDbContext db,
@@ -132,9 +132,8 @@ public class AdminController(
         if (!result.Succeeded)
             return BadRequest(new { error = string.Join(", ", result.Errors.Select(e => e.Description)) });
 
-        var validRoles = new[] { "Admin", "Member" };
-        var role = validRoles.Contains(dto.Role) ? dto.Role : "Member";
-        await userManager.AddToRoleAsync(user, role);
+        if (dto.Role == "SuperAdmin")
+            await userManager.AddToRoleAsync(user, "SuperAdmin");
 
         var roles = await userManager.GetRolesAsync(user);
         return Ok(new AdminUserDto
@@ -173,9 +172,8 @@ public class AdminController(
         {
             var currentRoles = await userManager.GetRolesAsync(user);
             await userManager.RemoveFromRolesAsync(user, currentRoles);
-            var validRoles = new[] { "Admin", "Member" };
-            var newRole = validRoles.Contains(dto.Role) ? dto.Role : "Member";
-            await userManager.AddToRoleAsync(user, newRole);
+            if (dto.Role == "SuperAdmin")
+                await userManager.AddToRoleAsync(user, "SuperAdmin");
         }
 
         var roles = await userManager.GetRolesAsync(user);
@@ -283,7 +281,7 @@ public class AdminController(
             m => m.CompanyId == companyId && m.UserId == dto.UserId, ct);
         if (exists) return Conflict(new { error = "El usuario ya es miembro de esta empresa" });
 
-        var validRoles = new[] { "Guest", "Member", "Admin" };
+        var validRoles = new[] { "Member", "Lead", "Admin" };
         var roleName = validRoles.Contains(dto.Role) ? dto.Role : "Member";
         var role = Enum.Parse<CompanyRole>(roleName);
 

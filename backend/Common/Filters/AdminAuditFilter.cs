@@ -23,11 +23,11 @@ public class AdminAuditFilter(IAdminAuditService auditService, ILogger<AdminAudi
         {
             if (executed.Exception is not null || executed.Canceled) return;
 
-            // Only audit endpoints flagged as [Authorize(Roles="Admin")] or under [Authorize(Policy="AdminOnly")].
+            // Only audit endpoints flagged as [Authorize(Roles="SuperAdmin")] or under [Authorize(Policy="SuperAdminOnly")].
             var endpoint = context.HttpContext.GetEndpoint();
             var authorize = endpoint?.Metadata.OfType<AuthorizeAttribute>().FirstOrDefault();
-            var isAdminRoute = authorize?.Roles?.Contains("Admin") == true
-                || authorize?.Policy == "AdminOnly";
+            var isAdminRoute = authorize?.Roles?.Contains("SuperAdmin") == true
+                || authorize?.Policy == "SuperAdminOnly";
             if (!isAdminRoute) return;
 
             var http = context.HttpContext;

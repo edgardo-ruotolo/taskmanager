@@ -26,6 +26,13 @@ public class RequireWorkspaceAdminAttribute : Attribute, IAsyncActionFilter
             return;
         }
 
+        if (context.HttpContext.User.IsSuperAdmin())
+        {
+            context.HttpContext.Items["WorkspaceRole"] = WorkspaceRole.Admin;
+            await next();
+            return;
+        }
+
         var db = context.HttpContext.RequestServices.GetRequiredService<AppDbContext>();
         var member = await db.WorkspaceMembers
             .Include(m => m.Workspace)

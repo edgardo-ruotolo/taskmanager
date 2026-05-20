@@ -3,7 +3,7 @@ using TaskManager.Api.Modules.Auth.Entities;
 
 namespace TaskManager.Api.Modules.Companies.Entities;
 
-public enum CompanyRole { Guest = 5, Member = 15, Lead = 18, Admin = 20 }
+public enum CompanyRole { Member = 15, Lead = 18, Admin = 20 }
 
 public class CompanyMember : AuditableEntity
 {

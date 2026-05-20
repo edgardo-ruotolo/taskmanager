@@ -19,7 +19,7 @@ public class StatesController(IStateService stateService) : ControllerBase
     }
 
     [HttpPost]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "SuperAdmin")]
     public async Task<ActionResult<StateDto>> Create([FromBody] CreateStateDto dto, CancellationToken ct)
     {
         var state = await stateService.CreateAsync(dto, ct);
@@ -27,7 +27,7 @@ public class StatesController(IStateService stateService) : ControllerBase
     }
 
     [HttpPatch("{stateId:guid}")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "SuperAdmin")]
     public async Task<ActionResult<StateDto>> Update(Guid stateId, [FromBody] UpdateStateDto dto, CancellationToken ct)
     {
         var state = await stateService.UpdateAsync(stateId, dto, ct);
@@ -35,7 +35,7 @@ public class StatesController(IStateService stateService) : ControllerBase
     }
 
     [HttpDelete("{stateId:guid}")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "SuperAdmin")]
     public async Task<IActionResult> Delete(Guid stateId, CancellationToken ct)
     {
         await stateService.DeleteAsync(stateId, ct);

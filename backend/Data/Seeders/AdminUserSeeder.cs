@@ -8,7 +8,8 @@ namespace TaskManager.Api.Data.Seeders;
 
 public static class AdminUserSeeder
 {
-    public const string AdminRole = "Admin";
+    public const string AdminRole = "SuperAdmin";
+    private const string LegacyAdminRole = "Admin";
 
     public static async Task SeedAsync(IServiceProvider services)
     {
@@ -16,6 +17,15 @@ public static class AdminUserSeeder
         var roleManager = services.GetRequiredService<RoleManager<IdentityRole<Guid>>>();
         var db          = services.GetRequiredService<AppDbContext>();
         var config      = services.GetRequiredService<IConfiguration>();
+
+        // Idempotent rename: if a legacy "Admin" role exists, rename it to "SuperAdmin".
+        var legacy = await roleManager.FindByNameAsync(LegacyAdminRole);
+        if (legacy is not null && !await roleManager.RoleExistsAsync(AdminRole))
+        {
+            legacy.Name = AdminRole;
+            legacy.NormalizedName = AdminRole.ToUpperInvariant();
+            await roleManager.UpdateAsync(legacy);
+        }
 
         if (!await roleManager.RoleExistsAsync(AdminRole))
             await roleManager.CreateAsync(new IdentityRole<Guid>(AdminRole));

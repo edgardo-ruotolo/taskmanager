@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.EntityFrameworkCore;
 using TaskManager.Api.Common.Auth;
 using TaskManager.Api.Data;
+using TaskManager.Api.Modules.Workspaces.Entities;
 
 namespace TaskManager.Api.Common.Authorization;
 
@@ -22,6 +23,13 @@ public class RequireWorkspaceMemberAttribute : Attribute, IAsyncActionFilter
         if (string.IsNullOrEmpty(workspaceSlug))
         {
             context.Result = new BadRequestObjectResult("Workspace slug is required.");
+            return;
+        }
+
+        if (context.HttpContext.User.IsSuperAdmin())
+        {
+            context.HttpContext.Items["WorkspaceRole"] = WorkspaceRole.Admin;
+            await next();
             return;
         }
 

@@ -290,14 +290,14 @@ function AddMemberForm({ companyId, onAdded }: AddMemberFormProps): React.ReactE
                                     </SelectTrigger>
                                 </FormControl>
                                 <SelectContent className="bg-surface-2 border-subtle">
-                                    <SelectItem value="Guest" className="text-primary text-sm">
-                                        Invitado
-                                    </SelectItem>
-                                    <SelectItem value="Member" className="text-primary text-sm">
-                                        Miembro
-                                    </SelectItem>
                                     <SelectItem value="Admin" className="text-primary text-sm">
                                         Administrador
+                                    </SelectItem>
+                                    <SelectItem value="Lead" className="text-primary text-sm">
+                                        Gestor
+                                    </SelectItem>
+                                    <SelectItem value="Member" className="text-primary text-sm">
+                                        Usuario
                                     </SelectItem>
                                 </SelectContent>
                             </Select>

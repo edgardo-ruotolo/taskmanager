@@ -25,6 +25,16 @@ export const useCompany = (workspaceSlug: string, companyId: string) =>
         enabled: !!workspaceSlug && !!companyId,
     });
 
+export const companyMembersKey = (workspaceSlug: string, companyId: string) =>
+    ['company-members', workspaceSlug, companyId] as const;
+
+export const useCompanyMembers = (workspaceSlug: string, companyId: string) =>
+    useQuery({
+        queryKey: companyMembersKey(workspaceSlug, companyId),
+        queryFn: () => companyRepository.getMembers(workspaceSlug, companyId),
+        enabled: !!workspaceSlug && !!companyId,
+    });
+
 export const useUpdateCompany = <TFormValues extends FieldValues = FieldValues>(
     workspaceSlug: string,
     companyId: string,

@@ -13,6 +13,7 @@ export interface User {
     displayName?: string;
     avatarUrl?: string;
     roles?: string[];
+    isSuperAdmin?: boolean;
     onboarding?: OnboardingState;
 }
 

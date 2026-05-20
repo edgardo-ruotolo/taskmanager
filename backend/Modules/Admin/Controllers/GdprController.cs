@@ -6,7 +6,7 @@ using TaskManager.Api.Modules.Admin.Services;
 namespace TaskManager.Api.Modules.Admin.Controllers;
 
 [ApiController]
-[Authorize(Roles = "Admin")]
+[Authorize(Roles = "SuperAdmin")]
 [Route("api/admin/gdpr")]
 public class GdprController(IGdprService gdpr) : ControllerBase
 {

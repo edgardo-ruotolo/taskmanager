@@ -6,7 +6,7 @@ using TaskManager.Api.Modules.Admin.Services;
 namespace TaskManager.Api.Modules.Admin.Controllers;
 
 [ApiController]
-[Authorize(Roles = "Admin")]
+[Authorize(Roles = "SuperAdmin")]
 [Route("api/admin/feature-flags")]
 public class FeatureFlagsController(IFeatureFlagService flags) : ControllerBase
 {

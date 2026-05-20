@@ -61,6 +61,18 @@ export const issueRepository = {
                 `/api/workspaces/${workspaceSlug}/companies/${companyId}/issues/${issueId}`,
             )
             .then(() => undefined),
+    approve: (
+        workspaceSlug: string,
+        companyId: string,
+        issueId: string,
+        targetStateId: string,
+    ): Promise<Issue> =>
+        apiClient
+            .post<Issue>(
+                `/api/workspaces/${workspaceSlug}/companies/${companyId}/issues/${issueId}/approve`,
+                { targetStateId },
+            )
+            .then((r) => r.data),
     getById: (workspaceSlug: string, companyId: string, issueId: string): Promise<Issue> =>
         apiClient
             .get<Issue>(

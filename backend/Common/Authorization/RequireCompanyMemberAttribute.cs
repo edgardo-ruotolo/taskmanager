@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using TaskManager.Api.Common.Auth;
 using TaskManager.Api.Common.Multitenancy;
 using TaskManager.Api.Data;
+using TaskManager.Api.Modules.Companies.Entities;
 
 namespace TaskManager.Api.Common.Authorization;
 
@@ -25,6 +26,16 @@ public class RequireCompanyMemberAttribute : Attribute, IAsyncActionFilter
             return;
         }
 
+        var companyContext = context.HttpContext.RequestServices.GetRequiredService<ICurrentCompanyContext>();
+
+        if (context.HttpContext.User.IsSuperAdmin())
+        {
+            context.HttpContext.Items["CompanyRole"] = CompanyRole.Admin;
+            companyContext.SetCompanyId(companyId);
+            await next();
+            return;
+        }
+
         var db = context.HttpContext.RequestServices.GetRequiredService<AppDbContext>();
         var member = await db.CompanyMembers
             .FirstOrDefaultAsync(m =>
@@ -38,8 +49,6 @@ public class RequireCompanyMemberAttribute : Attribute, IAsyncActionFilter
         }
 
         context.HttpContext.Items["CompanyRole"] = member.Role;
-
-        var companyContext = context.HttpContext.RequestServices.GetRequiredService<ICurrentCompanyContext>();
         companyContext.SetCompanyId(companyId);
 
         await next();

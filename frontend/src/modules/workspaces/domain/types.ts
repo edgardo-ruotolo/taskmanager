@@ -25,19 +25,24 @@ export interface WorkspaceMember {
     email: string;
     displayName?: string;
     avatarUrl?: string;
-    role: 'Admin' | 'Member' | 'Guest';
+    role: 'Admin' | 'Member';
     isActive: boolean;
 }
 
 export interface WorkspaceInvitation {
     id: string;
     email: string;
-    role: 'Admin' | 'Member' | 'Guest';
+    role: 'Admin' | 'Member';
     expiresAt: string;
     acceptedAt?: string;
 }
 
 export interface CreateInvitationData {
     email: string;
-    role: 'Admin' | 'Member' | 'Guest';
+    role: 'Admin' | 'Member';
 }
+
+export const WORKSPACE_ROLE_LABELS: Record<'Admin' | 'Member', string> = {
+    Admin: 'Administrador',
+    Member: 'Usuario',
+};

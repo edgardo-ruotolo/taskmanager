@@ -16,7 +16,7 @@ public class CreateWorkspaceInvitationDtoValidator : AbstractValidator<CreateWor
         RuleFor(x => x.Role)
             .IsInEnum()
             .WithMessage("Role must be a valid workspace role.")
-            .Must(role => role == WorkspaceRole.Guest || role == WorkspaceRole.Member || role == WorkspaceRole.Admin)
-            .WithMessage("Role must be Guest, Member or Admin.");
+            .Must(role => role == WorkspaceRole.Member || role == WorkspaceRole.Admin)
+            .WithMessage("Role must be Member or Admin.");
     }
 }

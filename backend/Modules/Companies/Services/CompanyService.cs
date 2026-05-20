@@ -180,6 +180,14 @@ public class CompanyService(AppDbContext db, IMapper mapper, IEmailService email
             .FirstOrDefaultAsync(m => m.CompanyId == companyId && m.UserId == userId, ct)
             ?? throw new NotFoundException("Member not found in this company.");
 
+        if (member.Role == CompanyRole.Admin && dto.Role != CompanyRole.Admin)
+        {
+            var otherAdmins = await db.CompanyMembers
+                .CountAsync(m => m.CompanyId == companyId && m.UserId != userId && m.Role == CompanyRole.Admin, ct);
+            if (otherAdmins == 0)
+                throw new ValidationException("La empresa debe tener al menos un Administrador.");
+        }
+
         member.Role = dto.Role;
         await db.SaveChangesAsync(ct);
         return mapper.Map<CompanyMemberDto>(member);

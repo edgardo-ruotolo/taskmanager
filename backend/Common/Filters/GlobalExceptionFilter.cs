@@ -32,6 +32,13 @@ public class GlobalExceptionFilter : IExceptionFilter
                 body = new { error = ex.Message };
                 break;
 
+            case ConflictException ex:
+                statusCode = StatusCodes.Status409Conflict;
+                body = ex.Code is not null
+                    ? new { error = ex.Message, code = ex.Code }
+                    : (object)new { error = ex.Message };
+                break;
+
             case ValidationException ex:
                 statusCode = StatusCodes.Status422UnprocessableEntity;
                 body = ex.Errors is not null

@@ -142,11 +142,14 @@ const RoleBadge = ({ role }: { role: WorkspaceMember['role'] }): React.ReactElem
     const colors: Record<string, string> = {
         Admin: 'bg-blue-500/15 text-blue-400 border border-blue-500/20',
         Member: 'bg-surface-1/50 text-secondary border border-subtle',
-        Guest: 'bg-surface-1/30 text-placeholder border border-subtle',
+    };
+    const labels: Record<string, string> = {
+        Admin: 'Administrador',
+        Member: 'Usuario',
     };
     return (
         <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${colors[role] ?? ''}`}>
-            {role}
+            {labels[role] ?? role}
         </span>
     );
 };

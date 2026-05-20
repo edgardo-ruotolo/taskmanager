@@ -1,6 +1,6 @@
 import { apiClient } from '@/shared/lib/api-client';
 import type { PagedResult } from '@/shared/types/pagination';
-import type { Company, CreateCompanyData, UpdateCompanyData } from '../domain/types';
+import type { Company, CompanyMember, CreateCompanyData, UpdateCompanyData } from '../domain/types';
 
 export const companyRepository = {
     getAll: (workspaceSlug: string): Promise<PagedResult<Company>> =>
@@ -23,4 +23,8 @@ export const companyRepository = {
         apiClient
             .delete(`/api/workspaces/${workspaceSlug}/companies/${companyId}`)
             .then(() => undefined),
+    getMembers: (workspaceSlug: string, companyId: string): Promise<CompanyMember[]> =>
+        apiClient
+            .get<CompanyMember[]>(`/api/workspaces/${workspaceSlug}/companies/${companyId}/members`)
+            .then((r) => r.data),
 };

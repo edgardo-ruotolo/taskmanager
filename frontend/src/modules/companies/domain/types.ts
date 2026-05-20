@@ -1,4 +1,10 @@
-export type CompanyRole = 'Guest' | 'Member' | 'Lead' | 'Admin';
+export type CompanyRole = 'Member' | 'Lead' | 'Admin';
+
+export const COMPANY_ROLE_LABELS: Record<CompanyRole, string> = {
+    Admin: 'Administrador',
+    Lead: 'Gestor',
+    Member: 'Usuario',
+};
 
 export interface CompanyMember {
     userId: string;

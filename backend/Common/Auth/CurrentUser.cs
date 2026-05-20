@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using TaskManager.Api.Common.Authorization;
 
 namespace TaskManager.Api.Common.Auth;
 
@@ -16,4 +17,7 @@ public class CurrentUser(IHttpContextAccessor httpContextAccessor) : ICurrentUse
 
     public bool IsAuthenticated =>
         httpContextAccessor.HttpContext?.User.Identity?.IsAuthenticated ?? false;
+
+    public bool IsSuperAdmin =>
+        httpContextAccessor.HttpContext?.User.IsSuperAdmin() ?? false;
 }

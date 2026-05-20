@@ -1,5 +1,6 @@
 using Ganss.Xss;
 using Microsoft.EntityFrameworkCore;
+using TaskManager.Api.Common.Auth;
 using TaskManager.Api.Common.Exceptions;
 using TaskManager.Api.Common.Pagination;
 using TaskManager.Api.Data;
@@ -12,10 +13,23 @@ using TaskManager.Api.Modules.States.Entities;
 
 namespace TaskManager.Api.Modules.Issues.Services;
 
-public class IssueService(AppDbContext db, IIssueActivityService activityService, IHtmlSanitizer htmlSanitizer) : IIssueService
+public class IssueService(
+    AppDbContext db,
+    IIssueActivityService activityService,
+    IHtmlSanitizer htmlSanitizer,
+    ICurrentUser currentUser) : IIssueService
 {
     private string? Sanitize(string? html) =>
         string.IsNullOrEmpty(html) ? html : htmlSanitizer.Sanitize(html);
+
+    private async Task<bool> CanApproveAsync(Guid userId, Guid companyId, CancellationToken ct)
+    {
+        if (currentUser.IsSuperAdmin) return true;
+        var member = await db.CompanyMembers
+            .AsNoTracking()
+            .FirstOrDefaultAsync(m => m.UserId == userId && m.CompanyId == companyId, ct);
+        return member is not null && (member.Role == CompanyRole.Admin || member.Role == CompanyRole.Lead);
+    }
 
     public async Task<IssueDto> CreateAsync(string workspaceSlug, Guid companyId, Guid userId, CreateIssueDto dto, CancellationToken ct = default)
     {
@@ -235,11 +249,11 @@ public class IssueService(AppDbContext db, IIssueActivityService activityService
         {
             if (issue.RequiresAdminApproval && issue.ApprovalRequiredStateIds.Contains(dto.StateId.Value))
             {
-                var member = await db.CompanyMembers
-                    .FirstOrDefaultAsync(m => m.UserId == currentUserId && m.CompanyId == issue.CompanyId, ct);
-
-                if (member == null || (member.Role != CompanyRole.Admin && member.Role != CompanyRole.Lead))
-                    throw new ForbiddenException("Esta tarea requiere aprobación de Admin o Lead para moverse a este estado.");
+                var canApprove = await CanApproveAsync(currentUserId, issue.CompanyId, ct);
+                if (!canApprove)
+                    throw new ConflictException(
+                        "Esta tarea requiere aprobación de un Administrador o Gestor para moverse a este estado.",
+                        code: "ApprovalRequired");
 
                 issue.ApprovedById = currentUserId;
                 issue.ApprovedAt = DateTime.UtcNow;
@@ -312,6 +326,46 @@ public class IssueService(AppDbContext db, IIssueActivityService activityService
 
         if (dto.Title is not null && issue.Title != oldTitle)
             await activityService.LogActivityAsync(issue.Id, actorId, "name", oldTitle, issue.Title, ct);
+
+        return IssueMapper.MapToDto(issue);
+    }
+
+    public async Task<IssueDto> ApproveAsync(
+        string workspaceSlug, Guid companyId, Guid issueId, Guid targetStateId, Guid currentUserId, CancellationToken ct = default)
+    {
+        var canApprove = await CanApproveAsync(currentUserId, companyId, ct);
+        if (!canApprove)
+            throw new ForbiddenException("Solo un Administrador o Gestor puede aprobar esta tarea.");
+
+        var issue = await db.Issues
+            .Include(i => i.State)
+            .Include(i => i.Assignees)
+            .Include(i => i.Labels)
+            .Include(i => i.ModuleIssues)
+            .FirstOrDefaultAsync(i => i.Id == issueId && i.CompanyId == companyId, ct)
+            ?? throw new NotFoundException("Issue not found.");
+
+        if (!issue.RequiresAdminApproval || !issue.ApprovalRequiredStateIds.Contains(targetStateId))
+            throw new ConflictException(
+                "Esta tarea no requiere aprobación para el estado destino.",
+                code: "ApprovalNotRequired");
+
+        var state = await db.States.FindAsync([targetStateId], ct)
+            ?? throw new NotFoundException($"State {targetStateId} not found.");
+
+        var oldStateName = issue.State?.Name;
+        issue.StateId = state.Id;
+        issue.State = state;
+        issue.ApprovedById = currentUserId;
+        issue.ApprovedAt = DateTime.UtcNow;
+        issue.CompletedAt = state.Category == StateCategory.Completed
+            ? (issue.CompletedAt ?? DateTime.UtcNow)
+            : null;
+
+        await db.SaveChangesAsync(ct);
+
+        if (state.Name != oldStateName)
+            await activityService.LogActivityAsync(issue.Id, currentUserId, "state", oldStateName, state.Name, ct);
 
         return IssueMapper.MapToDto(issue);
     }

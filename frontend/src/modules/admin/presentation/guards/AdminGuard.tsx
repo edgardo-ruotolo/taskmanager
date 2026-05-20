@@ -6,6 +6,6 @@ export const AdminGuard = ({ children }: { children: React.ReactNode }): React.R
     const { data: user, isLoading } = useAuthMe();
     if (isLoading) return null as unknown as React.ReactElement;
     if (!user) return <Navigate to="/login" replace />;
-    if (!user.roles?.includes('Admin')) return <Navigate to="/" replace />;
+    if (!user.isSuperAdmin && !user.roles?.includes('SuperAdmin')) return <Navigate to="/" replace />;
     return <>{children}</>;
 };

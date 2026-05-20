@@ -16,10 +16,9 @@ public class CreateCompanyInvitationDtoValidator : AbstractValidator<CreateCompa
         RuleFor(x => x.Role)
             .IsInEnum()
             .WithMessage("Role must be a valid company role.")
-            .Must(role => role == CompanyRole.Guest
-                       || role == CompanyRole.Member
+            .Must(role => role == CompanyRole.Member
                        || role == CompanyRole.Lead
                        || role == CompanyRole.Admin)
-            .WithMessage("Role must be Guest, Member, Lead or Admin.");
+            .WithMessage("Role must be Member, Lead or Admin.");
     }
 }

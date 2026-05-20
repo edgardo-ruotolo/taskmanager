@@ -243,6 +243,7 @@ public class AuthService(
     {
         var dto = mapper.Map<UserDto>(user);
         dto.Roles = (await userManager.GetRolesAsync(user)).ToList();
+        dto.IsSuperAdmin = dto.Roles.Contains(Common.Authorization.AuthorizationExtensions.SuperAdminRole);
         return dto;
     }
 }
