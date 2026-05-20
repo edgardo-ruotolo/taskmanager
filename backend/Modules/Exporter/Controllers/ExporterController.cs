@@ -1,8 +1,8 @@
 using Hangfire;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using TaskManager.Api.Common.Auth;
 using Microsoft.EntityFrameworkCore;
-using System.Security.Claims;
 using TaskManager.Api.Data;
 using TaskManager.Api.Modules.Exporter.Dtos;
 using TaskManager.Api.Modules.Exporter.Entities;
@@ -13,9 +13,8 @@ namespace TaskManager.Api.Modules.Exporter.Controllers;
 [ApiController]
 [Route("api/workspaces/{workspaceSlug}/exports")]
 [Authorize]
-public class ExporterController(AppDbContext db, IBackgroundJobClient backgroundJobs) : ControllerBase
+public class ExporterController(AppDbContext db, IBackgroundJobClient backgroundJobs, ICurrentUser currentUser) : ControllerBase
 {
-    private Guid CurrentUserId => Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
     [HttpGet]
     public async Task<ActionResult<List<ExporterHistoryDto>>> GetHistory(string workspaceSlug, CancellationToken ct)
@@ -23,7 +22,7 @@ public class ExporterController(AppDbContext db, IBackgroundJobClient background
         var workspace = await db.Workspaces.FirstOrDefaultAsync(w => w.Slug == workspaceSlug, ct);
         if (workspace is null) return NotFound();
 
-        var userId = CurrentUserId;
+        var userId = currentUser.UserId;
         var history = await db.ExporterHistories
             .Where(e => e.WorkspaceId == workspace.Id && e.RequestedById == userId)
             .OrderByDescending(e => e.CreatedAt)
@@ -49,7 +48,7 @@ public class ExporterController(AppDbContext db, IBackgroundJobClient background
         var export = new ExporterHistory
         {
             WorkspaceId = workspace.Id,
-            RequestedById = CurrentUserId,
+            RequestedById = currentUser.UserId,
             Format = format,
             Filters = dto.Filters,
             Status = ExportStatus.Pending
@@ -66,7 +65,7 @@ public class ExporterController(AppDbContext db, IBackgroundJobClient background
     [HttpGet("{exportId:guid}/download")]
     public async Task<IActionResult> Download(string workspaceSlug, Guid exportId, CancellationToken ct)
     {
-        var userId = CurrentUserId;
+        var userId = currentUser.UserId;
         var export = await db.ExporterHistories
             .FirstOrDefaultAsync(e => e.Id == exportId && e.RequestedById == userId, ct);
 

@@ -274,10 +274,10 @@ public class AdminController(
         CancellationToken ct)
     {
         var company = await db.Companies.FindAsync([companyId], ct);
-        if (company is null) return NotFound(new { error = "Empresa no encontrada" });
+        if (company is null) return NotFound(new { error = "Company not found." });
 
         var user = await userManager.FindByIdAsync(dto.UserId.ToString());
-        if (user is null) return NotFound(new { error = "Usuario no encontrado" });
+        if (user is null) return NotFound(new { error = "User not found." });
 
         var exists = await db.CompanyMembers.AnyAsync(
             m => m.CompanyId == companyId && m.UserId == dto.UserId, ct);
@@ -374,7 +374,7 @@ public class AdminController(
             .Include(c => c.StateGroup)
             .Include(c => c.Workspace)
             .FirstOrDefaultAsync(c => c.Id == companyId, ct);
-        if (company is null) return NotFound(new { error = "Empresa no encontrada" });
+        if (company is null) return NotFound(new { error = "Company not found." });
 
         if (dto.Name is not null) company.Name = dto.Name;
         if (dto.Description is not null) company.Description = dto.Description;
@@ -385,7 +385,7 @@ public class AdminController(
                 .Include(g => g.States)
                 .FirstOrDefaultAsync(g => g.Id == dto.StateGroupId.Value, ct);
             if (newGroup is null)
-                return BadRequest(new { error = "Grupo de estados no encontrado" });
+                return BadRequest(new { error = "State group not found." });
 
             var defaultState = newGroup.States.FirstOrDefault(s => s.IsDefault && !s.IsDeleted);
             if (defaultState is null)

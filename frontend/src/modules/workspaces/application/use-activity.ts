@@ -6,4 +6,7 @@ export const useWorkspaceActivity = (workspaceSlug: string, page = 1) =>
         queryKey: ['workspace-activity', workspaceSlug, page],
         queryFn: () => activityRepository.getAll(workspaceSlug, page),
         enabled: !!workspaceSlug,
+        // Activity feed is real-time critical.
+        staleTime: 0,
+        refetchOnWindowFocus: true,
     });

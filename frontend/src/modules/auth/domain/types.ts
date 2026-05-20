@@ -16,23 +16,3 @@ export interface User {
     onboarding?: OnboardingState;
 }
 
-export interface ApiToken {
-    id: string;
-    name: string;
-    tokenPrefix: string;
-    expiresAt?: string;
-    createdAt: string;
-}
-
-export interface CreateApiTokenData {
-    name: string;
-    expiresAt?: string;
-}
-
-export interface CreateApiTokenResponse {
-    id: string;
-    name: string;
-    token: string;
-    tokenPrefix: string;
-    expiresAt?: string;
-}

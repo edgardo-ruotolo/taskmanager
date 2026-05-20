@@ -1,22 +1,31 @@
 import type React from 'react';
 import { useState, useMemo, useRef, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useVirtualizer } from '@tanstack/react-virtual';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import {
     Plus,
     LayoutList,
     Columns,
     GripVertical,
     CircleDashed,
+    Lock,
+    ChevronDown,
+    ChevronRight,
+    Filter,
+    ArrowUpDown,
+    Layers,
+    Sparkles,
 } from 'lucide-react';
+import { toast } from 'sonner';
 import {
     DndContext,
     DragOverlay,
     PointerSensor,
     useSensor,
     useSensors,
-    closestCorners,
+    closestCenter,
 } from '@dnd-kit/core';
-import type { DragEndEvent, DragStartEvent } from '@dnd-kit/core';
+import type { DragEndEvent, DragStartEvent, DragOverEvent } from '@dnd-kit/core';
 import {
     SortableContext,
     verticalListSortingStrategy,
@@ -36,9 +45,14 @@ import { useCompany } from '@/modules/companies/application/use-companies';
 import type { Issue } from '../../domain/types';
 import type { State } from '@/modules/states/domain/types';
 import { PRIORITY_LABELS } from '../../domain/types';
+import {
+    createDndAnnouncements,
+    dndScreenReaderInstructions,
+} from '@/shared/lib/dnd-accessibility';
 import type { IssuePriority } from '../../domain/types';
 import { CreateIssueDialog } from '../components/CreateIssueDialog';
 import { IssueRow } from '../components/IssueRow';
+import { IssueActionsMenu } from '../components/IssueActionsMenu';
 import { IssueFilters } from '../components/IssueFilters';
 import type { IssueFilter } from '../components/IssueFilters';
 import { IssueSpreadsheetView } from '../components/IssueSpreadsheetView';
@@ -50,6 +64,7 @@ import {
     DEFAULT_DISPLAY_OPTIONS,
 } from '../components/DisplayOptionsPanel';
 import type { DisplayOptions, GroupByOption } from '../components/DisplayOptionsPanel';
+import { useIssuesUiStore } from '../../application/issues-ui-store';
 
 type ViewMode = 'list' | 'kanban' | 'spreadsheet' | 'gantt' | 'calendar';
 
@@ -68,6 +83,28 @@ type PriorityDotValue = 'urgent' | 'high' | 'medium' | 'low' | 'none';
 function mapPriority(priority: number): PriorityDotValue {
     const MAP: Record<number, PriorityDotValue> = { 1: 'urgent', 2: 'high', 3: 'medium', 4: 'low', 0: 'none' };
     return MAP[priority] ?? 'none';
+}
+
+/* ── Compact ghost button used in filter bar ── */
+interface GhostButtonProps {
+    icon?: React.ReactNode;
+    children: React.ReactNode;
+    onClick?: () => void;
+    disabled?: boolean;
+}
+
+function GhostButton({ icon, children, onClick, disabled }: GhostButtonProps): React.ReactElement {
+    return (
+        <button
+            type="button"
+            onClick={onClick}
+            disabled={disabled}
+            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[5px] text-[12px] font-medium text-[var(--neutral-1100)] hover:bg-[var(--neutral-200)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+        >
+            {icon}
+            {children}
+        </button>
+    );
 }
 
 /* ── Loading skeleton ── */
@@ -176,10 +213,12 @@ function QuickAddRow({ workspaceSlug, companyId, defaultStateId }: QuickAddRowPr
 interface SortableIssueRowProps {
     issue: Issue;
     companyIdentifier?: string;
+    workspaceSlug?: string;
+    companyId?: string;
     onClick: () => void;
 }
 
-function SortableIssueRow({ issue, companyIdentifier, onClick }: SortableIssueRowProps): React.ReactElement {
+function SortableIssueRow({ issue, companyIdentifier, workspaceSlug, companyId, onClick }: SortableIssueRowProps): React.ReactElement {
     const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: issue.id });
 
     const style: React.CSSProperties = {
@@ -200,8 +239,55 @@ function SortableIssueRow({ issue, companyIdentifier, onClick }: SortableIssueRo
                 <GripVertical size={14} />
             </button>
             <div className="flex-1 pl-5">
-                <IssueRow issue={issue} companyIdentifier={companyIdentifier} onClick={onClick} />
+                <IssueRow
+                    issue={issue}
+                    companyIdentifier={companyIdentifier}
+                    workspaceSlug={workspaceSlug}
+                    companyId={companyId}
+                    onClick={onClick}
+                />
             </div>
+        </div>
+    );
+}
+
+/* ── Issue list header (sticky, mono uppercase column labels) ── */
+const LIST_GRID_TEMPLATE = '28px 32px 80px 1fr 110px 120px 110px 60px 36px 100px 60px';
+
+function IssueListHeader(): React.ReactElement {
+    const headers: { key: string; label: string }[] = [
+        { key: 'check', label: '' },
+        { key: 'pip', label: '' },
+        { key: 'id', label: 'ID' },
+        { key: 'title', label: 'Título' },
+        { key: 'label', label: 'Etiqueta' },
+        { key: 'cycle', label: 'Ciclo' },
+        { key: 'due', label: 'Vence' },
+        { key: 'est', label: 'Est.' },
+        { key: 'prio', label: 'P' },
+        { key: 'sub', label: 'Sub-issues' },
+        { key: 'assigned', label: 'Asignado' },
+    ];
+    return (
+        <div
+            className="sticky top-0 z-10 border-b border-[var(--neutral-400)]"
+            style={{
+                display: 'grid',
+                gridTemplateColumns: LIST_GRID_TEMPLATE,
+                alignItems: 'center',
+                gap: 10,
+                padding: '8px 24px',
+                background: 'var(--neutral-200)',
+            }}
+        >
+            {headers.map((h) => (
+                <span
+                    key={h.key}
+                    className="font-mono text-[10px] text-[var(--neutral-600)] uppercase tracking-[0.1em]"
+                >
+                    {h.label}
+                </span>
+            ))}
         </div>
     );
 }
@@ -217,7 +303,14 @@ interface ListGroupSectionProps {
     defaultStateId: string;
     onIssueClick: (issue: Issue) => void;
     showQuickAdd?: boolean;
+    groupKey: string;
+    statePipState?: StatePipState;
+    isExpanded: boolean;
+    onToggleExpanded: () => void;
 }
+
+// Above this row count we switch to a windowed renderer to keep the main thread free.
+const VIRTUALIZATION_THRESHOLD = 50;
 
 function ListGroupSection({
     label,
@@ -229,42 +322,139 @@ function ListGroupSection({
     defaultStateId,
     onIssueClick,
     showQuickAdd = false,
+    statePipState,
+    isExpanded,
+    onToggleExpanded,
 }: ListGroupSectionProps): React.ReactElement {
     return (
-        <div className="flex flex-col animate-fade-in mb-4">
+        <div className="flex flex-col animate-fade-in">
             {/* Group header */}
-            <div className="flex items-center gap-2 px-2 h-8 mb-1">
-                {color && (
+            <div
+                className="flex items-center gap-2.5 px-6 pt-3.5 pb-2"
+                style={{ background: 'var(--neutral-200)' }}
+            >
+                <button
+                    type="button"
+                    onClick={onToggleExpanded}
+                    className="flex size-4 items-center justify-center text-[var(--neutral-600)] hover:text-[var(--neutral-1100)] transition-colors"
+                    aria-label={isExpanded ? `Colapsar ${label}` : `Expandir ${label}`}
+                    aria-expanded={isExpanded}
+                >
+                    {isExpanded ? (
+                        <ChevronDown size={14} aria-hidden="true" />
+                    ) : (
+                        <ChevronRight size={14} aria-hidden="true" />
+                    )}
+                </button>
+                {statePipState ? (
+                    <StatePip state={statePipState} size={14} />
+                ) : color ? (
                     <span
-                        className="w-1.5 h-1.5 rounded-full shrink-0"
+                        className="w-2 h-2 rounded-full shrink-0"
                         style={{ backgroundColor: color }}
                         aria-hidden="true"
                     />
-                )}
-                <span className="text-[11px] font-semibold text-[var(--neutral-900)] flex-1 uppercase tracking-wider">{label}</span>
-                <span className="text-[10px] font-mono text-[var(--neutral-600)] tabular-nums">
+                ) : null}
+                <span className="text-[14px] font-medium tracking-[-0.01em] text-[var(--neutral-1200)]">
+                    {label}
+                </span>
+                <span className="font-mono text-[11px] text-[var(--neutral-600)] tabular-nums">
                     {issues.length}
                 </span>
-            </div>
-            
-            <div className="bg-canvas border-t border-[var(--neutral-300)]">
-                <SortableContext items={issues.map((i) => i.id)} strategy={verticalListSortingStrategy}>
-                    {issues.map((issue) => (
-                        <SortableIssueRow
-                            key={issue.id}
-                            issue={issue}
-                            companyIdentifier={companyIdentifier}
-                            onClick={() => onIssueClick(issue)}
-                        />
-                    ))}
-                </SortableContext>
-                {showQuickAdd && defaultStateId && (
-                    <QuickAddRow
-                        workspaceSlug={workspaceSlug}
-                        companyId={companyId}
-                        defaultStateId={defaultStateId}
-                    />
+                <span className="flex-1" />
+                {showQuickAdd && isExpanded && defaultStateId && (
+                    <span className="text-[11px] text-[var(--neutral-600)]">+ Añadir</span>
                 )}
+            </div>
+
+            {isExpanded && (
+                <div>
+                    <SortableContext items={issues.map((i) => i.id)} strategy={verticalListSortingStrategy}>
+                        {issues.length > VIRTUALIZATION_THRESHOLD ? (
+                            <VirtualizedIssueList
+                                issues={issues}
+                                companyIdentifier={companyIdentifier}
+                                workspaceSlug={workspaceSlug}
+                                companyId={companyId}
+                                onIssueClick={onIssueClick}
+                            />
+                        ) : (
+                            issues.map((issue) => (
+                                <SortableIssueRow
+                                    key={issue.id}
+                                    issue={issue}
+                                    companyIdentifier={companyIdentifier}
+                                    workspaceSlug={workspaceSlug}
+                                    companyId={companyId}
+                                    onClick={() => onIssueClick(issue)}
+                                />
+                            ))
+                        )}
+                    </SortableContext>
+                    {showQuickAdd && defaultStateId && (
+                        <QuickAddRow
+                            workspaceSlug={workspaceSlug}
+                            companyId={companyId}
+                            defaultStateId={defaultStateId}
+                        />
+                    )}
+                </div>
+            )}
+        </div>
+    );
+}
+
+interface VirtualizedIssueListProps {
+    issues: Issue[];
+    companyIdentifier?: string;
+    workspaceSlug: string;
+    companyId: string;
+    onIssueClick: (issue: Issue) => void;
+}
+
+function VirtualizedIssueList({
+    issues,
+    companyIdentifier,
+    workspaceSlug,
+    companyId,
+    onIssueClick,
+}: VirtualizedIssueListProps): React.ReactElement {
+    const parentRef = useRef<HTMLDivElement | null>(null);
+
+    const rowVirtualizer = useVirtualizer({
+        count: issues.length,
+        getScrollElement: () => parentRef.current,
+        estimateSize: () => 44, // IssueRow h-11 = 44px
+        overscan: 8,
+    });
+
+    return (
+        <div ref={parentRef} className="relative max-h-[70vh] overflow-y-auto">
+            <div style={{ height: rowVirtualizer.getTotalSize(), position: 'relative', width: '100%' }}>
+                {rowVirtualizer.getVirtualItems().map((virtualRow) => {
+                    const issue = issues[virtualRow.index];
+                    return (
+                        <div
+                            key={issue.id}
+                            data-index={virtualRow.index}
+                            style={{
+                                position: 'absolute',
+                                top: 0,
+                                left: 0,
+                                width: '100%',
+                                transform: `translateY(${virtualRow.start}px)`,
+                            }}
+                        >
+                            <SortableIssueRow
+                                issue={issue}
+                                companyIdentifier={companyIdentifier}
+                                workspaceSlug={workspaceSlug}
+                                companyId={companyId}
+                                onClick={() => onIssueClick(issue)}
+                            />
+                        </div>
+                    );
+                })}
             </div>
         </div>
     );
@@ -354,29 +544,58 @@ function ListView({
     };
 
     const groups = buildGroups(groupBy, orderedIssues, states);
+    const { expandedGroups, toggleGroupExpanded } = useIssuesUiStore();
+
+    const stateGroupByStateId = useMemo(() => {
+        const map = new Map<string, string>();
+        for (const s of states) map.set(s.id, s.category ?? '');
+        return map;
+    }, [states]);
+
+    const listAnnouncements = useMemo(
+        () =>
+            createDndAnnouncements({
+                item: (id) => issues.find((i) => i.id === String(id))?.title ?? 'desconocida',
+            }),
+        [issues],
+    );
 
     return (
         <DndContext
             sensors={sensors}
-            collisionDetection={closestCorners}
+            collisionDetection={closestCenter}
             onDragStart={handleDragStart}
             onDragEnd={handleDragEnd}
+            accessibility={{
+                announcements: listAnnouncements,
+                screenReaderInstructions: dndScreenReaderInstructions,
+            }}
         >
-            <div className="space-y-4 animate-fade-in pb-12">
-                {groups.map((group, idx) => (
-                    <ListGroupSection
-                        key={group.key}
-                        label={group.label}
-                        color={group.color}
-                        issues={group.issues}
-                        companyIdentifier={companyIdentifier}
-                        workspaceSlug={workspaceSlug}
-                        companyId={companyId}
-                        defaultStateId={defaultStateId}
-                        onIssueClick={onIssueClick}
-                        showQuickAdd={idx === 0}
-                    />
-                ))}
+            <div className="animate-fade-in pb-12 bg-canvas border-x border-b border-[var(--neutral-300)] rounded-md overflow-hidden">
+                <IssueListHeader />
+                {groups.map((group, idx) => {
+                    const fullKey = `${companyId}:${group.key}`;
+                    const isExpanded = expandedGroups[fullKey] !== false;
+                    const stateGroupLabel = groupBy === 'state' ? stateGroupByStateId.get(group.key) : undefined;
+                    return (
+                        <ListGroupSection
+                            key={group.key}
+                            label={group.label}
+                            color={group.color}
+                            issues={group.issues}
+                            companyIdentifier={companyIdentifier}
+                            workspaceSlug={workspaceSlug}
+                            companyId={companyId}
+                            defaultStateId={defaultStateId}
+                            onIssueClick={onIssueClick}
+                            showQuickAdd={idx === 0}
+                            groupKey={fullKey}
+                            statePipState={toStatePipState(stateGroupLabel)}
+                            isExpanded={isExpanded}
+                            onToggleExpanded={() => toggleGroupExpanded(fullKey)}
+                        />
+                    );
+                })}
             </div>
 
             <DragOverlay>
@@ -398,48 +617,81 @@ function ListView({
 interface KanbanCardProps {
     issue: Issue;
     companyIdentifier?: string;
+    workspaceSlug?: string;
+    companyId?: string;
     onClick: () => void;
     isDragOverlay?: boolean;
 }
 
-function KanbanCard({ issue, companyIdentifier, onClick, isDragOverlay = false }: KanbanCardProps): React.ReactElement {
+function KanbanCard({ issue, companyIdentifier, workspaceSlug = '', companyId = '', onClick, isDragOverlay = false }: KanbanCardProps): React.ReactElement {
+    const [editingIssue, setEditingIssue] = useState<Issue | null>(null);
     const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: issue.id });
 
     const style: React.CSSProperties = {
-        transform: CSS.Transform.toString(transform),
-        transition,
-        opacity: isDragging ? 0.4 : 1,
+        transform: CSS.Translate.toString(transform),
+        transition: isDragging ? 'none' : transition,
+        opacity: isDragging ? 0 : 1,
     };
 
     return (
-        <button
-            type="button"
-            ref={isDragOverlay ? undefined : setNodeRef}
-            style={isDragOverlay ? undefined : style}
-            {...(isDragOverlay ? {} : attributes)}
-            {...(isDragOverlay ? {} : listeners)}
-            className={cn(
-                'w-full text-left bg-white rounded-lg border border-[var(--neutral-300)] p-3.5 cursor-grab active:cursor-grabbing hover:border-[var(--neutral-400)] hover:shadow-[0_2px_4px_rgba(0,0,0,0.04)] transition-all duration-150',
-                isDragOverlay && 'shadow-[0_12px_24px_rgba(0,0,0,0.1)] rotate-1 border-[var(--brand-700)]/20',
-            )}
-            onClick={onClick}
-        >
-            <div className="flex items-center gap-2 mb-2">
-                <StatePip state={toStatePipState(issue.stateGroup)} size={13} />
-                <span className="text-[10px] font-mono text-[var(--neutral-600)] tracking-tight">
-                    {companyIdentifier ?? 'ISS'}-{issue.sequenceId}
-                </span>
-            </div>
-            <p className="text-[13.5px] font-medium text-[var(--neutral-1200)] line-clamp-2 mb-3 tracking-[-0.01em]">{issue.title}</p>
-            <div className="flex items-center justify-between gap-2 mt-auto pt-1">
-                <PriorityDot priority={mapPriority(issue.priority)} size={11} />
-                {issue.dueDate && (
-                    <span className="text-[10px] font-mono text-[var(--neutral-600)] uppercase tracking-wider">
-                        {new Date(issue.dueDate).toLocaleDateString('es-ES', { day: '2-digit', month: 'short' })}
+        <>
+            {/* biome-ignore lint/a11y/useSemanticElements: interactive menu buttons inside prevent using <button> */}
+            <div
+                ref={isDragOverlay ? undefined : setNodeRef}
+                style={isDragOverlay ? undefined : style}
+                {...(isDragOverlay ? {} : attributes)}
+                {...(isDragOverlay ? {} : listeners)}
+                role="button"
+                tabIndex={0}
+                onClick={onClick}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onClick(); }}
+                className={cn(
+                    'w-full text-left bg-white rounded-lg border border-[var(--neutral-300)] p-3.5 cursor-grab active:cursor-grabbing hover:border-[var(--neutral-400)] hover:shadow-[0_2px_4px_rgba(0,0,0,0.04)] transition-all duration-150 relative group',
+                    isDragOverlay && 'shadow-[0_12px_24px_rgba(0,0,0,0.1)] rotate-1 border-[var(--brand-700)]/20',
+                )}
+            >
+                <div className="flex items-center gap-2 mb-2">
+                    <StatePip state={toStatePipState(issue.stateGroup)} size={13} />
+                    <span className="text-[10px] font-mono text-[var(--neutral-600)] tracking-tight">
+                        {companyIdentifier ?? 'ISS'}-{issue.sequenceId}
                     </span>
+                    {issue.requiresAdminApproval && (
+                        <Lock size={11} className="text-amber-500 ml-auto shrink-0" />
+                    )}
+                </div>
+                <p className="text-[13.5px] font-medium text-[var(--neutral-1200)] line-clamp-2 mb-3 tracking-[-0.01em]">{issue.title}</p>
+                <div className="flex items-center justify-between gap-2 mt-auto pt-1">
+                    <PriorityDot priority={mapPriority(issue.priority)} size={11} />
+                    {issue.dueDate && (
+                        <span className="text-[10px] font-mono text-[var(--neutral-600)] uppercase tracking-wider">
+                            {new Date(issue.dueDate).toLocaleDateString('es-ES', { day: '2-digit', month: 'short' })}
+                        </span>
+                    )}
+                </div>
+
+                {!isDragOverlay && workspaceSlug && companyId && (
+                    <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <IssueActionsMenu
+                            issue={issue}
+                            workspaceSlug={workspaceSlug}
+                            companyId={companyId}
+                            onEdit={() => setEditingIssue(issue)}
+                        />
+                    </div>
                 )}
             </div>
-        </button>
+
+            {editingIssue && (
+                <CreateIssueDialog
+                    issue={editingIssue}
+                    open={!!editingIssue}
+                    onOpenChange={(open) => { if (!open) setEditingIssue(null); }}
+                    workspaceSlug={workspaceSlug}
+                    companyId={companyId}
+                    trigger={<span />}
+                />
+            )}
+        </>
     );
 }
 
@@ -448,10 +700,12 @@ interface KanbanColumnProps {
     state: State;
     issues: Issue[];
     companyIdentifier?: string;
+    workspaceSlug: string;
+    companyId: string;
     onIssueClick: (issue: Issue) => void;
 }
 
-function KanbanColumn({ state, issues, companyIdentifier, onIssueClick }: KanbanColumnProps): React.ReactElement {
+function KanbanColumn({ state, issues, companyIdentifier, workspaceSlug, companyId, onIssueClick }: KanbanColumnProps): React.ReactElement {
     const { setNodeRef, isOver } = useDroppable({ id: state.id });
 
     return (
@@ -484,6 +738,8 @@ function KanbanColumn({ state, issues, companyIdentifier, onIssueClick }: Kanban
                                 key={issue.id}
                                 issue={issue}
                                 companyIdentifier={companyIdentifier}
+                                workspaceSlug={workspaceSlug}
+                                companyId={companyId}
                                 onClick={() => onIssueClick(issue)}
                             />
                         ))}
@@ -506,57 +762,108 @@ interface KanbanViewProps {
 
 function KanbanView({ issues, states, companyIdentifier, onIssueClick, workspaceSlug, companyId }: KanbanViewProps): React.ReactElement {
     const [activeIssueId, setActiveIssueId] = useState<string | null>(null);
+    const [localIssues, setLocalIssues] = useState<Issue[]>(issues);
     const { mutate: updateIssue } = useUpdateIssue(workspaceSlug, companyId);
 
-    const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
+    // Sync from server only when server data changes (not during drag)
+    useEffect(() => {
+        setLocalIssues(issues);
+    }, [issues]);
+
+    const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
     const activeIssue = activeIssueId ? issues.find((i) => i.id === activeIssueId) : null;
 
     const handleDragStart = (event: DragStartEvent): void => {
         setActiveIssueId(String(event.active.id));
     };
 
-    const handleDragEnd = (event: DragEndEvent): void => {
+    const handleDragOver = (event: DragOverEvent): void => {
         const { active, over } = event;
-        setActiveIssueId(null);
         if (!over) return;
 
-        const issueId = String(active.id);
+        const activeId = String(active.id);
         const overId = String(over.id);
-        const targetState = states.find((s) => s.id === overId);
-        let newStateId: string | undefined;
 
-        if (targetState) {
-            newStateId = targetState.id;
-        } else {
-            const overIssue = issues.find((i) => i.id === overId);
-            newStateId = overIssue?.stateId;
+        const targetStateId =
+            states.find((s) => s.id === overId)?.id ??
+            localIssues.find((i) => i.id === overId)?.stateId;
+
+        if (!targetStateId) return;
+
+        const draggingIssue = localIssues.find((i) => i.id === activeId);
+        if (!draggingIssue || draggingIssue.stateId === targetStateId) return;
+
+        setLocalIssues((prev) =>
+            prev.map((i) => (i.id === activeId ? { ...i, stateId: targetStateId } : i)),
+        );
+    };
+
+    const handleDragEnd = (event: DragEndEvent): void => {
+        const { active } = event;
+        const issueId = String(active.id);
+
+        const movedIssue = localIssues.find((i) => i.id === issueId);
+        const originalIssue = issues.find((i) => i.id === issueId);
+
+        setActiveIssueId(null);
+
+        if (!movedIssue || !originalIssue || movedIssue.stateId === originalIssue.stateId) return;
+
+        if (movedIssue.requiresAdminApproval && movedIssue.approvalRequiredStateIds.includes(movedIssue.stateId)) {
+            toast.error('Esta tarea requiere aprobación de Admin o Lead para moverse a este estado.');
         }
 
-        if (!newStateId) return;
-        const issue = issues.find((i) => i.id === issueId);
-        if (!issue || issue.stateId === newStateId) return;
-        updateIssue({ issueId, data: { stateId: newStateId } });
+        updateIssue(
+            { issueId, data: { stateId: movedIssue.stateId } },
+            { onError: () => setLocalIssues(issues) },
+        );
     };
+
+    const kanbanAnnouncements = useMemo(
+        () =>
+            createDndAnnouncements({
+                item: (id) => localIssues.find((i) => i.id === String(id))?.title ?? 'desconocida',
+                container: (id) => {
+                    if (id == null) return 'fuera de las columnas';
+                    const state = states.find((s) => s.id === String(id));
+                    if (state) return `columna ${state.name}`;
+                    const issue = localIssues.find((i) => i.id === String(id));
+                    if (issue) {
+                        const target = states.find((s) => s.id === issue.stateId);
+                        return target ? `columna ${target.name}` : 'columna desconocida';
+                    }
+                    return 'columna desconocida';
+                },
+            }),
+        [localIssues, states],
+    );
 
     return (
         <DndContext
             sensors={sensors}
-            collisionDetection={closestCorners}
+            collisionDetection={closestCenter}
             onDragStart={handleDragStart}
+            onDragOver={handleDragOver}
             onDragEnd={handleDragEnd}
+            accessibility={{
+                announcements: kanbanAnnouncements,
+                screenReaderInstructions: dndScreenReaderInstructions,
+            }}
         >
             <div className="flex gap-6 overflow-x-auto pb-12 pt-2 animate-fade-in scrollbar-hide">
                 {states.map((state) => (
                     <KanbanColumn
                         key={state.id}
                         state={state}
-                        issues={issues.filter((i) => i.stateId === state.id)}
+                        issues={localIssues.filter((i) => i.stateId === state.id)}
                         companyIdentifier={companyIdentifier}
+                        workspaceSlug={workspaceSlug}
+                        companyId={companyId}
                         onIssueClick={onIssueClick}
                     />
                 ))}
             </div>
-            <DragOverlay>
+            <DragOverlay dropAnimation={{ duration: 180, easing: 'ease' }}>
                 {activeIssue ? (
                     <KanbanCard
                         issue={activeIssue}
@@ -714,8 +1021,26 @@ export const IssuesPage = (): React.ReactElement => {
     const { isLoading, allIssues, sortedStates, defaultStateId, companyIdentifier } =
         useIssuesPageData(workspaceSlug, companyId);
 
+    const [searchParams, setSearchParams] = useSearchParams();
     const [viewMode, setViewMode] = useState<ViewMode>('list');
-    const [filters, setFilters] = useState<IssueFilter>({});
+
+    const filters = useMemo<IssueFilter>(() => {
+        const raw = searchParams.get('filters');
+        if (!raw) return {};
+        try { return JSON.parse(raw) as IssueFilter; } catch { return {}; }
+    }, [searchParams]);
+
+    const setFilters = (next: IssueFilter): void => {
+        setSearchParams((prev) => {
+            const params = new URLSearchParams(prev);
+            if (Object.keys(next).length === 0) {
+                params.delete('filters');
+            } else {
+                params.set('filters', JSON.stringify(next));
+            }
+            return params;
+        }, { replace: true });
+    };
     const [displayOptions, setDisplayOptions] = useState<DisplayOptions>(DEFAULT_DISPLAY_OPTIONS);
     const [displayPanelOpen, setDisplayPanelOpen] = useState(false);
     const [peekIssueId, setPeekIssueId] = useState<string | null>(null);
@@ -734,57 +1059,105 @@ export const IssuesPage = (): React.ReactElement => {
 
     const hasIssues = !isLoading && allIssues.length > 0;
 
+    const activeFiltersCount =
+        (filters.priority?.length ?? 0) +
+        (filters.stateId?.length ?? 0) +
+        (filters.assigneeId?.length ?? 0) +
+        (filters.labelId?.length ?? 0) +
+        (filters.dueDate ? 1 : 0) +
+        (filters.startDate ? 1 : 0) +
+        (filters.createdDate ? 1 : 0);
+
+    const groupByLabelMap: Record<GroupByOption, string> = {
+        none: 'Sin agrupar',
+        state: 'Estado',
+        priority: 'Prioridad',
+        assignee: 'Asignado',
+    };
+
     return (
-        <div className="p-6 md:p-8">
-            <div className="max-w-6xl mx-auto">
-                {/* Header */}
-                <div className="flex items-center justify-between mb-5 px-1">
-                    <div className="flex items-center gap-3">
-                        <h1 className="text-[20px] font-semibold text-[var(--neutral-1200)] tracking-[-0.02em]">Tareas</h1>
-                        {hasIssues && (
-                            <span className="text-[10.5px] font-mono font-medium text-[var(--neutral-600)] bg-[var(--neutral-200)] px-2 py-0.5 rounded-full uppercase tracking-wider">
-                                {issues.length}
-                            </span>
-                        )}
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                        {/* Display options / View toggle integrated */}
-                        <div className="flex items-center bg-[var(--neutral-200)] border border-[var(--neutral-300)] rounded-md p-[3px] gap-0.5">
-                            <ViewToggleButton mode="list" current={viewMode} label="Lista" onClick={() => setViewMode('list')}>
-                                <LayoutList size={14} />
-                            </ViewToggleButton>
-                            <ViewToggleButton mode="kanban" current={viewMode} label="Tablero" onClick={() => setViewMode('kanban')}>
-                                <Columns size={14} />
-                            </ViewToggleButton>
-                        </div>
-
-                        <div className="h-4 w-px bg-[var(--neutral-300)] mx-1" />
-
-                        <CreateIssueDialog
-                            workspaceSlug={workspaceSlug}
-                            companyId={companyId}
-                            trigger={
-                                <Button variant="default" size="sm" className="gap-1.5 h-8 bg-[var(--neutral-1200)] hover:bg-[var(--neutral-1000)] text-[#f0eadf]">
-                                    <Plus size={14} />
-                                    Nuevo
-                                </Button>
-                            }
-                        />
-                    </div>
-                </div>
-
-                {/* Filters */}
+        <div className="flex flex-col h-full">
+            {/* Row 1 — Title, view switcher, actions */}
+            <div
+                className="flex items-center gap-2.5 px-6 py-2.5 border-b border-[var(--neutral-300)]"
+                style={{ background: 'var(--neutral-100)' }}
+            >
+                <span className="text-[22px] font-medium tracking-[-0.03em] text-[var(--neutral-1200)]">
+                    Issues
+                    {hasIssues && (
+                        <span className="text-[var(--neutral-600)] font-normal"> · {issues.length}</span>
+                    )}
+                </span>
+                <span className="flex-1" />
                 {hasIssues && (
-                    <div className="mb-4">
-                        <IssueFilters
-                            filters={filters}
-                            workspaceSlug={workspaceSlug}
-                            companyId={companyId}
-                            onChange={setFilters}
-                        />
-                    </div>
+                    <>
+                        <GhostButton icon={<Filter size={13} />} disabled>
+                            Filtros{activeFiltersCount > 0 ? ` · ${activeFiltersCount}` : ''}
+                        </GhostButton>
+                        <GhostButton
+                            icon={<ArrowUpDown size={13} />}
+                            onClick={() => setDisplayPanelOpen(true)}
+                        >
+                            Ordenar
+                        </GhostButton>
+                        <GhostButton
+                            icon={<Layers size={13} />}
+                            onClick={() => setDisplayPanelOpen(true)}
+                        >
+                            Agrupar · {groupByLabelMap[displayOptions.groupBy]}
+                        </GhostButton>
+                        <span className="w-px h-[18px] bg-[var(--neutral-400)] mx-1" aria-hidden="true" />
+                        <GhostButton
+                            icon={<Sparkles size={13} className="text-[var(--brand-700)]" />}
+                            disabled
+                        >
+                            Pregunta a IA
+                        </GhostButton>
+                        <span className="w-px h-[18px] bg-[var(--neutral-400)] mx-1" aria-hidden="true" />
+                    </>
                 )}
+                <div className="flex items-center bg-[var(--neutral-200)] border border-[var(--neutral-300)] rounded-md p-[3px] gap-0.5">
+                    <ViewToggleButton mode="list" current={viewMode} label="Lista" onClick={() => setViewMode('list')}>
+                        <LayoutList size={14} />
+                    </ViewToggleButton>
+                    <ViewToggleButton mode="kanban" current={viewMode} label="Tablero" onClick={() => setViewMode('kanban')}>
+                        <Columns size={14} />
+                    </ViewToggleButton>
+                </div>
+                <CreateIssueDialog
+                    workspaceSlug={workspaceSlug}
+                    companyId={companyId}
+                    trigger={
+                        <Button
+                            variant="default"
+                            size="sm"
+                            className="gap-1.5 h-8 bg-[var(--neutral-1200)] hover:bg-[var(--neutral-1000)] text-[#f0eadf]"
+                        >
+                            <Plus size={14} />
+                            Issue
+                        </Button>
+                    }
+                />
+            </div>
+
+            {/* Row 2 — Existing IssueFilters bar (popovers + chips) */}
+            {hasIssues && (
+                <div
+                    className="px-6 py-2 border-b border-[var(--neutral-300)]"
+                    style={{ background: 'var(--neutral-200)' }}
+                >
+                    <IssueFilters
+                        filters={filters}
+                        workspaceSlug={workspaceSlug}
+                        companyId={companyId}
+                        onChange={setFilters}
+                    />
+                </div>
+            )}
+
+            <div className="flex-1 overflow-auto p-6 md:p-8 md:pt-6">
+                <div className="max-w-6xl mx-auto">
+
 
                 {isLoading && <LoadingSkeleton />}
 
@@ -827,6 +1200,7 @@ export const IssuesPage = (): React.ReactElement => {
                 {hasIssues && viewMode === 'calendar' && (
                     <IssueCalendarView issues={issues} onIssueClick={goToIssue} />
                 )}
+                </div>
             </div>
 
             {/* Peek overview */}

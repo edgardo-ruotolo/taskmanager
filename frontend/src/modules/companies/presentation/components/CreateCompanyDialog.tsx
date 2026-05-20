@@ -109,11 +109,14 @@ export const CreateCompanyDialog = ({
     const [identifierTouched, setIdentifierTouched] = useState(false);
     const [featuresOpen, setFeaturesOpen] = useState(false);
     const [newCompany, setNewCompany] = useState<Company | null>(null);
-    const { mutate, isPending } = useCreateCompany(workspaceSlug);
 
     const form = useForm<CreateCompanyFormData>({
         resolver: zodResolver(createCompanySchema),
         defaultValues: { name: '', identifier: '', description: '' },
+    });
+
+    const { mutate, isPending } = useCreateCompany<CreateCompanyFormData>(workspaceSlug, {
+        setError: form.setError,
     });
 
     const nameValue = form.watch('name');

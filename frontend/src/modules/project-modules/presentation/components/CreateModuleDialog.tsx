@@ -5,6 +5,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import {
     Dialog,
     DialogContent,
+    DialogDescription,
     DialogHeader,
     DialogTitle,
     DialogTrigger,
@@ -42,11 +43,14 @@ export const CreateModuleDialog = ({
     trigger,
 }: CreateModuleDialogProps): React.ReactElement => {
     const [open, setOpen] = useState(false);
-    const { mutate, isPending } = useCreateModule(workspaceSlug, companyId);
 
     const form = useForm<CreateModuleFormData>({
         resolver: zodResolver(createModuleSchema),
         defaultValues: { name: '', description: '', status: 'Backlog' },
+    });
+
+    const { mutate, isPending } = useCreateModule<CreateModuleFormData>(workspaceSlug, companyId, {
+        setError: form.setError,
     });
 
     const onSubmit = (data: CreateModuleFormData): void => {
@@ -71,6 +75,9 @@ export const CreateModuleDialog = ({
             <DialogContent className="bg-surface-1 border-subtle text-primary sm:max-w-md">
                 <DialogHeader>
                     <DialogTitle className="text-primary">Nuevo Módulo</DialogTitle>
+                    <DialogDescription className="sr-only">
+                        Agrupa issues por tema o entrega. Define nombre, descripción, fechas y líder.
+                    </DialogDescription>
                 </DialogHeader>
                 <Form {...form}>
                     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">

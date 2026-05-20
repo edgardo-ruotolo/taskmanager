@@ -44,7 +44,20 @@ export const useCreateComment = (workspaceSlug: string, companyId: string, issue
             void qc.invalidateQueries({ queryKey: activitiesKey(workspaceSlug, companyId, issueId) });
             toast.success('Comentario agregado');
         },
-        onError: () => toast.error('Error al agregar el comentario'),
+        onError: (error: unknown) => { const axiosErr = error as { response?: { data?: { message?: string } } }; toast.error(axiosErr?.response?.data?.message ?? 'Error al agregar el comentario'); },
+    });
+};
+
+export const useUpdateComment = (workspaceSlug: string, companyId: string, issueId: string) => {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: ({ commentId, body }: { commentId: string; body: string }) =>
+            issueRepo.updateComment(workspaceSlug, companyId, issueId, commentId, { body }),
+        onSuccess: () => {
+            void qc.invalidateQueries({ queryKey: commentsKey(workspaceSlug, companyId, issueId) });
+            toast.success('Comentario actualizado');
+        },
+        onError: (err: unknown) => { const e = err as { response?: { data?: { message?: string } } }; toast.error(e?.response?.data?.message ?? 'Error al actualizar el comentario'); },
     });
 };
 
@@ -58,7 +71,7 @@ export const useDeleteComment = (workspaceSlug: string, companyId: string, issue
             void qc.invalidateQueries({ queryKey: activitiesKey(workspaceSlug, companyId, issueId) });
             toast.success('Comentario eliminado');
         },
-        onError: () => toast.error('Error al eliminar el comentario'),
+        onError: (error: unknown) => { const axiosErr = error as { response?: { data?: { message?: string } } }; toast.error(axiosErr?.response?.data?.message ?? 'Error al eliminar el comentario'); },
     });
 };
 
@@ -78,7 +91,7 @@ export const useAddReaction = (workspaceSlug: string, companyId: string, issueId
             void qc.invalidateQueries({ queryKey: reactionsKey(workspaceSlug, companyId, issueId) });
             void qc.invalidateQueries({ queryKey: activitiesKey(workspaceSlug, companyId, issueId) });
         },
-        onError: () => toast.error('Error al agregar la reacción'),
+        onError: (error: unknown) => { const axiosErr = error as { response?: { data?: { message?: string } } }; toast.error(axiosErr?.response?.data?.message ?? 'Error al agregar la reacción'); },
     });
 };
 
@@ -91,7 +104,7 @@ export const useRemoveReaction = (workspaceSlug: string, companyId: string, issu
             void qc.invalidateQueries({ queryKey: reactionsKey(workspaceSlug, companyId, issueId) });
             void qc.invalidateQueries({ queryKey: activitiesKey(workspaceSlug, companyId, issueId) });
         },
-        onError: () => toast.error('Error al quitar la reacción'),
+        onError: (error: unknown) => { const axiosErr = error as { response?: { data?: { message?: string } } }; toast.error(axiosErr?.response?.data?.message ?? 'Error al quitar la reacción'); },
     });
 };
 
@@ -123,7 +136,7 @@ export const useSubscribe = (workspaceSlug: string, companyId: string, issueId: 
             void qc.invalidateQueries({ queryKey: activitiesKey(workspaceSlug, companyId, issueId) });
             toast.success('Suscrito a la tarea');
         },
-        onError: () => toast.error('Error al suscribirse'),
+        onError: (error: unknown) => { const axiosErr = error as { response?: { data?: { message?: string } } }; toast.error(axiosErr?.response?.data?.message ?? 'Error al suscribirse'); },
     });
 };
 
@@ -137,7 +150,7 @@ export const useUnsubscribe = (workspaceSlug: string, companyId: string, issueId
             void qc.invalidateQueries({ queryKey: activitiesKey(workspaceSlug, companyId, issueId) });
             toast.success('Desuscrito de la tarea');
         },
-        onError: () => toast.error('Error al desuscribirse'),
+        onError: (error: unknown) => { const axiosErr = error as { response?: { data?: { message?: string } } }; toast.error(axiosErr?.response?.data?.message ?? 'Error al desuscribirse'); },
     });
 };
 
@@ -163,7 +176,7 @@ export const useCreateIssueLink = (workspaceSlug: string, companyId: string, iss
             void qc.invalidateQueries({ queryKey: activitiesKey(workspaceSlug, companyId, issueId) });
             toast.success('Enlace agregado');
         },
-        onError: () => toast.error('Error al agregar el enlace'),
+        onError: (error: unknown) => { const axiosErr = error as { response?: { data?: { message?: string } } }; toast.error(axiosErr?.response?.data?.message ?? 'Error al agregar el enlace'); },
     });
 };
 
@@ -178,7 +191,7 @@ export const useDeleteIssueLink = (workspaceSlug: string, companyId: string, iss
             void qc.invalidateQueries({ queryKey: activitiesKey(workspaceSlug, companyId, issueId) });
             toast.success('Enlace eliminado');
         },
-        onError: () => toast.error('Error al eliminar el enlace'),
+        onError: (error: unknown) => { const axiosErr = error as { response?: { data?: { message?: string } } }; toast.error(axiosErr?.response?.data?.message ?? 'Error al eliminar el enlace'); },
     });
 };
 
@@ -205,7 +218,7 @@ export const useCreateIssueRelation = (workspaceSlug: string, companyId: string,
             void qc.invalidateQueries({ queryKey: ['issue-relations'] });
             toast.success('Relación agregada');
         },
-        onError: () => toast.error('Error al agregar la relación'),
+        onError: (error: unknown) => { const axiosErr = error as { response?: { data?: { message?: string } } }; toast.error(axiosErr?.response?.data?.message ?? 'Error al agregar la relación'); },
     });
 };
 
@@ -221,6 +234,6 @@ export const useDeleteIssueRelation = (workspaceSlug: string, companyId: string,
             void qc.invalidateQueries({ queryKey: ['issue-relations'] });
             toast.success('Relación eliminada');
         },
-        onError: () => toast.error('Error al eliminar la relación'),
+        onError: (error: unknown) => { const axiosErr = error as { response?: { data?: { message?: string } } }; toast.error(axiosErr?.response?.data?.message ?? 'Error al eliminar la relación'); },
     });
 };

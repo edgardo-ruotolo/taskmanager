@@ -9,6 +9,7 @@ public class IssueCommentConfiguration : IEntityTypeConfiguration<IssueComment>
     public void Configure(EntityTypeBuilder<IssueComment> builder)
     {
         builder.Property(c => c.Body).IsRequired().HasMaxLength(5000);
+        builder.Property(c => c.Access).HasConversion<string>().HasDefaultValue(CommentAccess.Internal);
 
         builder.HasOne(c => c.Issue)
             .WithMany(i => i.Comments)

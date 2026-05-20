@@ -1,5 +1,8 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
+import type { FieldValues, UseFormSetError } from 'react-hook-form';
+import { useServerMutation } from '@/shared/hooks/useServerMutation';
+import { trackEvent } from '@/shared/lib/posthog';
 import { workspaceRepository } from '../infrastructure/workspace-repository';
 import type { CreateWorkspaceData } from '../domain/types';
 import type { UpdateWorkspaceThemeData } from '../domain/theme-types';
@@ -25,15 +28,19 @@ export const useWorkspaceMembers = (slug: string) =>
         enabled: !!slug,
     });
 
-export const useCreateWorkspace = () => {
+export const useCreateWorkspace = <TFormValues extends FieldValues = FieldValues>(
+    options?: { setError?: UseFormSetError<TFormValues> },
+) => {
     const qc = useQueryClient();
-    return useMutation({
-        mutationFn: (data: CreateWorkspaceData) => workspaceRepository.create(data),
+    return useServerMutation<unknown, CreateWorkspaceData, TFormValues>({
+        mutationFn: (data) => workspaceRepository.create(data),
         onSuccess: () => {
             void qc.invalidateQueries({ queryKey: WORKSPACES_KEY });
+            trackEvent('workspace_created');
             toast.success('Espacio de trabajo creado');
         },
-        onError: () => toast.error('Error al crear el espacio de trabajo'),
+        setError: options?.setError,
+        fallbackMessage: 'Error al crear el espacio de trabajo',
     });
 };
 
@@ -44,14 +51,18 @@ export const useWorkspaceTheme = (workspaceSlug: string) =>
         enabled: !!workspaceSlug,
     });
 
-export const useUpdateWorkspaceTheme = (workspaceSlug: string) => {
+export const useUpdateWorkspaceTheme = <TFormValues extends FieldValues = FieldValues>(
+    workspaceSlug: string,
+    options?: { setError?: UseFormSetError<TFormValues> },
+) => {
     const qc = useQueryClient();
-    return useMutation({
-        mutationFn: (data: UpdateWorkspaceThemeData) => workspaceRepository.updateTheme(workspaceSlug, data),
+    return useServerMutation<unknown, UpdateWorkspaceThemeData, TFormValues>({
+        mutationFn: (data) => workspaceRepository.updateTheme(workspaceSlug, data),
         onSuccess: () => {
             void qc.invalidateQueries({ queryKey: ['workspace', workspaceSlug, 'theme'] });
             toast.success('Tema actualizado');
         },
-        onError: () => toast.error('Error al actualizar el tema'),
+        setError: options?.setError,
+        fallbackMessage: 'Error al actualizar el tema',
     });
 };

@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using TaskManager.Api.Common.Authorization;
 using TaskManager.Api.Common.Exceptions;
 using TaskManager.Api.Data;
 using TaskManager.Api.Modules.Issues.Dtos;
@@ -11,6 +12,7 @@ namespace TaskManager.Api.Modules.Issues.Controllers;
 [ApiController]
 [Route("api/workspaces/{workspaceSlug}/companies/{companyId:guid}/issue-types")]
 [Authorize]
+[ServiceFilter(typeof(RequireCompanyMemberAttribute))]
 public class CompanyIssueTypesController(AppDbContext db) : ControllerBase
 {
     [HttpGet]

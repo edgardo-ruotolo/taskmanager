@@ -1,5 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
+import type { FieldValues, UseFormSetError } from 'react-hook-form';
+import { useServerMutation } from '@/shared/hooks/useServerMutation';
 import { estimateRepository } from '../infrastructure/estimate-repository';
 import type { CreateEstimateData, CreateEstimatePointData } from '../domain/types';
 
@@ -13,16 +15,21 @@ export const useEstimates = (workspaceSlug: string, companyId: string) =>
         enabled: !!workspaceSlug && !!companyId,
     });
 
-export const useCreateEstimate = (workspaceSlug: string, companyId: string) => {
+export const useCreateEstimate = <TFormValues extends FieldValues = FieldValues>(
+    workspaceSlug: string,
+    companyId: string,
+    options?: { setError?: UseFormSetError<TFormValues> },
+) => {
     const qc = useQueryClient();
-    return useMutation({
-        mutationFn: (data: CreateEstimateData) =>
+    return useServerMutation<unknown, CreateEstimateData, TFormValues>({
+        mutationFn: (data) =>
             estimateRepository.create(workspaceSlug, companyId, data),
         onSuccess: () => {
             void qc.invalidateQueries({ queryKey: estimatesKey(workspaceSlug, companyId) });
             toast.success('Estimación creada');
         },
-        onError: () => toast.error('Error al crear la estimación'),
+        setError: options?.setError,
+        fallbackMessage: 'Error al crear la estimación',
     });
 };
 
@@ -41,16 +48,22 @@ export const useDeleteEstimate = (workspaceSlug: string, companyId: string) => {
     });
 };
 
-export const useAddEstimatePoint = (workspaceSlug: string, companyId: string, estimateId: string) => {
+export const useAddEstimatePoint = <TFormValues extends FieldValues = FieldValues>(
+    workspaceSlug: string,
+    companyId: string,
+    estimateId: string,
+    options?: { setError?: UseFormSetError<TFormValues> },
+) => {
     const qc = useQueryClient();
-    return useMutation({
-        mutationFn: (data: CreateEstimatePointData) =>
+    return useServerMutation<unknown, CreateEstimatePointData, TFormValues>({
+        mutationFn: (data) =>
             estimateRepository.addPoint(workspaceSlug, companyId, estimateId, data),
         onSuccess: () => {
             void qc.invalidateQueries({ queryKey: estimatesKey(workspaceSlug, companyId) });
             toast.success('Punto agregado');
         },
-        onError: () => toast.error('Error al agregar el punto'),
+        setError: options?.setError,
+        fallbackMessage: 'Error al agregar el punto',
     });
 };
 

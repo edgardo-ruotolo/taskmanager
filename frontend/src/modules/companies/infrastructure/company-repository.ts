@@ -17,7 +17,7 @@ export const companyRepository = {
             .then((r) => r.data),
     update: (workspaceSlug: string, companyId: string, data: UpdateCompanyData): Promise<Company> =>
         apiClient
-            .put<Company>(`/api/workspaces/${workspaceSlug}/companies/${companyId}`, data)
+            .patch<Company>(`/api/workspaces/${workspaceSlug}/companies/${companyId}`, data)
             .then((r) => r.data),
     delete: (workspaceSlug: string, companyId: string): Promise<void> =>
         apiClient

@@ -52,6 +52,6 @@ export const useTransferCycleIssues = (workspaceSlug: string, companyId: string)
             void qc.invalidateQueries({ queryKey: ['cycles', workspaceSlug, companyId] });
             toast.success('Issues transferidos');
         },
-        onError: () => toast.error('Error al transferir issues'),
+        onError: (error: unknown) => { const e = error as { response?: { data?: { message?: string } } }; toast.error(e?.response?.data?.message ?? 'Error al transferir issues'); },
     });
 };

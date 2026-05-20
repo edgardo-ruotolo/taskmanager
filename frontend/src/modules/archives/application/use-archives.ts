@@ -17,7 +17,7 @@ export const useRestoreIssue = (workspaceSlug: string, companyId: string) => {
             void qc.invalidateQueries({ queryKey: ['archives', 'issues', workspaceSlug, companyId] });
             toast.success('Tarea restaurada');
         },
-        onError: () => toast.error('Error al restaurar la tarea'),
+        onError: (error: unknown) => { const e = error as { response?: { data?: { message?: string } } }; toast.error(e?.response?.data?.message ?? 'Error al restaurar la tarea'); },
     });
 };
 
@@ -36,7 +36,7 @@ export const useRestoreCycle = (workspaceSlug: string, companyId: string) => {
             void qc.invalidateQueries({ queryKey: ['archives', 'cycles', workspaceSlug, companyId] });
             toast.success('Ciclo restaurado');
         },
-        onError: () => toast.error('Error al restaurar el ciclo'),
+        onError: (error: unknown) => { const e = error as { response?: { data?: { message?: string } } }; toast.error(e?.response?.data?.message ?? 'Error al restaurar el ciclo'); },
     });
 };
 
@@ -55,6 +55,6 @@ export const useRestoreModule = (workspaceSlug: string, companyId: string) => {
             void qc.invalidateQueries({ queryKey: ['archives', 'modules', workspaceSlug, companyId] });
             toast.success('Módulo restaurado');
         },
-        onError: () => toast.error('Error al restaurar el módulo'),
+        onError: (error: unknown) => { const e = error as { response?: { data?: { message?: string } } }; toast.error(e?.response?.data?.message ?? 'Error al restaurar el módulo'); },
     });
 };

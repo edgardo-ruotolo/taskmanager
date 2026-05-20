@@ -16,7 +16,7 @@ public class ModuleIssueConfiguration : IEntityTypeConfiguration<ModuleIssue>
             .OnDelete(DeleteBehavior.Cascade);
 
         builder.HasOne(mi => mi.Issue)
-            .WithMany()
+            .WithMany(i => i.ModuleIssues)
             .HasForeignKey(mi => mi.IssueId)
             .OnDelete(DeleteBehavior.Cascade);
     }

@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using TaskManager.Api.Data;
+using TaskManager.Api.Modules.Companies.Entities;
 using TaskManager.Api.Modules.Issues.Entities;
 using TaskManager.Api.Modules.Labels.Entities;
 using TaskManager.Api.Modules.Notifications.Entities;
@@ -17,6 +18,7 @@ public class RecurringExecutor(AppDbContext db, ILogger<RecurringExecutor> logge
     {
         var template = await db.RecurringIssueTemplates
             .Include(t => t.Companies)
+                .ThenInclude(tc => tc.Company)
             .Include(t => t.Assignees)
             .Include(t => t.Labels)
             .FirstOrDefaultAsync(t => t.Id == templateId, ct);
@@ -97,13 +99,13 @@ public class RecurringExecutor(AppDbContext db, ILogger<RecurringExecutor> logge
         {
             try
             {
-                var blocked = await ProcessCompanyAsync(template, run, templateCompany.CompanyId, nowUtc, blockedByIssues, ct);
+                var blocked = await ProcessCompanyAsync(template, run, templateCompany.Company, nowUtc, blockedByIssues, ct);
                 if (!blocked) successCount++;
             }
             catch (Exception ex)
             {
                 logger.LogError(ex, "RecurringExecutor: error processing company {CompanyId} for template {TemplateId}.",
-                    templateCompany.CompanyId, templateId);
+                    templateCompany.Company.Id, templateId);
             }
         }
 
@@ -125,14 +127,14 @@ public class RecurringExecutor(AppDbContext db, ILogger<RecurringExecutor> logge
     private async Task<bool> ProcessCompanyAsync(
         RecurringIssueTemplate template,
         RecurringIssueRun run,
-        Guid companyId,
+        Company company,
         DateTime nowUtc,
         List<Issue> blockedByIssues,
         CancellationToken ct)
     {
         // Check if previous issue from this template for this company is incomplete
         var lastRunIssue = await db.RecurringIssueRunIssues
-            .Where(ri => ri.CompanyId == companyId && ri.Run.TemplateId == template.Id && ri.Run.Status == RecurringRunStatus.Success)
+            .Where(ri => ri.CompanyId == company.Id && ri.Run.TemplateId == template.Id && ri.Run.Status == RecurringRunStatus.Success)
             .OrderByDescending(ri => ri.Run.ScheduledFor)
             .Include(ri => ri.Issue)
                 .ThenInclude(i => i.State)
@@ -146,17 +148,21 @@ public class RecurringExecutor(AppDbContext db, ILogger<RecurringExecutor> logge
             return true;
         }
 
-        // Resolve state: find state matching the template's StateGroup
+        // Resolve state within the company's StateGroup to ensure the issue appears in the kanban
         var targetCategory = ParseStateCategory(template.StateGroup);
         var state = await db.States
-            .Where(s => s.Category == targetCategory)
+            .Where(s => s.StateGroupId == company.StateGroupId && s.Category == targetCategory)
             .OrderBy(s => s.Sequence)
             .FirstOrDefaultAsync(ct)
-            ?? await db.States.OrderBy(s => s.Sequence).FirstOrDefaultAsync(ct);
+            ?? await db.States
+                .Where(s => s.StateGroupId == company.StateGroupId)
+                .OrderBy(s => s.Sequence)
+                .FirstOrDefaultAsync(ct);
 
         if (state is null)
         {
-            logger.LogWarning("RecurringExecutor: no state found for category {Category}.", template.StateGroup);
+            logger.LogWarning("RecurringExecutor: no state found for category {Category} in StateGroup {StateGroupId}.",
+                template.StateGroup, company.StateGroupId);
             return false;
         }
 
@@ -167,7 +173,7 @@ public class RecurringExecutor(AppDbContext db, ILogger<RecurringExecutor> logge
             Description = template.DescriptionHtml,
             Priority = ParsePriority(template.Priority),
             StateId = state.Id,
-            CompanyId = companyId,
+            CompanyId = company.Id,
             CreatedById = template.CreatedById,
             DueDate = today.AddDays(template.TargetDateOffsetDays).ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc)
         };
@@ -216,7 +222,7 @@ public class RecurringExecutor(AppDbContext db, ILogger<RecurringExecutor> logge
         {
             RunId = run.Id,
             IssueId = issue.Id,
-            CompanyId = companyId
+            CompanyId = company.Id
         });
 
         await db.SaveChangesAsync(ct);

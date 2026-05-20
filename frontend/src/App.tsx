@@ -7,6 +7,7 @@ import { WorkspaceRedirect } from '@/shared/components/WorkspaceRedirect';
 import { AdminGuard } from '@/modules/admin/presentation/guards/AdminGuard';
 import { GodModeLayout } from '@/modules/admin/presentation/layouts/GodModeLayout';
 import { PageLoader } from '@/shared/components/PageLoader';
+import { useAuthLogoutListener } from '@/shared/hooks/useAuthLogoutListener';
 
 // Auth pages
 const LoginPage = lazy(() => import('@/modules/auth/presentation/pages/LoginPage').then(m => ({ default: m.LoginPage })));
@@ -15,7 +16,6 @@ const ForgotPasswordPage = lazy(() => import('@/modules/auth/presentation/pages/
 const ResetPasswordPage = lazy(() => import('@/modules/auth/presentation/pages/ResetPasswordPage').then(m => ({ default: m.ResetPasswordPage })));
 const ProfilePage = lazy(() => import('@/modules/auth/presentation/pages/ProfilePage').then(m => ({ default: m.ProfilePage })));
 const OnboardingPage = lazy(() => import('@/modules/auth/presentation/pages/OnboardingPage').then(m => ({ default: m.OnboardingPage })));
-const ApiTokensPage = lazy(() => import('@/modules/auth/presentation/pages/ApiTokensPage').then(m => ({ default: m.ApiTokensPage })));
 const MagicLinkVerifyPage = lazy(() => import('@/modules/auth/presentation/pages/MagicLinkVerifyPage').then(m => ({ default: m.MagicLinkVerifyPage })));
 
 // Workspace pages
@@ -26,8 +26,9 @@ const WorkspaceSettingsPage = lazy(() => import('@/modules/workspaces/presentati
 
 // Company pages
 const CompaniesPage = lazy(() => import('@/modules/companies/presentation/pages/CompaniesPage').then(m => ({ default: m.CompaniesPage })));
-const CompanySettingsPage = lazy(() => import('@/modules/companies/presentation/pages/CompanySettingsPage').then(m => ({ default: m.CompanySettingsPage })));
-
+const SettingsLayout = lazy(() => import('@/modules/workspaces/presentation/layouts/SettingsLayout').then(m => ({ default: m.SettingsLayout })));
+const WorkspaceCompaniesSettingsTab = lazy(() => import('@/modules/workspaces/presentation/pages/WorkspaceCompaniesSettingsTab').then(m => ({ default: m.WorkspaceCompaniesSettingsTab })));
+const WorkspaceCompanyDetailSettingsTab = lazy(() => import('@/modules/workspaces/presentation/pages/WorkspaceCompanyDetailSettingsTab').then(m => ({ default: m.WorkspaceCompanyDetailSettingsTab })));
 // Issues pages
 const IssuesPage = lazy(() => import('@/modules/issues/presentation/pages/IssuesPage').then(m => ({ default: m.IssuesPage })));
 const IssueDetailPage = lazy(() => import('@/modules/issues/presentation/pages/IssueDetailPage').then(m => ({ default: m.IssueDetailPage })));
@@ -55,9 +56,6 @@ const LabelsPage = lazy(() => import('@/modules/labels/presentation/pages/Labels
 // Notifications pages
 const NotificationsPage = lazy(() => import('@/modules/notifications/presentation/pages/NotificationsPage').then(m => ({ default: m.NotificationsPage })));
 
-// Webhooks pages
-const WebhooksPage = lazy(() => import('@/modules/webhooks/presentation/pages/WebhooksPage').then(m => ({ default: m.WebhooksPage })));
-
 // Estimates pages
 const EstimatesPage = lazy(() => import('@/modules/estimates/presentation/pages/EstimatesPage').then(m => ({ default: m.EstimatesPage })));
 
@@ -66,16 +64,6 @@ const AnalyticsPage = lazy(() => import('@/modules/analytics/presentation/pages/
 
 // Intake pages
 const InboxPage = lazy(() => import('@/modules/intake/presentation/pages/InboxPage').then(m => ({ default: m.InboxPage })));
-
-// Stickies pages
-const StickiesPage = lazy(() => import('@/modules/stickies/presentation/pages/StickiesPage').then(m => ({ default: m.StickiesPage })));
-
-// Favorites pages
-const FavoritesPage = lazy(() => import('@/modules/favorites/presentation/pages/FavoritesPage').then(m => ({ default: m.FavoritesPage })));
-
-// Pages module
-const PagesPage = lazy(() => import('@/modules/pages/presentation/pages/PagesPage').then(m => ({ default: m.PagesPage })));
-const PageDetailPage = lazy(() => import('@/modules/pages/presentation/pages/PageDetailPage').then(m => ({ default: m.PageDetailPage })));
 
 // Recurring pages
 const RecurringListPage = lazy(() => import('@/modules/recurring/presentation/pages/RecurringListPage').then(m => ({ default: m.RecurringListPage })));
@@ -89,9 +77,6 @@ const DraftsPage = lazy(() => import('@/modules/drafts/presentation/pages/Drafts
 
 // Teams pages
 const TeamsPage = lazy(() => import('@/modules/teams/presentation/pages/TeamsPage').then(m => ({ default: m.TeamsPage })));
-
-// Integrations pages
-const IntegrationsPage = lazy(() => import('@/modules/integrations/presentation/pages/IntegrationsPage').then(m => ({ default: m.IntegrationsPage })));
 
 // Importer pages
 const ImporterPage = lazy(() => import('@/modules/importer/presentation/pages/ImporterPage').then(m => ({ default: m.ImporterPage })));
@@ -110,7 +95,9 @@ const GodModeStoragePage = lazy(() => import('@/modules/admin/presentation/pages
 const GodModeCompaniesPage = lazy(() => import('@/modules/admin/presentation/pages/GodModeCompaniesPage').then(m => ({ default: m.GodModeCompaniesPage })));
 const GodModeStatesPage = lazy(() => import('@/modules/admin/presentation/pages/GodModeStatesPage').then(m => ({ default: m.GodModeStatesPage })));
 
-export const App = (): React.ReactElement => (
+export const App = (): React.ReactElement => {
+    useAuthLogoutListener();
+    return (
     <Suspense fallback={<PageLoader />}>
         <Routes>
             <Route path="/public/:token" element={<PublicSpacePage />} />
@@ -137,27 +124,26 @@ export const App = (): React.ReactElement => (
                     <Route path="companies/:companyId/estimates" element={<EstimatesPage />} />
                     <Route path="companies/:companyId/inbox" element={<InboxPage />} />
                     <Route path="companies/:companyId/deploy-boards" element={<DeployBoardsPage />} />
-                    <Route path="companies/:companyId/settings" element={<CompanySettingsPage />} />
+
                     <Route path="companies/:companyId/importer" element={<ImporterPage />} />
-                    <Route path="stickies" element={<StickiesPage />} />
-                    <Route path="favorites" element={<FavoritesPage />} />
                     <Route path="analytics" element={<AnalyticsPage />} />
                     <Route path="activity" element={<WorkspaceActivityPage />} />
                     <Route path="notifications" element={<NotificationsPage />} />
                     <Route path="profile" element={<ProfilePage />} />
-                    <Route path="pages" element={<PagesPage />} />
-                    <Route path="pages/:pageId" element={<PageDetailPage />} />
-                    <Route path="settings" element={<WorkspaceSettingsPage />} />
-                    <Route path="settings/members" element={<WorkspaceSettingsPage />} />
-                    <Route path="settings/states" element={<StatesPage />} />
-                    <Route path="settings/labels" element={<LabelsPage />} />
-                    <Route path="settings/webhooks" element={<WebhooksPage />} />
-                    <Route path="settings/issue-types" element={<IssueTypesPage />} />
-                    <Route path="settings/views" element={<IssueViewsPage />} />
-                    <Route path="settings/views/:viewId" element={<IssueViewDetailPage />} />
-                    <Route path="settings/tokens" element={<ApiTokensPage />} />
-                    <Route path="settings/teams" element={<TeamsPage />} />
-                    <Route path="settings/integrations" element={<IntegrationsPage />} />
+                    <Route path="settings" element={<SettingsLayout />}>
+                        <Route index element={<Navigate to="general" replace />} />
+                        <Route path="general" element={<WorkspaceSettingsPage />} />
+                        <Route path="members" element={<WorkspaceSettingsPage />} />
+                        <Route path="theme" element={<WorkspaceSettingsPage />} />
+                        <Route path="teams" element={<TeamsPage />} />
+                        <Route path="companies" element={<WorkspaceCompaniesSettingsTab />} />
+                        <Route path="companies/:companyId" element={<WorkspaceCompanyDetailSettingsTab />} />
+                        <Route path="states" element={<StatesPage />} />
+                        <Route path="labels" element={<LabelsPage />} />
+                        <Route path="issue-types" element={<IssueTypesPage />} />
+                        <Route path="views" element={<IssueViewsPage />} />
+                        <Route path="views/:viewId" element={<IssueViewDetailPage />} />
+                    </Route>
                     <Route path="recurring" element={<RecurringListPage />} />
                     <Route path="recurring/:recurringId" element={<RecurringDetailPage />} />
                     <Route path="search" element={<SearchPage />} />
@@ -187,4 +173,5 @@ export const App = (): React.ReactElement => (
             <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
     </Suspense>
-);
+    );
+};

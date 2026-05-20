@@ -1,5 +1,5 @@
 import type React from 'react';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useId } from 'react';
 import { X, ExternalLink, ChevronLeft, ChevronRight, Activity, FileText, Calendar, User } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { cn } from '@/lib/utils';
@@ -33,6 +33,9 @@ function PeekPanel({
     const issueId = `${company?.identifier ?? 'ISS'}-${issue.sequenceId}`;
     // useState with defaultValue resets when remounted via key={issue.id}
     const [activeTab, setActiveTab] = useState<TabId>('detail');
+    const titleId = useId();
+    const panelRef = useRef<HTMLDivElement | null>(null);
+    const previouslyFocusedRef = useRef<HTMLElement | null>(null);
 
     useEffect(() => {
         const handler = (e: KeyboardEvent): void => {
@@ -41,6 +44,19 @@ function PeekPanel({
         document.addEventListener('keydown', handler);
         return () => document.removeEventListener('keydown', handler);
     }, [onClose]);
+
+    // Block background scroll while the peek is open and restore focus on close.
+    useEffect(() => {
+        previouslyFocusedRef.current = document.activeElement as HTMLElement | null;
+        const previousOverflow = document.body.style.overflow;
+        document.body.style.overflow = 'hidden';
+        // Move initial focus into the panel for keyboard users.
+        panelRef.current?.focus();
+        return () => {
+            document.body.style.overflow = previousOverflow;
+            previouslyFocusedRef.current?.focus?.();
+        };
+    }, []);
 
     const openFull = (): void => {
         void navigate(`/${workspaceSlug}/companies/${companyId}/issues/${issue.id}`);
@@ -57,7 +73,12 @@ function PeekPanel({
             />
             {/* Panel */}
             <div
-                className="fixed right-0 top-0 h-full z-50 w-[480px] flex flex-col bg-surface-1 border-l border-subtle shadow-overlay-200"
+                ref={panelRef}
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby={titleId}
+                tabIndex={-1}
+                className="fixed right-0 top-0 h-full z-50 w-full sm:w-[480px] max-w-full flex flex-col bg-surface-1 border-l border-subtle shadow-overlay-200 focus:outline-none"
                 style={{ animation: 'var(--animate-slide-in-from-right)' }}
             >
                 {/* Header */}
@@ -130,7 +151,7 @@ function PeekPanel({
                 <div className="flex-1 overflow-y-auto">
                     {activeTab === 'detail' && (
                         <div className="p-4 space-y-4">
-                            <h2 className="text-base font-semibold text-primary">{issue.title}</h2>
+                            <h2 id={titleId} className="text-base font-semibold text-primary">{issue.title}</h2>
                             {issue.description ? (
                                 <p className="text-sm text-secondary whitespace-pre-wrap">{issue.description}</p>
                             ) : (

@@ -16,23 +16,17 @@ import type { Cycle, CycleIssueRef } from '../../domain/types';
 import { PRIORITY_LABELS } from '@/modules/issues/domain/types';
 import type { IssuePriority } from '@/modules/issues/domain/types';
 
-const STATUS_LABELS = {
-    Draft: 'Borrador',
-    Started: 'En curso',
-    Completed: 'Completado',
-} as const;
-
-const STATUS_CLASSES = {
-    Draft: 'bg-layer-1 text-secondary',
-    Started: 'bg-blue-900 text-blue-300',
-    Completed: 'bg-green-900 text-green-300',
-} as const;
+import {
+    CYCLE_STATUS_LABELS as STATUS_LABELS,
+    CYCLE_STATUS_CLASSES as STATUS_CLASSES,
+} from '@/shared/constants/status-colors';
 
 const TOOLTIP_STYLE: React.CSSProperties = {
-    background: '#131319',
-    border: '1px solid rgba(255,255,255,0.08)',
+    background: 'var(--bg-surface-2)',
+    border: '1px solid var(--border-subtle)',
     borderRadius: '4px',
     fontSize: '11px',
+    color: 'var(--txt-primary)',
 };
 
 interface IssueAnalytics {
@@ -158,28 +152,28 @@ function BurndownSection({ cycle, analytics }: BurndownSectionProps): React.Reac
             <p className="text-xs font-semibold text-placeholder uppercase tracking-wider mb-3">Curva de avance</p>
             <ResponsiveContainer width="100%" height={140}>
                 <LineChart data={data} margin={{ top: 4, right: 4, left: -28, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border-subtle)" />
                     <XAxis
                         dataKey="label"
-                        tick={{ fontSize: 9, fill: 'rgba(255,255,255,0.3)' }}
+                        tick={{ fontSize: 9, fill: 'var(--txt-tertiary)' }}
                         tickLine={false}
                         axisLine={false}
                     />
                     <YAxis
-                        tick={{ fontSize: 9, fill: 'rgba(255,255,255,0.3)' }}
+                        tick={{ fontSize: 9, fill: 'var(--txt-tertiary)' }}
                         tickLine={false}
                         axisLine={false}
                         allowDecimals={false}
                     />
                     <Tooltip
                         contentStyle={TOOLTIP_STYLE}
-                        itemStyle={{ color: 'rgba(255,255,255,0.75)' }}
-                        labelStyle={{ color: 'rgba(255,255,255,0.4)', fontSize: '10px' }}
+                        itemStyle={{ color: 'var(--txt-primary)' }}
+                        labelStyle={{ color: 'var(--txt-tertiary)', fontSize: '10px' }}
                     />
                     <Line
                         type="linear"
                         dataKey="ideal"
-                        stroke="rgba(255,255,255,0.2)"
+                        stroke="var(--border-strong)"
                         strokeDasharray="4 4"
                         dot={false}
                         name="Ideal"
@@ -188,9 +182,9 @@ function BurndownSection({ cycle, analytics }: BurndownSectionProps): React.Reac
                     <Line
                         type="linear"
                         dataKey="actual"
-                        stroke="#60a5fa"
+                        stroke="var(--brand-700)"
                         strokeWidth={2}
-                        dot={{ r: 3, fill: '#60a5fa' }}
+                        dot={{ r: 3, fill: 'var(--brand-700)' }}
                         connectNulls={false}
                         name="Real"
                     />

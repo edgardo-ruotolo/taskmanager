@@ -29,7 +29,7 @@ export const useCreateTeam = (workspaceSlug: string) => {
             void qc.invalidateQueries({ queryKey: listKey(workspaceSlug) });
             toast.success('Equipo creado');
         },
-        onError: () => toast.error('Error al crear el equipo'),
+        onError: (error: unknown) => { const e = error as { response?: { data?: { message?: string } } }; toast.error(e?.response?.data?.message ?? 'Error al crear el equipo'); },
     });
 };
 
@@ -41,7 +41,7 @@ export const useUpdateTeam = (workspaceSlug: string) => {
         onSuccess: () => {
             void qc.invalidateQueries({ queryKey: listKey(workspaceSlug) });
         },
-        onError: () => toast.error('Error al actualizar el equipo'),
+        onError: (error: unknown) => { const e = error as { response?: { data?: { message?: string } } }; toast.error(e?.response?.data?.message ?? 'Error al actualizar el equipo'); },
     });
 };
 
@@ -53,7 +53,7 @@ export const useDeleteTeam = (workspaceSlug: string) => {
             void qc.invalidateQueries({ queryKey: listKey(workspaceSlug) });
             toast.success('Equipo eliminado');
         },
-        onError: () => toast.error('Error al eliminar el equipo'),
+        onError: (error: unknown) => { const e = error as { response?: { data?: { message?: string } } }; toast.error(e?.response?.data?.message ?? 'Error al eliminar el equipo'); },
     });
 };
 
@@ -65,7 +65,7 @@ export const useAddTeamMember = (workspaceSlug: string, teamId: string) => {
             void qc.invalidateQueries({ queryKey: membersKey(workspaceSlug, teamId) });
             toast.success('Miembro agregado');
         },
-        onError: () => toast.error('Error al agregar miembro'),
+        onError: (error: unknown) => { const e = error as { response?: { data?: { message?: string } } }; toast.error(e?.response?.data?.message ?? 'Error al agregar miembro'); },
     });
 };
 
@@ -77,6 +77,6 @@ export const useRemoveTeamMember = (workspaceSlug: string, teamId: string) => {
             void qc.invalidateQueries({ queryKey: membersKey(workspaceSlug, teamId) });
             toast.success('Miembro removido');
         },
-        onError: () => toast.error('Error al remover miembro'),
+        onError: (error: unknown) => { const e = error as { response?: { data?: { message?: string } } }; toast.error(e?.response?.data?.message ?? 'Error al remover miembro'); },
     });
 };

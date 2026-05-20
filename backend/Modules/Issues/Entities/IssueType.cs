@@ -10,6 +10,9 @@ public class IssueType : AuditableEntity
     public string Color { get; set; } = "#6b7280";
     public string? Icon { get; set; }
     public bool IsDefault { get; set; }
+    public bool IsEpic { get; set; } = false;
+    public int Level { get; set; } = 0;
+    public string? LogoProps { get; set; }
     public Guid WorkspaceId { get; set; }
     public Workspace Workspace { get; set; } = null!;
 }

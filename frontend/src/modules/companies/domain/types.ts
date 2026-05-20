@@ -1,3 +1,13 @@
+export type CompanyRole = 'Guest' | 'Member' | 'Lead' | 'Admin';
+
+export interface CompanyMember {
+    userId: string;
+    companyId: string;
+    role: CompanyRole;
+    displayName?: string;
+    email?: string;
+}
+
 export interface Company {
     id: string;
     name: string;

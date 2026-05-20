@@ -21,7 +21,7 @@ export const useCreateIssueType = (workspaceSlug: string) => {
             void qc.invalidateQueries({ queryKey: issueTypesKey(workspaceSlug) });
             toast.success('Tipo de tarea creado');
         },
-        onError: () => toast.error('Error al crear el tipo de tarea'),
+        onError: (error: unknown) => { const e = error as { response?: { data?: { message?: string } } }; toast.error(e?.response?.data?.message ?? 'Error al crear el tipo de tarea'); },
     });
 };
 
@@ -35,6 +35,6 @@ export const useDeleteIssueType = (workspaceSlug: string) => {
             void qc.invalidateQueries({ queryKey: ['issue'] });
             toast.success('Tipo de tarea eliminado');
         },
-        onError: () => toast.error('Error al eliminar el tipo de tarea'),
+        onError: (error: unknown) => { const e = error as { response?: { data?: { message?: string } } }; toast.error(e?.response?.data?.message ?? 'Error al eliminar el tipo de tarea'); },
     });
 };

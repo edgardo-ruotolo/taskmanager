@@ -1,6 +1,9 @@
 using TaskManager.Api.Common.Auditing;
 using TaskManager.Api.Modules.Auth.Entities;
 using TaskManager.Api.Modules.Companies.Entities;
+using TaskManager.Api.Modules.Cycles.Entities;
+using TaskManager.Api.Modules.Estimates.Entities;
+using TaskManager.Api.Modules.ProjectModules.Entities;
 using TaskManager.Api.Modules.States.Entities;
 
 namespace TaskManager.Api.Modules.Issues.Entities;
@@ -12,6 +15,8 @@ public class Issue : AuditableEntity
     public int SequenceId { get; set; }
     public string Title { get; set; } = string.Empty;
     public string? Description { get; set; }
+    public string? DescriptionHtml { get; set; }
+    public string? DescriptionJson { get; set; }
     public IssuePriority Priority { get; set; } = IssuePriority.None;
     public Guid CompanyId { get; set; }
     public Company Company { get; set; } = null!;
@@ -19,19 +24,37 @@ public class Issue : AuditableEntity
     public State State { get; set; } = null!;
     public Guid CreatedById { get; set; }
     public User CreatedBy { get; set; } = null!;
+    public Guid? UpdatedById { get; set; }
+    public User? UpdatedBy { get; set; }
     public Guid? AssigneeId { get; set; }
     public User? Assignee { get; set; }
     public Guid? ParentId { get; set; }
     public Issue? Parent { get; set; }
     public ICollection<Issue> SubIssues { get; set; } = [];
+    public DateTime? StartDate { get; set; }
     public DateTime? DueDate { get; set; }
+    public DateTime? CompletedAt { get; set; }
+    public double SortOrder { get; set; } = 65535;
+    public bool IsDraft { get; set; } = false;
     public bool IsArchived { get; set; } = false;
     public DateTime? ArchivedAt { get; set; }
     public Guid? IssueTypeId { get; set; }
     public IssueType? IssueType { get; set; }
+    public Guid? EstimatePointId { get; set; }
+    public EstimatePoint? EstimatePoint { get; set; }
+    public int? Point { get; set; }
+    public string? ExternalSource { get; set; }
+    public string? ExternalId { get; set; }
     public ICollection<IssueAssignee> Assignees { get; set; } = [];
     public ICollection<IssueLabel> Labels { get; set; } = [];
     public ICollection<IssueComment> Comments { get; set; } = [];
     public ICollection<IssueReaction> Reactions { get; set; } = [];
     public ICollection<IssueActivity> Activities { get; set; } = [];
+    public ICollection<CycleIssue> CycleIssues { get; set; } = [];
+    public ICollection<ModuleIssue> ModuleIssues { get; set; } = [];
+    public bool RequiresAdminApproval { get; set; } = false;
+    public List<Guid> ApprovalRequiredStateIds { get; set; } = new();
+    public Guid? ApprovedById { get; set; }
+    public DateTime? ApprovedAt { get; set; }
+    public User? ApprovedBy { get; set; }
 }

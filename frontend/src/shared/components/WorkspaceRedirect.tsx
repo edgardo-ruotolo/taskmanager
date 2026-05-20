@@ -1,11 +1,11 @@
 import type React from 'react';
 import { Navigate } from 'react-router-dom';
 import { useWorkspaces } from '@/modules/workspaces/application/use-workspaces';
-import { useWorkspaceStore } from '@/modules/workspaces/application/workspace-store';
+import { useActiveWorkspace } from '@/modules/workspaces/application/use-active-workspace';
 
 export function WorkspaceRedirect(): React.ReactElement {
     const { data: workspaces, isLoading } = useWorkspaces();
-    const { activeWorkspace } = useWorkspaceStore();
+    const activeWorkspace = useActiveWorkspace();
 
     if (isLoading) {
         return (

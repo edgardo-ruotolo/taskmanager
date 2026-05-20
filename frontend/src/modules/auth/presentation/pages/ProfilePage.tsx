@@ -43,6 +43,7 @@ import {
 } from '../../application/schemas';
 import { authRepository } from '../../infrastructure/auth-repository';
 import { useAuthStore } from '../../application/auth-store';
+import { useAuthMe, setAuthSession } from '../../application/use-auth-me';
 
 const inputClass =
     'bg-layer-1 border-subtle text-primary placeholder:text-placeholder focus:border-strong transition-colors';
@@ -161,7 +162,7 @@ function SectionHeader({ title, description }: { title: string; description: str
 }
 
 function GeneralTab(): React.ReactElement {
-    const { user, setUser } = useAuthStore();
+    const { data: user } = useAuthMe();
     const [savingProfile, setSavingProfile] = useState(false);
 
     const profileForm = useForm<UpdateProfileFormData>({
@@ -177,7 +178,7 @@ function GeneralTab(): React.ReactElement {
         setSavingProfile(true);
         try {
             const updated = await authRepository.updateProfile(data);
-            setUser(updated);
+            setAuthSession(updated);
             toast.success('Perfil actualizado');
         } catch {
             toast.error('Error al actualizar el perfil');
@@ -511,7 +512,7 @@ function SecurityTab(): React.ReactElement {
                                 </AlertDialogCancel>
                                 <AlertDialogAction
                                     onClick={() => void onDeactivate()}
-                                    className="bg-destructive hover:bg-destructive/90 text-on-color"
+                                    className="bg-red-600 hover:bg-red-700 text-white"
                                 >
                                     Sí, desactivar
                                 </AlertDialogAction>
@@ -719,7 +720,7 @@ function TokensTab(): React.ReactElement {
 }
 
 export const ProfilePage = (): React.ReactElement => {
-    const { user } = useAuthStore();
+    const { data: user } = useAuthMe();
     const [activeTab, setActiveTab] = useState<ProfileTab>('general');
 
     const renderContent = (): React.ReactElement => {
@@ -748,7 +749,7 @@ export const ProfilePage = (): React.ReactElement => {
                     <ProfileSidebar
                         activeTab={activeTab}
                         onTabChange={setActiveTab}
-                        user={user}
+                        user={user ?? null}
                     />
 
                     <div className="flex-1 pl-8">

@@ -90,7 +90,6 @@ function computeInitialViewStart(issues: Issue[]): Date {
     for (const issue of issues) {
         if (issue.startDate) dates.push(new Date(issue.startDate));
         if (issue.dueDate) dates.push(new Date(issue.dueDate));
-        if (issue.targetDate) dates.push(new Date(issue.targetDate));
     }
 
     if (dates.length === 0) {
@@ -112,7 +111,7 @@ interface BarConfig {
 
 function computeBarConfig(issue: Issue, viewStart: Date, totalDays: number): BarConfig {
     const priorityColor = GANTT_PRIORITY_COLORS[issue.priority];
-    const effectiveDueDate = issue.dueDate ?? issue.targetDate;
+    const effectiveDueDate = issue.dueDate;
 
     if (!issue.startDate && !effectiveDueDate) {
         return { leftPct: 0, widthPct: 0, isDiamond: false, hasNoDate: true, priorityColor };

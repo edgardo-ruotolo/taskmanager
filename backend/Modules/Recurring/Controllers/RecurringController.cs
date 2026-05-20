@@ -1,7 +1,7 @@
-using System.Security.Claims;
 using Hangfire;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using TaskManager.Api.Common.Auth;
 using TaskManager.Api.Modules.Recurring.Dtos;
 using TaskManager.Api.Modules.Recurring.Services;
 
@@ -10,14 +10,13 @@ namespace TaskManager.Api.Modules.Recurring.Controllers;
 [ApiController]
 [Route("api/workspaces/{workspaceSlug}/recurring")]
 [Authorize]
-public class RecurringController(IRecurringService recurringService, IBackgroundJobClient backgroundJobClient) : ControllerBase
+public class RecurringController(IRecurringService recurringService, IBackgroundJobClient backgroundJobClient, ICurrentUser currentUser) : ControllerBase
 {
-    private Guid CurrentUserId => Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
     [HttpGet]
     public async Task<ActionResult<List<RecurringTemplateDto>>> List(string workspaceSlug, CancellationToken ct)
     {
-        var result = await recurringService.ListAsync(workspaceSlug, CurrentUserId, ct);
+        var result = await recurringService.ListAsync(workspaceSlug, currentUser.UserId, ct);
         return Ok(result);
     }
 
@@ -25,14 +24,14 @@ public class RecurringController(IRecurringService recurringService, IBackground
     public async Task<ActionResult<RecurringTemplateDto>> Create(
         string workspaceSlug, [FromBody] CreateRecurringTemplateDto dto, CancellationToken ct)
     {
-        var result = await recurringService.CreateAsync(workspaceSlug, CurrentUserId, dto, ct);
+        var result = await recurringService.CreateAsync(workspaceSlug, currentUser.UserId, dto, ct);
         return CreatedAtAction(nameof(GetById), new { workspaceSlug, id = result.Id }, result);
     }
 
     [HttpGet("{id:guid}")]
     public async Task<ActionResult<RecurringTemplateDto>> GetById(string workspaceSlug, Guid id, CancellationToken ct)
     {
-        var result = await recurringService.GetByIdAsync(workspaceSlug, id, CurrentUserId, ct);
+        var result = await recurringService.GetByIdAsync(workspaceSlug, id, currentUser.UserId, ct);
         return Ok(result);
     }
 
@@ -40,21 +39,21 @@ public class RecurringController(IRecurringService recurringService, IBackground
     public async Task<ActionResult<RecurringTemplateDto>> Update(
         string workspaceSlug, Guid id, [FromBody] UpdateRecurringTemplateDto dto, CancellationToken ct)
     {
-        var result = await recurringService.UpdateAsync(workspaceSlug, id, CurrentUserId, dto, ct);
+        var result = await recurringService.UpdateAsync(workspaceSlug, id, currentUser.UserId, dto, ct);
         return Ok(result);
     }
 
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(string workspaceSlug, Guid id, CancellationToken ct)
     {
-        await recurringService.DeleteAsync(workspaceSlug, id, CurrentUserId, ct);
+        await recurringService.DeleteAsync(workspaceSlug, id, currentUser.UserId, ct);
         return NoContent();
     }
 
     [HttpGet("{id:guid}/runs")]
     public async Task<ActionResult<List<RecurringRunDto>>> GetRuns(string workspaceSlug, Guid id, CancellationToken ct)
     {
-        var result = await recurringService.GetRunsAsync(workspaceSlug, id, CurrentUserId, ct);
+        var result = await recurringService.GetRunsAsync(workspaceSlug, id, currentUser.UserId, ct);
         return Ok(result);
     }
 
@@ -69,21 +68,21 @@ public class RecurringController(IRecurringService recurringService, IBackground
     [HttpPost("{id:guid}/pause")]
     public async Task<ActionResult<RecurringTemplateDto>> Pause(string workspaceSlug, Guid id, CancellationToken ct)
     {
-        var result = await recurringService.PauseAsync(workspaceSlug, id, CurrentUserId, ct);
+        var result = await recurringService.PauseAsync(workspaceSlug, id, currentUser.UserId, ct);
         return Ok(result);
     }
 
     [HttpPost("{id:guid}/resume")]
     public async Task<ActionResult<RecurringTemplateDto>> Resume(string workspaceSlug, Guid id, CancellationToken ct)
     {
-        var result = await recurringService.ResumeAsync(workspaceSlug, id, CurrentUserId, ct);
+        var result = await recurringService.ResumeAsync(workspaceSlug, id, currentUser.UserId, ct);
         return Ok(result);
     }
 
     [HttpPost("{id:guid}/skip-next")]
     public async Task<ActionResult<RecurringTemplateDto>> SkipNext(string workspaceSlug, Guid id, CancellationToken ct)
     {
-        var result = await recurringService.SkipNextAsync(workspaceSlug, id, CurrentUserId, ct);
+        var result = await recurringService.SkipNextAsync(workspaceSlug, id, currentUser.UserId, ct);
         return Ok(result);
     }
 
@@ -98,7 +97,7 @@ public class RecurringController(IRecurringService recurringService, IBackground
     public async Task<ActionResult<RecurringFromIssuePrefillDto>> FromIssue(
         string workspaceSlug, Guid issueId, CancellationToken ct)
     {
-        var result = await recurringService.FromIssueAsync(workspaceSlug, issueId, CurrentUserId, ct);
+        var result = await recurringService.FromIssueAsync(workspaceSlug, issueId, currentUser.UserId, ct);
         return Ok(result);
     }
 }

@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using TaskManager.Api.Common.Authorization;
 using TaskManager.Api.Modules.Estimates.Dtos;
 using TaskManager.Api.Modules.Estimates.Services;
 
@@ -8,6 +9,7 @@ namespace TaskManager.Api.Modules.Estimates.Controllers;
 [ApiController]
 [Route("api/workspaces/{workspaceSlug}/companies/{companyId:guid}/estimates")]
 [Authorize]
+[ServiceFilter(typeof(RequireCompanyMemberAttribute))]
 public class EstimatesController(IEstimateService estimateService) : ControllerBase
 {
     [HttpGet]

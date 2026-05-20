@@ -13,4 +13,7 @@ public class User : IdentityUser<Guid>
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? DeletedAt { get; set; }
     public bool IsDeleted { get; set; }
+
+    public List<string> OnboardingCompletedSteps { get; set; } = new();
+    public DateTime? OnboardingCompletedAt { get; set; }
 }

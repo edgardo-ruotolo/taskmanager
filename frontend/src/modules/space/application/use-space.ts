@@ -27,7 +27,7 @@ export const useCreateDeployBoard = (workspaceSlug: string, companyId: string) =
             });
             toast.success('Tablero publicado correctamente');
         },
-        onError: () => toast.error('Error al publicar el tablero'),
+        onError: (error: unknown) => { const e = error as { response?: { data?: { message?: string } } }; toast.error(e?.response?.data?.message ?? 'Error al publicar el tablero'); },
     });
 };
 
@@ -42,7 +42,7 @@ export const useDeleteDeployBoard = (workspaceSlug: string, companyId: string) =
             });
             toast.success('Tablero eliminado');
         },
-        onError: () => toast.error('Error al eliminar el tablero'),
+        onError: (error: unknown) => { const e = error as { response?: { data?: { message?: string } } }; toast.error(e?.response?.data?.message ?? 'Error al eliminar el tablero'); },
     });
 };
 

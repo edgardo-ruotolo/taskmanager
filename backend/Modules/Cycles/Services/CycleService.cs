@@ -12,10 +12,12 @@ public class CycleService(AppDbContext db) : ICycleService
 {
     public async Task<PagedResult<CycleDto>> GetAllAsync(string workspaceSlug, Guid companyId, int page, int pageSize, CancellationToken ct = default)
     {
-        var workspace = await db.Workspaces.FirstOrDefaultAsync(w => w.Slug == workspaceSlug, ct)
+        var workspace = await db.Workspaces.AsNoTracking()
+            .FirstOrDefaultAsync(w => w.Slug == workspaceSlug, ct)
             ?? throw new NotFoundException($"Workspace '{workspaceSlug}' not found.");
 
         var query = db.Cycles
+            .AsNoTracking()
             .Include(c => c.CycleIssues)
             .Where(c => c.CompanyId == companyId && c.Company.WorkspaceId == workspace.Id);
 
@@ -37,10 +39,12 @@ public class CycleService(AppDbContext db) : ICycleService
 
     public async Task<CycleDto> GetByIdAsync(string workspaceSlug, Guid companyId, Guid cycleId, CancellationToken ct = default)
     {
-        var workspace = await db.Workspaces.FirstOrDefaultAsync(w => w.Slug == workspaceSlug, ct)
+        var workspace = await db.Workspaces.AsNoTracking()
+            .FirstOrDefaultAsync(w => w.Slug == workspaceSlug, ct)
             ?? throw new NotFoundException($"Workspace '{workspaceSlug}' not found.");
 
         var cycle = await db.Cycles
+            .AsNoTracking()
             .Include(c => c.CycleIssues)
             .FirstOrDefaultAsync(c => c.Id == cycleId && c.CompanyId == companyId && c.Company.WorkspaceId == workspace.Id, ct)
             ?? throw new NotFoundException("Cycle not found.");
@@ -154,10 +158,12 @@ public class CycleService(AppDbContext db) : ICycleService
 
     public async Task<List<CycleDto>> GetArchivedAsync(string workspaceSlug, Guid companyId, CancellationToken ct = default)
     {
-        var workspace = await db.Workspaces.FirstOrDefaultAsync(w => w.Slug == workspaceSlug, ct)
+        var workspace = await db.Workspaces.AsNoTracking()
+            .FirstOrDefaultAsync(w => w.Slug == workspaceSlug, ct)
             ?? throw new NotFoundException($"Workspace '{workspaceSlug}' not found.");
 
         return await db.Cycles
+            .AsNoTracking()
             .IgnoreQueryFilters()
             .Include(c => c.CycleIssues)
             .Where(c => c.IsArchived && !c.IsDeleted && c.CompanyId == companyId && c.Company.WorkspaceId == workspace.Id)
@@ -243,16 +249,16 @@ public class CycleService(AppDbContext db) : ICycleService
 
     public async Task<CycleProgressDto> GetProgressAsync(string workspaceSlug, Guid companyId, Guid cycleId, CancellationToken ct = default)
     {
-        var workspace = await db.Workspaces.FirstOrDefaultAsync(w => w.Slug == workspaceSlug, ct)
+        var workspace = await db.Workspaces.AsNoTracking()
+            .FirstOrDefaultAsync(w => w.Slug == workspaceSlug, ct)
             ?? throw new NotFoundException($"Workspace '{workspaceSlug}' not found.");
 
-        _ = await db.Cycles
+        _ = await db.Cycles.AsNoTracking()
             .FirstOrDefaultAsync(c => c.Id == cycleId && c.CompanyId == companyId && c.Company.WorkspaceId == workspace.Id, ct)
             ?? throw new NotFoundException("Cycle not found.");
 
         var issues = await db.CycleIssues
-            .Include(ci => ci.Issue)
-                .ThenInclude(i => i.State)
+            .AsNoTracking()
             .Where(ci => ci.CycleId == cycleId)
             .Select(ci => ci.Issue.State.Category)
             .ToListAsync(ct);
@@ -274,16 +280,16 @@ public class CycleService(AppDbContext db) : ICycleService
 
     public async Task<CycleAnalyticsDto> GetAnalyticsAsync(string workspaceSlug, Guid companyId, Guid cycleId, CancellationToken ct = default)
     {
-        var workspace = await db.Workspaces.FirstOrDefaultAsync(w => w.Slug == workspaceSlug, ct)
+        var workspace = await db.Workspaces.AsNoTracking()
+            .FirstOrDefaultAsync(w => w.Slug == workspaceSlug, ct)
             ?? throw new NotFoundException($"Workspace '{workspaceSlug}' not found.");
 
-        _ = await db.Cycles
+        _ = await db.Cycles.AsNoTracking()
             .FirstOrDefaultAsync(c => c.Id == cycleId && c.CompanyId == companyId && c.Company.WorkspaceId == workspace.Id, ct)
             ?? throw new NotFoundException("Cycle not found.");
 
         var issues = await db.CycleIssues
-            .Include(ci => ci.Issue)
-                .ThenInclude(i => i.State)
+            .AsNoTracking()
             .Where(ci => ci.CycleId == cycleId)
             .Select(ci => new { ci.Issue.Priority, StateName = ci.Issue.State.Name, StateCategory = ci.Issue.State.Category })
             .ToListAsync(ct);

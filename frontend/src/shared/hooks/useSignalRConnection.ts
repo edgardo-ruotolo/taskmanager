@@ -22,15 +22,27 @@ export const useSignalRConnection = (
     useEffect(() => {
         if (!enabled) return;
 
+        let cancelled = false;
+
+        // Resolve relative hub paths against the API origin so SignalR
+        // negotiates against the backend, not the Vite dev server.
+        const apiBase = (import.meta.env.VITE_API_URL as string | undefined) ?? 'http://localhost:5000';
+        const resolvedUrl = /^https?:\/\//.test(hubUrl) ? hubUrl : `${apiBase}${hubUrl}`;
+
         const connection = new HubConnectionBuilder()
-            .withUrl(hubUrl)
+            .withUrl(resolvedUrl, { withCredentials: true })
             .withAutomaticReconnect()
             .build();
 
         connectionRef.current = connection;
 
-        const updateState = (): void => setConnectionState(connection.state);
+        const updateState = (): void => {
+            if (!cancelled) setConnectionState(connection.state);
+        };
 
+        // Lifecycle handlers are bound to this connection instance. When the
+        // effect re-runs we discard the whole HubConnection, so handlers are
+        // garbage-collected with it — no manual .off() needed.
         connection.onreconnecting(updateState);
         connection.onreconnected(updateState);
         connection.onclose(updateState);
@@ -38,9 +50,11 @@ export const useSignalRConnection = (
         connection
             .start()
             .then(updateState)
-            .catch(() => setConnectionState(HubConnectionState.Disconnected));
+            .catch(() => { if (!cancelled) setConnectionState(HubConnectionState.Disconnected); });
 
         return () => {
+            cancelled = true;
+            connectionRef.current = null;
             void connection.stop();
         };
     }, [hubUrl, enabled]);

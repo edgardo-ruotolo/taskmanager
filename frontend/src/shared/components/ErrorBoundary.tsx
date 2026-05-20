@@ -1,9 +1,11 @@
 import { Component } from 'react';
 import type React from 'react';
+import { useNavigate, type NavigateFunction } from 'react-router-dom';
 
-interface Props {
+interface InnerProps {
     children: React.ReactNode;
     fallback?: React.ReactNode;
+    navigate: NavigateFunction;
 }
 
 interface State {
@@ -11,8 +13,8 @@ interface State {
     error: Error | null;
 }
 
-export class ErrorBoundary extends Component<Props, State> {
-    constructor(props: Props) {
+class ErrorBoundaryInner extends Component<InnerProps, State> {
+    constructor(props: InnerProps) {
         super(props);
         this.state = { hasError: false, error: null };
     }
@@ -20,6 +22,11 @@ export class ErrorBoundary extends Component<Props, State> {
     static getDerivedStateFromError(error: Error): State {
         return { hasError: true, error };
     }
+
+    private readonly handleReset = (): void => {
+        this.setState({ hasError: false, error: null });
+        this.props.navigate('/', { replace: true });
+    };
 
     render(): React.ReactNode {
         if (this.state.hasError) {
@@ -31,10 +38,10 @@ export class ErrorBoundary extends Component<Props, State> {
                             <p className="text-sm text-placeholder">{this.state.error?.message}</p>
                             <button
                                 type="button"
-                                onClick={() => window.location.reload()}
+                                onClick={this.handleReset}
                                 className="mt-4 px-4 py-2 bg-accent-primary hover:bg-accent-primary-hover text-on-color text-sm rounded-md"
                             >
-                                Recargar página
+                                Volver al inicio
                             </button>
                         </div>
                     </div>
@@ -44,3 +51,17 @@ export class ErrorBoundary extends Component<Props, State> {
         return this.props.children;
     }
 }
+
+interface ErrorBoundaryProps {
+    children: React.ReactNode;
+    fallback?: React.ReactNode;
+}
+
+export const ErrorBoundary = ({ children, fallback }: ErrorBoundaryProps): React.ReactElement => {
+    const navigate = useNavigate();
+    return (
+        <ErrorBoundaryInner navigate={navigate} fallback={fallback}>
+            {children}
+        </ErrorBoundaryInner>
+    );
+};

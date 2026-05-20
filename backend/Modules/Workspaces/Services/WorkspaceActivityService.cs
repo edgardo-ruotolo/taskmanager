@@ -11,11 +11,12 @@ public class WorkspaceActivityService(AppDbContext db) : IWorkspaceActivityServi
 {
     public async Task<PagedResult<WorkspaceActivityDto>> GetAllAsync(string workspaceSlug, int page, int pageSize, CancellationToken ct = default)
     {
-        var workspace = await db.Workspaces
+        var workspace = await db.Workspaces.AsNoTracking()
             .FirstOrDefaultAsync(w => w.Slug == workspaceSlug, ct)
             ?? throw new NotFoundException($"Workspace '{workspaceSlug}' not found.");
 
         var query = db.WorkspaceActivities
+            .AsNoTracking()
             .Include(a => a.Actor)
             .Where(a => a.WorkspaceId == workspace.Id)
             .OrderByDescending(a => a.CreatedAt);

@@ -1,5 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
+import type { FieldValues, UseFormSetError } from 'react-hook-form';
+import { useServerMutation } from '@/shared/hooks/useServerMutation';
 import { labelRepository } from '../infrastructure/label-repository';
 import type { CreateLabelData } from '../domain/types';
 
@@ -13,16 +15,20 @@ export const useLabels = (workspaceSlug: string) =>
         enabled: !!workspaceSlug,
     });
 
-export const useCreateLabel = (workspaceSlug: string) => {
+export const useCreateLabel = <TFormValues extends FieldValues = FieldValues>(
+    workspaceSlug: string,
+    options?: { setError?: UseFormSetError<TFormValues> },
+) => {
     const qc = useQueryClient();
-    return useMutation({
-        mutationFn: (data: CreateLabelData) =>
+    return useServerMutation<unknown, CreateLabelData, TFormValues>({
+        mutationFn: (data) =>
             labelRepository.create(workspaceSlug, data),
         onSuccess: () => {
             void qc.invalidateQueries({ queryKey: labelsKey(workspaceSlug) });
             toast.success('Etiqueta creada');
         },
-        onError: () => toast.error('Error al crear la etiqueta'),
+        setError: options?.setError,
+        fallbackMessage: 'Error al crear la etiqueta',
     });
 };
 

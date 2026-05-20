@@ -15,4 +15,5 @@ public interface IAuthService
     Task DeactivateAccountAsync(Guid userId, HttpContext httpContext, CancellationToken ct = default);
     Task SendMagicLinkAsync(MagicLinkRequestDto dto, CancellationToken ct = default);
     Task<UserDto> VerifyMagicLinkAsync(MagicLinkVerifyDto dto, HttpContext httpContext, CancellationToken ct = default);
+    Task<UserDto?> RefreshSessionAsync(Guid userId, CancellationToken ct = default);
 }

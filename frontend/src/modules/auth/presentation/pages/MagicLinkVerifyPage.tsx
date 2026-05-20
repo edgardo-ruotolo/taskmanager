@@ -4,14 +4,13 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Loader2, ShieldAlert } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { authRepository } from '../../infrastructure/auth-repository';
-import { useAuthStore } from '../../application/auth-store';
+import { setAuthSession } from '../../application/use-auth-me';
 
 type State = 'verifying' | 'error';
 
 export const MagicLinkVerifyPage = (): React.ReactElement => {
     const { token = '' } = useParams<{ token: string }>();
     const navigate = useNavigate();
-    const setUser = useAuthStore((s) => s.setUser);
     const [state, setState] = useState<State>('verifying');
 
     useEffect(() => {
@@ -26,7 +25,7 @@ export const MagicLinkVerifyPage = (): React.ReactElement => {
             try {
                 const user = await authRepository.verifyMagicLink(token);
                 if (cancelled) return;
-                setUser(user);
+                setAuthSession(user);
                 void navigate('/', { replace: true });
             } catch {
                 if (!cancelled) setState('error');
@@ -38,7 +37,7 @@ export const MagicLinkVerifyPage = (): React.ReactElement => {
         return () => {
             cancelled = true;
         };
-    }, [token, navigate, setUser]);
+    }, [token, navigate]);
 
     if (state === 'verifying') {
         return (

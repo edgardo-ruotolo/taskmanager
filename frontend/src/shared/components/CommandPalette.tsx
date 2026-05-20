@@ -22,7 +22,7 @@ import {
     CommandList,
     CommandSeparator,
 } from '@/components/ui/command';
-import { useWorkspaceStore } from '@/modules/workspaces/application/workspace-store';
+import { useActiveWorkspace } from '@/modules/workspaces/application/use-active-workspace';
 import { useSearch } from '@/modules/search/application/use-search';
 import { StatePip } from '@/components/ui/state-pip';
 
@@ -45,7 +45,7 @@ export const CommandPalette = (): React.ReactElement => {
     const [open, setOpen] = useState(false);
     const [query, setQuery] = useState('');
     const navigate = useNavigate();
-    const activeWorkspace = useWorkspaceStore((s) => s.activeWorkspace);
+    const activeWorkspace = useActiveWorkspace();
     const slug = activeWorkspace?.slug ?? '';
 
     const debouncedQuery = useDebounce(query, 300);

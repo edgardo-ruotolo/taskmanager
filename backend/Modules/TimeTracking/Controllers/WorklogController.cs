@@ -1,6 +1,6 @@
-using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using TaskManager.Api.Common.Auth;
 using Microsoft.EntityFrameworkCore;
 using TaskManager.Api.Data;
 using TaskManager.Api.Modules.TimeTracking.Dtos;
@@ -11,9 +11,8 @@ namespace TaskManager.Api.Modules.TimeTracking.Controllers;
 [ApiController]
 [Route("api/workspaces/{workspaceSlug}/issues/{issueId:guid}/worklogs")]
 [Authorize]
-public class WorklogController(AppDbContext db) : ControllerBase
+public class WorklogController(AppDbContext db, ICurrentUser currentUser) : ControllerBase
 {
-    private Guid CurrentUserId => Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
     [HttpGet]
     public async Task<ActionResult<List<WorklogDto>>> GetAll(
@@ -86,7 +85,7 @@ public class WorklogController(AppDbContext db) : ControllerBase
         var worklog = new IssueWorklog
         {
             IssueId = issueId,
-            UserId = CurrentUserId,
+            UserId = currentUser.UserId,
             StartedAt = dto.StartedAt,
             EndedAt = dto.EndedAt,
             DurationMinutes = durationMinutes,
@@ -115,7 +114,7 @@ public class WorklogController(AppDbContext db) : ControllerBase
             .FirstOrDefaultAsync(w => w.Id == id && w.IssueId == issueId, ct);
 
         if (worklog is null) return NotFound(new { message = "Worklog not found." });
-        if (worklog.UserId != CurrentUserId)
+        if (worklog.UserId != currentUser.UserId)
             return Forbid();
 
         if (dto.StartedAt.HasValue) worklog.StartedAt = dto.StartedAt.Value;
@@ -143,7 +142,7 @@ public class WorklogController(AppDbContext db) : ControllerBase
             .FirstOrDefaultAsync(w => w.Id == id && w.IssueId == issueId, ct);
 
         if (worklog is null) return NotFound(new { message = "Worklog not found." });
-        if (worklog.UserId != CurrentUserId)
+        if (worklog.UserId != currentUser.UserId)
             return Forbid();
 
         worklog.IsDeleted = true;

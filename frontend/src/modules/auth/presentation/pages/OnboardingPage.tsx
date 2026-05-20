@@ -12,7 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { authRepository } from '../../infrastructure/auth-repository';
 import { workspaceRepository } from '@/modules/workspaces/infrastructure/workspace-repository';
-import { useAuthStore } from '../../application/auth-store';
+import { setAuthSession } from '../../application/use-auth-me';
 import { getOnboardingState, saveOnboardingState } from '../../application/onboarding-state';
 
 export { getOnboardingState } from '../../application/onboarding-state';
@@ -117,7 +117,6 @@ interface ProfileStepProps {
 }
 
 const ProfileStep = ({ onNext, onBack, saving, setSaving }: ProfileStepProps): React.ReactElement => {
-    const { setUser } = useAuthStore();
     const form = useForm<ProfileFormData>({
         resolver: zodResolver(profileSchema),
         defaultValues: { displayName: '' },
@@ -127,7 +126,7 @@ const ProfileStep = ({ onNext, onBack, saving, setSaving }: ProfileStepProps): R
         setSaving(true);
         try {
             const updated = await authRepository.updateProfile({ displayName: data.displayName });
-            setUser(updated);
+            setAuthSession(updated);
             onNext();
         } catch {
             toast.error('Error al actualizar el perfil');

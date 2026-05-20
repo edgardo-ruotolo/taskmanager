@@ -5,6 +5,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import {
     Dialog,
     DialogContent,
+    DialogDescription,
     DialogHeader,
     DialogTitle,
     DialogTrigger,
@@ -32,11 +33,14 @@ export const CreateLabelDialog = ({
     trigger,
 }: CreateLabelDialogProps): React.ReactElement => {
     const [open, setOpen] = useState(false);
-    const { mutate, isPending } = useCreateLabel(workspaceSlug);
 
     const form = useForm<CreateLabelFormData>({
         resolver: zodResolver(createLabelSchema),
         defaultValues: { name: '', color: '#3b82f6' },
+    });
+
+    const { mutate, isPending } = useCreateLabel<CreateLabelFormData>(workspaceSlug, {
+        setError: form.setError,
     });
 
     const onSubmit = (data: CreateLabelFormData): void => {
@@ -54,6 +58,9 @@ export const CreateLabelDialog = ({
             <DialogContent className="bg-surface-1 border-subtle text-primary sm:max-w-sm">
                 <DialogHeader>
                     <DialogTitle className="text-primary">Nueva Etiqueta</DialogTitle>
+                    <DialogDescription className="sr-only">
+                        Crea una etiqueta para clasificar tareas con nombre y color.
+                    </DialogDescription>
                 </DialogHeader>
                 <Form {...form}>
                     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
@@ -89,6 +96,12 @@ export const CreateLabelDialog = ({
                                             />
                                             <span className="text-sm text-tertiary font-mono">
                                                 {field.value}
+                                            </span>
+                                            <span
+                                                className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium text-white"
+                                                style={{ backgroundColor: field.value }}
+                                            >
+                                                Vista previa
                                             </span>
                                         </div>
                                     </FormControl>

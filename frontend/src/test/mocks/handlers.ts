@@ -1,6 +1,6 @@
 import { http, HttpResponse } from 'msw'
 
-const BASE_URL = 'http://localhost:5000'
+const BASE_URL = 'http://localhost:5209'
 
 const mockRecurringTemplate = {
   id: 'rec-1',
@@ -36,13 +36,141 @@ const mockRecurringTemplate = {
   labelIds: [],
 }
 
+const mockUser = {
+  id: 'user-1',
+  email: 'test@test.com',
+  username: 'tester',
+  firstName: 'Test',
+  lastName: 'User',
+  displayName: 'Test User',
+  avatarUrl: null,
+  roles: ['User'],
+  isActive: true,
+  createdAt: new Date().toISOString(),
+  updatedAt: new Date().toISOString(),
+}
+
+const mockWorkspace = {
+  id: 'ws-1',
+  name: 'Test Workspace',
+  slug: 'test-ws',
+  description: null,
+  logoUrl: null,
+  ownerId: 'user-1',
+  createdAt: new Date().toISOString(),
+  updatedAt: new Date().toISOString(),
+}
+
+const mockCompany = {
+  id: 'company-1',
+  name: 'Test Company',
+  identifier: 'TEST',
+  description: null,
+  logoUrl: null,
+  workspaceId: 'ws-1',
+  ownerId: 'user-1',
+  createdAt: new Date().toISOString(),
+  updatedAt: new Date().toISOString(),
+}
+
+const mockIssue = {
+  id: 'issue-1',
+  sequenceId: 1,
+  title: 'Test issue',
+  description: null,
+  descriptionHtml: null,
+  descriptionJson: null,
+  priority: 0,
+  companyId: 'company-1',
+  stateId: 'state-1',
+  stateName: 'Todo',
+  stateColor: '#64748b',
+  stateGroup: 'unstarted',
+  createdById: 'user-1',
+  assigneeIds: [],
+  labelIds: [],
+  moduleIds: [],
+  sortOrder: 0,
+  isDraft: false,
+  isArchived: false,
+  requiresAdminApproval: false,
+  approvalRequiredStateIds: [],
+  approvedById: null,
+  approvedAt: null,
+  createdAt: new Date().toISOString(),
+  updatedAt: new Date().toISOString(),
+}
+
+const mockCycle = {
+  id: 'cycle-1',
+  name: 'Sprint 1',
+  description: null,
+  startDate: null,
+  endDate: null,
+  status: 'Draft',
+  issueCount: 0,
+  companyId: 'company-1',
+  ownerId: 'user-1',
+  createdAt: new Date().toISOString(),
+  updatedAt: new Date().toISOString(),
+}
+
 export const handlers = [
-  http.get(`${BASE_URL}/api/auth/me`, () => {
-    return HttpResponse.json(null, { status: 401 })
-  }),
-  http.post(`${BASE_URL}/api/auth/login`, () => {
-    return HttpResponse.json({ message: 'ok' }, { status: 200 })
-  }),
+  http.get(`${BASE_URL}/api/auth/me`, () => HttpResponse.json(mockUser)),
+  http.post(`${BASE_URL}/api/auth/login`, () => HttpResponse.json(mockUser, { status: 200 })),
+  http.post(`${BASE_URL}/api/auth/logout`, () => new HttpResponse(null, { status: 204 })),
+  http.post(`${BASE_URL}/api/auth/refresh`, () => new HttpResponse(null, { status: 204 })),
+
+  // Workspaces
+  http.get(`${BASE_URL}/api/workspaces`, () =>
+    HttpResponse.json({ items: [mockWorkspace], totalCount: 1, page: 1, pageSize: 20 }),
+  ),
+  http.get(`${BASE_URL}/api/workspaces/:slug`, () => HttpResponse.json(mockWorkspace)),
+
+  // Companies
+  http.get(`${BASE_URL}/api/workspaces/:slug/companies`, () =>
+    HttpResponse.json({ items: [mockCompany], totalCount: 1, page: 1, pageSize: 20 }),
+  ),
+  http.post(`${BASE_URL}/api/workspaces/:slug/companies`, () =>
+    HttpResponse.json(mockCompany, { status: 201 }),
+  ),
+  http.patch(`${BASE_URL}/api/workspaces/:slug/companies/:id`, () => HttpResponse.json(mockCompany)),
+  http.delete(`${BASE_URL}/api/workspaces/:slug/companies/:id`, () =>
+    new HttpResponse(null, { status: 204 }),
+  ),
+
+  // Issues
+  http.get(`${BASE_URL}/api/workspaces/:slug/companies/:companyId/issues`, () =>
+    HttpResponse.json({ items: [mockIssue], totalCount: 1, page: 1, pageSize: 20 }),
+  ),
+  http.post(`${BASE_URL}/api/workspaces/:slug/companies/:companyId/issues`, () =>
+    HttpResponse.json(mockIssue, { status: 201 }),
+  ),
+  http.get(`${BASE_URL}/api/workspaces/:slug/companies/:companyId/issues/:id`, () =>
+    HttpResponse.json(mockIssue),
+  ),
+  http.patch(`${BASE_URL}/api/workspaces/:slug/companies/:companyId/issues/:id`, () =>
+    HttpResponse.json(mockIssue),
+  ),
+  http.delete(`${BASE_URL}/api/workspaces/:slug/companies/:companyId/issues/:id`, () =>
+    new HttpResponse(null, { status: 204 }),
+  ),
+
+  // Cycles
+  http.get(`${BASE_URL}/api/workspaces/:slug/companies/:companyId/cycles`, () =>
+    HttpResponse.json({ items: [mockCycle], totalCount: 1, page: 1, pageSize: 20 }),
+  ),
+  http.post(`${BASE_URL}/api/workspaces/:slug/companies/:companyId/cycles`, () =>
+    HttpResponse.json(mockCycle, { status: 201 }),
+  ),
+  http.delete(`${BASE_URL}/api/workspaces/:slug/companies/:companyId/cycles/:id`, () =>
+    new HttpResponse(null, { status: 204 }),
+  ),
+
+  // Notifications
+  http.get(`${BASE_URL}/api/notifications`, () => HttpResponse.json([])),
+  http.post(`${BASE_URL}/api/notifications/:id/read`, () => new HttpResponse(null, { status: 204 })),
+  http.post(`${BASE_URL}/api/notifications/mark-all-read`, () => new HttpResponse(null, { status: 204 })),
 
   // Recurring handlers
   http.get(`${BASE_URL}/api/workspaces/:slug/recurring`, () => {
@@ -153,7 +281,7 @@ export const handlers = [
         uploadedById: 'user-1',
         workspaceId: 'ws-1',
         createdAt: new Date().toISOString(),
-        url: 'http://localhost:5000/uploads/test.txt',
+        url: 'http://localhost:5209/uploads/test.txt',
       },
       { status: 201 },
     )),

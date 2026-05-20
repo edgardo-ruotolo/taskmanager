@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using TaskManager.Api.Common.Auth;
 using Microsoft.EntityFrameworkCore;
-using System.Security.Claims;
 using TaskManager.Api.Common.Pagination;
 using TaskManager.Api.Data;
 using TaskManager.Api.Modules.Companies.Dtos;
@@ -13,14 +13,13 @@ namespace TaskManager.Api.Modules.Companies.Controllers;
 [ApiController]
 [Route("api/workspaces/{workspaceSlug}/companies")]
 [Authorize]
-public class CompaniesController(ICompanyService companyService, AppDbContext db) : ControllerBase
+public class CompaniesController(ICompanyService companyService, AppDbContext db, ICurrentUser currentUser) : ControllerBase
 {
-    private Guid CurrentUserId => Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
     [HttpPost]
     public async Task<ActionResult<CompanyDto>> Create(string workspaceSlug, [FromBody] CreateCompanyDto dto, CancellationToken ct)
     {
-        var company = await companyService.CreateAsync(workspaceSlug, CurrentUserId, dto, ct);
+        var company = await companyService.CreateAsync(workspaceSlug, currentUser.UserId, dto, ct);
         return CreatedAtAction(nameof(GetById), new { workspaceSlug, companyId = company.Id }, company);
     }
 
@@ -45,14 +44,14 @@ public class CompaniesController(ICompanyService companyService, AppDbContext db
     [HttpPatch("{companyId:guid}")]
     public async Task<ActionResult<CompanyDto>> Update(string workspaceSlug, Guid companyId, [FromBody] UpdateCompanyDto dto, CancellationToken ct)
     {
-        var company = await companyService.UpdateAsync(workspaceSlug, companyId, CurrentUserId, dto, ct);
+        var company = await companyService.UpdateAsync(workspaceSlug, companyId, currentUser.UserId, dto, ct);
         return Ok(company);
     }
 
     [HttpDelete("{companyId:guid}")]
     public async Task<IActionResult> Delete(string workspaceSlug, Guid companyId, CancellationToken ct)
     {
-        await companyService.DeleteAsync(workspaceSlug, companyId, CurrentUserId, ct);
+        await companyService.DeleteAsync(workspaceSlug, companyId, currentUser.UserId, ct);
         return NoContent();
     }
 
@@ -68,7 +67,7 @@ public class CompaniesController(ICompanyService companyService, AppDbContext db
     [HttpDelete("{companyId:guid}/members/{userId:guid}")]
     public async Task<IActionResult> RemoveMember(string workspaceSlug, Guid companyId, Guid userId, CancellationToken ct)
     {
-        await companyService.RemoveMemberAsync(workspaceSlug, companyId, userId, CurrentUserId, ct);
+        await companyService.RemoveMemberAsync(workspaceSlug, companyId, userId, currentUser.UserId, ct);
         return NoContent();
     }
 
@@ -76,7 +75,7 @@ public class CompaniesController(ICompanyService companyService, AppDbContext db
     public async Task<ActionResult<CompanyMemberDto>> UpdateMemberRole(
         string workspaceSlug, Guid companyId, Guid userId, [FromBody] UpdateCompanyMemberRoleDto dto, CancellationToken ct)
     {
-        var member = await companyService.UpdateMemberRoleAsync(workspaceSlug, companyId, userId, dto, CurrentUserId, ct);
+        var member = await companyService.UpdateMemberRoleAsync(workspaceSlug, companyId, userId, dto, currentUser.UserId, ct);
         return Ok(member);
     }
 
@@ -93,21 +92,21 @@ public class CompaniesController(ICompanyService companyService, AppDbContext db
     public async Task<ActionResult<CompanyInvitationDto>> InviteMember(
         string workspaceSlug, Guid companyId, [FromBody] CreateCompanyInvitationDto dto, CancellationToken ct)
     {
-        var invitation = await companyService.InviteMemberAsync(workspaceSlug, companyId, dto, CurrentUserId, ct);
+        var invitation = await companyService.InviteMemberAsync(workspaceSlug, companyId, dto, currentUser.UserId, ct);
         return Ok(invitation);
     }
 
     [HttpPost("{companyId:guid}/invitations/{token}/accept")]
     public async Task<IActionResult> AcceptInvitation(string workspaceSlug, Guid companyId, string token, CancellationToken ct)
     {
-        await companyService.AcceptInvitationAsync(token, CurrentUserId, ct);
+        await companyService.AcceptInvitationAsync(token, currentUser.UserId, ct);
         return NoContent();
     }
 
     [HttpDelete("{companyId:guid}/invitations/{id:guid}")]
     public async Task<IActionResult> RevokeInvitation(string workspaceSlug, Guid companyId, Guid id, CancellationToken ct)
     {
-        await companyService.RevokeInvitationAsync(id, CurrentUserId, ct);
+        await companyService.RevokeInvitationAsync(id, currentUser.UserId, ct);
         return NoContent();
     }
 

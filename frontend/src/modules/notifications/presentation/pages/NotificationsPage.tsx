@@ -284,7 +284,10 @@ export const NotificationsPage = (): React.ReactElement => {
                                 key={notification.id}
                                 notification={notification}
                                 isSelected={selectedId === notification.id}
-                                onSelect={() => setSelectedId(notification.id)}
+                                onSelect={() => {
+                                    setSelectedId(notification.id);
+                                    if (!notification.isRead) markAsRead(notification.id);
+                                }}
                                 onMarkAsRead={markAsRead}
                             />
                         ))

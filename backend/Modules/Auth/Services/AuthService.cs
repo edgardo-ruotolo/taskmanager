@@ -1,3 +1,5 @@
+using System.Security.Cryptography;
+using System.Text;
 using AutoMapper;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -16,8 +18,37 @@ public class AuthService(
     IMapper mapper,
     IEmailService emailService,
     AppDbContext db,
-    ITelemetryProvider telemetry) : IAuthService
+    ITelemetryProvider telemetry,
+    IConfiguration configuration) : IAuthService
 {
+    private string FrontendBaseUrl =>
+        configuration["App:FrontendUrl"]?.TrimEnd('/')
+            ?? throw new InvalidOperationException("App:FrontendUrl is not configured.");
+
+    private byte[] MagicLinkSecret
+    {
+        get
+        {
+            var secret = configuration["Auth:MagicLinkSecret"];
+            if (string.IsNullOrWhiteSpace(secret))
+                throw new InvalidOperationException("Auth:MagicLinkSecret is not configured.");
+            return Encoding.UTF8.GetBytes(secret);
+        }
+    }
+
+    private string HashMagicLinkToken(string rawToken)
+    {
+        using var hmac = new HMACSHA256(MagicLinkSecret);
+        var hash = hmac.ComputeHash(Encoding.UTF8.GetBytes(rawToken));
+        return Convert.ToBase64String(hash).TrimEnd('=').Replace('+', '-').Replace('/', '_');
+    }
+
+    private static string GenerateMagicLinkToken()
+    {
+        var bytes = RandomNumberGenerator.GetBytes(32);
+        return Convert.ToBase64String(bytes).TrimEnd('=').Replace('+', '-').Replace('/', '_');
+    }
+
     public async Task<UserDto> RegisterAsync(RegisterDto dto, CancellationToken ct = default)
     {
         var user = new User
@@ -72,7 +103,7 @@ public class AuthService(
 
         var token = await userManager.GeneratePasswordResetTokenAsync(user);
         var encodedToken = Uri.EscapeDataString(token);
-        var resetLink = $"http://localhost:5173/reset-password?email={Uri.EscapeDataString(user.Email!)}&token={encodedToken}";
+        var resetLink = $"{FrontendBaseUrl}/reset-password?email={Uri.EscapeDataString(user.Email!)}&token={encodedToken}";
 
         await emailService.SendPasswordResetAsync(user.Email!, user.FirstName ?? user.UserName ?? string.Empty, resetLink, ct);
     }
@@ -144,39 +175,65 @@ public class AuthService(
         // Silently return if user not found — do not reveal if email exists
         if (user is null) return;
 
-        var token = Guid.NewGuid().ToString("N");
+        var now = DateTime.UtcNow;
+
+        // Invalidate any previous pending tokens for the same email — single active token at a time.
+        await db.MagicLinkTokens
+            .Where(t => t.Email == dto.Email && !t.IsUsed && t.ExpiresAt > now)
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(t => t.IsUsed, true)
+                .SetProperty(t => t.UsedAt, now), ct);
+
+        var rawToken = GenerateMagicLinkToken();
         var magicLink = new MagicLinkToken
         {
             Email = dto.Email,
-            Token = token,
-            ExpiresAt = DateTime.UtcNow.AddMinutes(15)
+            TokenHash = HashMagicLinkToken(rawToken),
+            ExpiresAt = now.AddMinutes(15)
         };
 
         db.MagicLinkTokens.Add(magicLink);
         await db.SaveChangesAsync(ct);
 
-        var url = $"http://localhost:3000/magic-link/{token}";
+        var url = $"{FrontendBaseUrl}/magic-link/{rawToken}";
         var name = user.FirstName ?? user.UserName ?? string.Empty;
         await emailService.SendMagicLinkAsync(user.Email!, name, url, ct);
     }
 
     public async Task<UserDto> VerifyMagicLinkAsync(MagicLinkVerifyDto dto, HttpContext httpContext, CancellationToken ct = default)
     {
-        var magicToken = await db.MagicLinkTokens
-            .FirstOrDefaultAsync(t => t.Token == dto.Token, ct);
+        var now = DateTime.UtcNow;
+        var tokenHash = HashMagicLinkToken(dto.Token);
 
-        if (magicToken is null || magicToken.IsUsed || magicToken.ExpiresAt < DateTime.UtcNow)
+        // Atomic check-and-set to prevent race conditions on magic link reuse
+        var updated = await db.MagicLinkTokens
+            .Where(t => t.TokenHash == tokenHash && !t.IsUsed && t.ExpiresAt > now)
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(t => t.IsUsed, true)
+                .SetProperty(t => t.UsedAt, now), ct);
+
+        if (updated == 0)
             throw new ValidationException("Magic link is invalid or has expired.");
+
+        var magicToken = await db.MagicLinkTokens
+            .AsNoTracking()
+            .FirstAsync(t => t.TokenHash == tokenHash, ct);
 
         var user = await userManager.FindByEmailAsync(magicToken.Email)
             ?? throw new NotFoundException("User not found.");
 
-        // Mark token as used
-        magicToken.IsUsed = true;
-        magicToken.UsedAt = DateTime.UtcNow;
-        await db.SaveChangesAsync(ct);
-
         // Sign in the user via cookie auth (same as normal login)
+        await signInManager.SignInAsync(user, isPersistent: true);
+
+        return await MapUserDtoAsync(user);
+    }
+
+    public async Task<UserDto?> RefreshSessionAsync(Guid userId, CancellationToken ct = default)
+    {
+        var user = await userManager.FindByIdAsync(userId.ToString());
+        if (user is null || !user.IsActive || user.IsDeleted) return null;
+
+        // Re-sign-in to refresh claims in the auth cookie.
         await signInManager.SignInAsync(user, isPersistent: true);
 
         return await MapUserDtoAsync(user);

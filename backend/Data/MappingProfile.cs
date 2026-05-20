@@ -25,12 +25,8 @@ using TaskManager.Api.Modules.Estimates.Dtos;
 using TaskManager.Api.Modules.Estimates.Entities;
 using TaskManager.Api.Modules.Space.Dtos;
 using TaskManager.Api.Modules.Space.Entities;
-using TaskManager.Api.Modules.Webhooks.Dtos;
-using TaskManager.Api.Modules.Webhooks.Entities;
 using TaskManager.Api.Modules.Workspaces.Dtos;
 using TaskManager.Api.Modules.Workspaces.Entities;
-using TaskManager.Api.Modules.Integrations.Dtos;
-using TaskManager.Api.Modules.Integrations.Entities;
 using TaskManager.Api.Modules.Importer.Dtos;
 using TaskManager.Api.Modules.Importer.Entities;
 using TaskManager.Api.Modules.TimeTracking.Dtos;
@@ -73,7 +69,8 @@ public class MappingProfile : Profile
         CreateMap<Label, LabelDto>();
         CreateMap<CreateLabelDto, Label>();
         CreateMap<IssueComment, IssueCommentDto>()
-            .ForMember(d => d.AuthorName, o => o.MapFrom(s => s.Author.UserName ?? ""));
+            .ForMember(d => d.AuthorName, o => o.MapFrom(s => s.Author.UserName ?? ""))
+            .ForMember(d => d.Access, o => o.MapFrom(s => s.Access.ToString()));
         CreateMap<CreateCommentDto, IssueComment>();
         CreateMap<IssueReaction, IssueReactionDto>();
         CreateMap<CreateReactionDto, IssueReaction>();
@@ -81,14 +78,10 @@ public class MappingProfile : Profile
             .ForMember(d => d.ActorName, o => o.MapFrom(s => s.Actor.UserName ?? ""));
         CreateMap<IssueView, IssueViewDto>();
         CreateMap<Notification, NotificationDto>();
-        CreateMap<Webhook, WebhookDto>();
-        CreateMap<CreateWebhookDto, Webhook>();
-        CreateMap<WebhookLog, WebhookLogDto>();
         CreateMap<FileAsset, FileAssetDto>()
             .ForMember(d => d.Url, opt => opt.Ignore()); // Url is set manually in the service
         CreateMap<IssueType, IssueTypeDto>();
         CreateMap<CreateIssueTypeDto, IssueType>();
-        CreateMap<ApiToken, ApiTokenDto>();
         CreateMap<OAuthAccount, OAuthAccountDto>();
         CreateMap<Estimate, EstimateDto>()
             .ForMember(d => d.Points, o => o.MapFrom(s => s.Points.OrderBy(p => p.SortOrder)));
@@ -103,10 +96,6 @@ public class MappingProfile : Profile
         CreateMap<RecurringIssueRun, RecurringRunDto>();
 
         CreateMap<DeployBoard, DeployBoardDto>();
-
-        CreateMap<WorkspaceIntegration, WorkspaceIntegrationDto>();
-        CreateMap<GitHubRepository, GitHubRepositoryDto>();
-        CreateMap<CreateGitHubRepositoryDto, GitHubRepository>();
 
         CreateMap<ImporterHistory, ImporterHistoryDto>();
         CreateMap<IssueWorklog, WorklogDto>()

@@ -1,5 +1,7 @@
+using System.Net.Mail;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using TaskManager.Api.Data;
 using TaskManager.Api.Modules.Auth.Entities;
 
 namespace TaskManager.Api.Data.Seeders;
@@ -12,27 +14,24 @@ public static class AdminUserSeeder
     {
         var userManager = services.GetRequiredService<UserManager<User>>();
         var roleManager = services.GetRequiredService<RoleManager<IdentityRole<Guid>>>();
+        var db          = services.GetRequiredService<AppDbContext>();
         var config      = services.GetRequiredService<IConfiguration>();
 
         if (!await roleManager.RoleExistsAsync(AdminRole))
             await roleManager.CreateAsync(new IdentityRole<Guid>(AdminRole));
 
-        var email     = config["Admin:Email"]     ?? string.Empty;
-        var username  = config["Admin:Username"]  ?? string.Empty;
-        var password  = config["Admin:Password"]  ?? string.Empty;
-        var firstName = config["Admin:FirstName"] ?? string.Empty;
-        var lastName  = config["Admin:LastName"]  ?? string.Empty;
+        // If users already exist, the admin bootstrap is irrelevant on subsequent starts.
+        var hasAnyUser = await db.Users.IgnoreQueryFilters().AnyAsync();
+        if (hasAnyUser) return;
 
-        if (string.IsNullOrWhiteSpace(username)  ||
-            string.IsNullOrWhiteSpace(email)     ||
-            string.IsNullOrWhiteSpace(password)  ||
-            string.IsNullOrWhiteSpace(firstName) ||
-            string.IsNullOrWhiteSpace(lastName))
-        {
-            throw new InvalidOperationException(
-                "Admin user seeding failed: Admin:Username, Admin:Email, Admin:Password, " +
-                "Admin:FirstName and Admin:LastName are required in configuration.");
-        }
+        var email     = Require(config, "Admin:Email");
+        var username  = Require(config, "Admin:Username");
+        var password  = Require(config, "Admin:Password");
+        var firstName = Require(config, "Admin:FirstName");
+        var lastName  = Require(config, "Admin:LastName");
+
+        if (!IsValidEmail(email))
+            throw new InvalidOperationException($"Admin:Email '{email}' is not a valid email address.");
 
         // Si el usuario configurado ya existe, asegurarse de que tenga el rol Admin.
         var existingUser = await userManager.FindByEmailAsync(email);
@@ -63,5 +62,19 @@ public static class AdminUserSeeder
         }
 
         await userManager.AddToRoleAsync(admin, AdminRole);
+    }
+
+    private static string Require(IConfiguration config, string key)
+    {
+        var value = config[key];
+        if (string.IsNullOrWhiteSpace(value))
+            throw new InvalidOperationException($"{key} is not configured. Set it via appsettings or environment variables.");
+        return value;
+    }
+
+    private static bool IsValidEmail(string email)
+    {
+        if (!MailAddress.TryCreate(email, out var address)) return false;
+        return address.Address == email;
     }
 }

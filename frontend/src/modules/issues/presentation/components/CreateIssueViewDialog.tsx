@@ -6,6 +6,7 @@ import { z } from 'zod';
 import {
     Dialog,
     DialogContent,
+    DialogDescription,
     DialogHeader,
     DialogTitle,
     DialogTrigger,
@@ -62,6 +63,9 @@ export const CreateIssueViewDialog = ({
             <DialogContent className="bg-surface-1 border-subtle text-primary sm:max-w-md">
                 <DialogHeader>
                     <DialogTitle className="text-primary">Nueva Vista</DialogTitle>
+                    <DialogDescription className="sr-only">
+                        Guarda un filtro de tareas con nombre y descripción reutilizables.
+                    </DialogDescription>
                 </DialogHeader>
                 <Form {...form}>
                     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">

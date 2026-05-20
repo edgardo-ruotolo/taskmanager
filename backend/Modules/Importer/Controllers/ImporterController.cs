@@ -1,8 +1,9 @@
-using System.Security.Claims;
 using System.Text;
 using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using TaskManager.Api.Common.Auth;
+using TaskManager.Api.Common.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
 using TaskManager.Api.Data;
@@ -15,9 +16,9 @@ namespace TaskManager.Api.Modules.Importer.Controllers;
 [ApiController]
 [Route("api/workspaces/{workspaceSlug}/companies/{companyId:guid}/importer")]
 [Authorize]
-public class ImporterController(AppDbContext db, IConfiguration configuration) : ControllerBase
+[ServiceFilter(typeof(RequireCompanyMemberAttribute))]
+public class ImporterController(AppDbContext db, IConfiguration configuration, ICurrentUser currentUser) : ControllerBase
 {
-    private Guid CurrentUserId => Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
     [HttpPost("upload-csv")]
     [Consumes("multipart/form-data")]
@@ -90,7 +91,7 @@ public class ImporterController(AppDbContext db, IConfiguration configuration) :
         var errors = new List<string>();
         int successCount = 0;
         int errorCount = 0;
-        var userId = CurrentUserId;
+        var userId = currentUser.UserId;
 
         var connString = configuration.GetConnectionString("Postgres")!;
 

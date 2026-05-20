@@ -8,6 +8,41 @@ export const useAnalyticsOverview = (workspaceSlug: string) =>
         queryKey: ['analytics', 'overview', workspaceSlug],
         queryFn: () => analyticsRepository.getOverview(workspaceSlug),
         enabled: !!workspaceSlug,
+        staleTime: 60_000,
+    });
+
+// Distribution chart hooks. queryKey includes `workspaceSlug` so changing
+// workspace in the sidebar triggers a refetch automatically.
+export const useIssuesByState = (workspaceSlug: string) =>
+    useQuery({
+        queryKey: ['analytics', workspaceSlug, 'by-state'] as const,
+        queryFn: () => analyticsRepository.getIssuesByState(workspaceSlug),
+        enabled: !!workspaceSlug,
+        staleTime: 60_000,
+    });
+
+export const useIssuesByPriority = (workspaceSlug: string) =>
+    useQuery({
+        queryKey: ['analytics', workspaceSlug, 'by-priority'] as const,
+        queryFn: () => analyticsRepository.getIssuesByPriority(workspaceSlug),
+        enabled: !!workspaceSlug,
+        staleTime: 60_000,
+    });
+
+export const useCreatedVsResolved = (workspaceSlug: string) =>
+    useQuery({
+        queryKey: ['analytics', workspaceSlug, 'created-vs-resolved'] as const,
+        queryFn: () => analyticsRepository.getCreatedVsResolved(workspaceSlug),
+        enabled: !!workspaceSlug,
+        staleTime: 60_000,
+    });
+
+export const useCompanyActivity = (workspaceSlug: string, companyIdentifier: string) =>
+    useQuery({
+        queryKey: ['analytics', workspaceSlug, 'company-activity', companyIdentifier] as const,
+        queryFn: () => analyticsRepository.getCompanyActivity(workspaceSlug, companyIdentifier),
+        enabled: !!workspaceSlug && !!companyIdentifier,
+        staleTime: 60_000,
     });
 
 // Analytic Views hooks
@@ -27,7 +62,7 @@ export const useCreateAnalyticView = (workspaceSlug: string) => {
             void qc.invalidateQueries({ queryKey: ['analytics', workspaceSlug, 'views'] });
             toast.success('Vista guardada');
         },
-        onError: () => toast.error('Error al guardar la vista'),
+        onError: (error: unknown) => { const e = error as { response?: { data?: { message?: string } } }; toast.error(e?.response?.data?.message ?? 'Error al guardar la vista'); },
     });
 };
 
@@ -39,7 +74,7 @@ export const useDeleteAnalyticView = (workspaceSlug: string) => {
             void qc.invalidateQueries({ queryKey: ['analytics', workspaceSlug, 'views'] });
             toast.success('Vista eliminada');
         },
-        onError: () => toast.error('Error al eliminar la vista'),
+        onError: (error: unknown) => { const e = error as { response?: { data?: { message?: string } } }; toast.error(e?.response?.data?.message ?? 'Error al eliminar la vista'); },
     });
 };
 
@@ -60,6 +95,6 @@ export const useCreateExport = (workspaceSlug: string) => {
             void qc.invalidateQueries({ queryKey: ['exports', workspaceSlug] });
             toast.success('Exportación iniciada. Recibirás el archivo cuando esté listo.');
         },
-        onError: () => toast.error('Error al iniciar la exportación'),
+        onError: (error: unknown) => { const e = error as { response?: { data?: { message?: string } } }; toast.error(e?.response?.data?.message ?? 'Error al iniciar la exportación'); },
     });
 };

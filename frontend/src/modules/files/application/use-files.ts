@@ -29,7 +29,7 @@ export const useUploadFile = (
             void qc.invalidateQueries({ queryKey: listKey(workspaceSlug, entityType, entityId) });
             toast.success('Archivo subido');
         },
-        onError: () => toast.error('Error al subir el archivo'),
+        onError: (error: unknown) => { const e = error as { response?: { data?: { message?: string } } }; toast.error(e?.response?.data?.message ?? 'Error al subir el archivo'); },
     });
 };
 
@@ -45,6 +45,6 @@ export const useDeleteFile = (
             void qc.invalidateQueries({ queryKey: listKey(workspaceSlug, entityType, entityId) });
             toast.success('Archivo eliminado');
         },
-        onError: () => toast.error('Error al eliminar el archivo'),
+        onError: (error: unknown) => { const e = error as { response?: { data?: { message?: string } } }; toast.error(e?.response?.data?.message ?? 'Error al eliminar el archivo'); },
     });
 };

@@ -1,7 +1,8 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using TaskManager.Api.Common.Auth;
+using TaskManager.Api.Common.Authorization;
 using Microsoft.EntityFrameworkCore;
-using System.Security.Claims;
 using TaskManager.Api.Data;
 using TaskManager.Api.Modules.Space.Dtos;
 using TaskManager.Api.Modules.Space.Entities;
@@ -11,9 +12,9 @@ namespace TaskManager.Api.Modules.Space.Controllers;
 [ApiController]
 [Route("api/workspaces/{workspaceSlug}/companies/{companyId:guid}/deploy-boards")]
 [Authorize]
+[ServiceFilter(typeof(RequireCompanyMemberAttribute))]
 public class DeployBoardController(AppDbContext db) : ControllerBase
 {
-    private Guid CurrentUserId => Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
     [HttpGet]
     public async Task<ActionResult<List<DeployBoardDto>>> GetAll(

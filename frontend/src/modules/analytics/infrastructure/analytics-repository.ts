@@ -2,7 +2,11 @@ import { apiClient } from '@/shared/lib/api-client';
 import type {
     AnalyticsOverview,
     AnalyticView,
+    CompanyActivityPoint,
     CreateAnalyticViewData,
+    CreatedVsResolvedPoint,
+    PriorityBucket,
+    StateBucket,
     UpdateAnalyticViewData,
     ExporterHistory,
 } from '../domain/types';
@@ -11,6 +15,31 @@ export const analyticsRepository = {
     getOverview: (workspaceSlug: string): Promise<AnalyticsOverview> =>
         apiClient
             .get<AnalyticsOverview>(`/api/workspaces/${workspaceSlug}/analytics/overview`)
+            .then((r) => r.data),
+
+    getIssuesByState: (workspaceSlug: string): Promise<StateBucket[]> =>
+        apiClient
+            .get<StateBucket[]>(`/api/workspaces/${workspaceSlug}/analytics/issues-by-state`)
+            .then((r) => r.data),
+
+    getIssuesByPriority: (workspaceSlug: string): Promise<PriorityBucket[]> =>
+        apiClient
+            .get<PriorityBucket[]>(`/api/workspaces/${workspaceSlug}/analytics/issues-by-priority`)
+            .then((r) => r.data),
+
+    getCreatedVsResolved: (workspaceSlug: string): Promise<CreatedVsResolvedPoint[]> =>
+        apiClient
+            .get<CreatedVsResolvedPoint[]>(`/api/workspaces/${workspaceSlug}/analytics/created-vs-resolved`)
+            .then((r) => r.data),
+
+    getCompanyActivity: (
+        workspaceSlug: string,
+        companyIdentifier: string,
+    ): Promise<CompanyActivityPoint[]> =>
+        apiClient
+            .get<CompanyActivityPoint[]>(
+                `/api/workspaces/${workspaceSlug}/analytics/companies/${companyIdentifier}/activity`,
+            )
             .then((r) => r.data),
 
     // Analytic Views

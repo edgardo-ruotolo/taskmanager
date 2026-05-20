@@ -13,6 +13,9 @@ import {
     ChevronRight,
     Copy,
     Check,
+    MoreHorizontal,
+    Pencil,
+    GitBranch,
 } from 'lucide-react';
 import { AiSubIssueGenerator } from '@/modules/ai/presentation/components/AiSubIssueGenerator';
 import { IssuePdfExport } from '@/modules/pdf/presentation/components/IssuePdfExport';
@@ -22,8 +25,25 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Separator } from '@/components/ui/separator';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { cn } from '@/lib/utils';
-import { useAuthStore } from '@/modules/auth/application/auth-store';
+import { useAuthMe } from '@/modules/auth/application/use-auth-me';
 import { RichTextEditor } from '@/shared/components/RichTextEditor';
 import { useDocumentCollaboration } from '@/shared/hooks/useDocumentCollaboration';
 import type { IssueRelationType } from '../../domain/types';
@@ -36,6 +56,7 @@ import {
     useComments,
     useCreateComment,
     useDeleteComment,
+    useUpdateComment,
     useReactions,
     useAddReaction,
     useRemoveReaction,
@@ -50,8 +71,10 @@ import {
     useCreateIssueRelation,
     useDeleteIssueRelation,
 } from '../../application/use-issue-detail';
-import { useUpdateIssue } from '../../application/use-issues';
+import { useUpdateIssue, useIssues } from '../../application/use-issues';
 import { useCompany } from '@/modules/companies/application/use-companies';
+import { CreateIssueDialog } from '../components/CreateIssueDialog';
+import { useEstimates } from '@/modules/estimates/application/use-estimates';
 import type {
     IssueComment,
     IssueActivity,
@@ -68,6 +91,14 @@ const RELATION_LABELS: Record<IssueRelationType, string> = {
     BlockedBy: 'Bloqueado por',
     Blocking: 'Bloquea a',
     IsEpicOf: 'Épica de',
+    Duplicate: 'Duplica a',
+    RelatesTo: 'Se relaciona con',
+    StartBefore: 'Inicia antes de',
+    StartAfter: 'Inicia después de',
+    FinishBefore: 'Finaliza antes de',
+    FinishAfter: 'Finaliza después de',
+    ImplementedBy: 'Implementado por',
+    Implements: 'Implementa a',
 };
 
 const commentSchema = z.object({
@@ -246,6 +277,9 @@ function ReactionsSection({
 interface CommentItemProps {
     comment: IssueComment;
     currentUserId: string;
+    workspaceSlug: string;
+    companyId: string;
+    issueId: string;
     onDelete: (id: string) => void;
     isDeleting: boolean;
 }
@@ -253,9 +287,34 @@ interface CommentItemProps {
 function CommentItem({
     comment,
     currentUserId,
+    workspaceSlug,
+    companyId,
+    issueId,
     onDelete,
     isDeleting,
 }: CommentItemProps): React.ReactElement {
+    const [isEditing, setIsEditing] = useState(false);
+    const [editBody, setEditBody] = useState(comment.body);
+    const { mutate: updateComment, isPending: isUpdating } = useUpdateComment(workspaceSlug, companyId, issueId);
+    const isOwner = comment.authorId === currentUserId;
+
+    const handleSaveEdit = (): void => {
+        const trimmed = editBody.trim();
+        if (!trimmed || trimmed === comment.body) {
+            setIsEditing(false);
+            return;
+        }
+        updateComment(
+            { commentId: comment.id, body: trimmed },
+            { onSuccess: () => setIsEditing(false) },
+        );
+    };
+
+    const handleCancelEdit = (): void => {
+        setEditBody(comment.body);
+        setIsEditing(false);
+    };
+
     return (
         <div className="flex gap-3">
             <div className="w-8 h-8 rounded-full bg-layer-2 flex items-center justify-center text-xs font-medium text-secondary shrink-0">
@@ -268,20 +327,92 @@ function CommentItem({
                         {formatRelativeTime(comment.createdAt)}
                     </span>
                 </div>
-                <p className="text-sm text-secondary whitespace-pre-wrap break-words">
-                    {comment.body}
-                </p>
+                {isEditing ? (
+                    <div className="space-y-2">
+                        <Textarea
+                            value={editBody}
+                            onChange={(e) => setEditBody(e.target.value)}
+                            className="bg-layer-1 border-subtle text-primary text-sm min-h-[80px] resize-none"
+                            autoFocus
+                        />
+                        <div className="flex gap-2">
+                            <Button
+                                size="sm"
+                                onClick={handleSaveEdit}
+                                disabled={isUpdating || !editBody.trim()}
+                                className="bg-accent-primary hover:bg-accent-primary-hover text-on-color h-7 text-xs"
+                            >
+                                {isUpdating ? 'Guardando...' : 'Guardar'}
+                            </Button>
+                            <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={handleCancelEdit}
+                                disabled={isUpdating}
+                                className="h-7 text-xs text-secondary"
+                            >
+                                Cancelar
+                            </Button>
+                        </div>
+                    </div>
+                ) : (
+                    <p className="text-sm text-secondary whitespace-pre-wrap break-words">
+                        {comment.body}
+                    </p>
+                )}
             </div>
-            {comment.authorId === currentUserId && (
-                <button
-                    type="button"
-                    onClick={() => onDelete(comment.id)}
-                    disabled={isDeleting}
-                    className="text-placeholder hover:text-red-400 transition-colors shrink-0 mt-0.5"
-                    aria-label="Eliminar comentario"
-                >
-                    <Trash2 size={14} />
-                </button>
+            {isOwner && !isEditing && (
+                <AlertDialog>
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <button
+                                type="button"
+                                className="text-placeholder hover:text-secondary transition-colors shrink-0 mt-0.5"
+                                aria-label="Opciones del comentario"
+                            >
+                                <MoreHorizontal size={14} />
+                            </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="bg-surface-1 border-subtle text-primary w-36">
+                            <DropdownMenuItem
+                                onClick={() => { setEditBody(comment.body); setIsEditing(true); }}
+                                className="gap-2 cursor-pointer"
+                            >
+                                <Pencil size={13} />
+                                Editar
+                            </DropdownMenuItem>
+                            <AlertDialogTrigger asChild>
+                                <DropdownMenuItem
+                                    className="gap-2 cursor-pointer text-red-400 focus:text-red-400"
+                                    onSelect={(e) => e.preventDefault()}
+                                >
+                                    <Trash2 size={13} />
+                                    Eliminar
+                                </DropdownMenuItem>
+                            </AlertDialogTrigger>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                    <AlertDialogContent className="bg-surface-1 border-subtle text-primary">
+                        <AlertDialogHeader>
+                            <AlertDialogTitle>Eliminar comentario</AlertDialogTitle>
+                            <AlertDialogDescription className="text-secondary">
+                                ¿Estás seguro de que querés eliminar este comentario? Esta acción no se puede deshacer.
+                            </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                            <AlertDialogCancel className="border-subtle text-secondary hover:bg-layer-1-hover">
+                                Cancelar
+                            </AlertDialogCancel>
+                            <AlertDialogAction
+                                onClick={() => onDelete(comment.id)}
+                                disabled={isDeleting}
+                                className="bg-red-600 hover:bg-red-700 text-white"
+                            >
+                                Eliminar
+                            </AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
             )}
         </div>
     );
@@ -462,9 +593,23 @@ function RelationsSection({
     issueId,
     companyIdentifier,
 }: RelationsSectionProps): React.ReactElement {
-    const [relatedIdInput, setRelatedIdInput] = useState('');
+    const [searchQuery, setSearchQuery] = useState('');
+    const [selectedIssueId, setSelectedIssueId] = useState('');
+    const [pickerOpen, setPickerOpen] = useState(false);
     const [relationType, setRelationType] = useState<IssueRelationType>('DuplicateOf');
     const { data: relations = [] } = useIssueRelations(workspaceSlug, companyId, issueId);
+    const { data: allIssuesData } = useIssues(workspaceSlug, companyId);
+    const candidateIssues = (allIssuesData?.items ?? []).filter(
+        (i) => i.id !== issueId && !relations.some((r) => r.relatedIssueId === i.id),
+    );
+    const filteredCandidates = searchQuery.trim()
+        ? candidateIssues.filter(
+              (i) =>
+                  i.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                  String(i.sequenceId).includes(searchQuery),
+          )
+        : candidateIssues.slice(0, 20);
+
     const { mutate: createRelation, isPending: isCreating } = useCreateIssueRelation(
         workspaceSlug,
         companyId,
@@ -477,13 +622,20 @@ function RelationsSection({
     );
 
     const handleAdd = (): void => {
-        const trimmed = relatedIdInput.trim();
-        if (!trimmed) return;
+        if (!selectedIssueId) return;
         createRelation(
-            { relatedIssueId: trimmed, relationType },
-            { onSuccess: () => setRelatedIdInput('') },
+            { relatedIssueId: selectedIssueId, relationType },
+            {
+                onSuccess: () => {
+                    setSelectedIssueId('');
+                    setSearchQuery('');
+                    setPickerOpen(false);
+                },
+            },
         );
     };
+
+    const selectedIssue = candidateIssues.find((i) => i.id === selectedIssueId);
 
     return (
         <div>
@@ -530,17 +682,45 @@ function RelationsSection({
                     ))}
                 </select>
                 <div className="flex gap-2">
-                    <Input
-                        value={relatedIdInput}
-                        onChange={(e) => setRelatedIdInput(e.target.value)}
-                        onKeyDown={(e) => { if (e.key === 'Enter') handleAdd(); }}
-                        placeholder="ID de la tarea (UUID)"
-                        className="bg-layer-1/50 border-subtle text-primary placeholder:text-placeholder text-xs h-8 flex-1"
-                    />
+                    <div className="relative flex-1">
+                        <Input
+                            value={selectedIssue ? `${companyIdentifier ?? 'ISS'}-${selectedIssue.sequenceId} — ${selectedIssue.title}` : searchQuery}
+                            onChange={(e) => {
+                                setSelectedIssueId('');
+                                setSearchQuery(e.target.value);
+                                setPickerOpen(true);
+                            }}
+                            onFocus={() => setPickerOpen(true)}
+                            placeholder="Buscar tarea..."
+                            className="bg-layer-1/50 border-subtle text-primary placeholder:text-placeholder text-xs h-8"
+                        />
+                        {pickerOpen && filteredCandidates.length > 0 && (
+                            <div className="absolute top-full left-0 right-0 z-50 mt-1 max-h-48 overflow-y-auto rounded-md border border-subtle bg-surface-1 shadow-lg">
+                                {filteredCandidates.map((i) => (
+                                    <button
+                                        key={i.id}
+                                        type="button"
+                                        onMouseDown={(e) => {
+                                            e.preventDefault();
+                                            setSelectedIssueId(i.id);
+                                            setSearchQuery('');
+                                            setPickerOpen(false);
+                                        }}
+                                        className="w-full flex items-center gap-2 px-3 py-2 text-xs hover:bg-layer-2 transition-colors text-left"
+                                    >
+                                        <span className="font-mono text-tertiary shrink-0">
+                                            {companyIdentifier ?? 'ISS'}-{i.sequenceId}
+                                        </span>
+                                        <span className="text-secondary truncate">{i.title}</span>
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+                    </div>
                     <Button
                         size="sm"
                         onClick={handleAdd}
-                        disabled={isCreating || !relatedIdInput.trim()}
+                        disabled={isCreating || !selectedIssueId}
                         className="bg-accent-primary hover:bg-accent-primary-hover text-on-color h-8 px-2"
                     >
                         <Plus size={13} />
@@ -620,6 +800,9 @@ function CommentsAndActivityTabs({
                             key={comment.id}
                             comment={comment}
                             currentUserId={currentUserId}
+                            workspaceSlug={workspaceSlug}
+                            companyId={companyId}
+                            issueId={issueId}
                             onDelete={deleteComment}
                             isDeleting={isDeletingComment}
                         />
@@ -694,7 +877,7 @@ export const IssueDetailPage = (): React.ReactElement => {
         companyId: string;
         issueId: string;
     }>();
-    const user = useAuthStore((s) => s.user);
+    const { data: user } = useAuthMe();
     const currentUserId = user?.id ?? '';
 
     const { data: issue, isLoading: issueLoading } = useIssueDetail(
@@ -706,9 +889,36 @@ export const IssueDetailPage = (): React.ReactElement => {
     const { data: subscribers = [] } = useSubscribers(workspaceSlug, companyId, issueId);
     const { data: company } = useCompany(workspaceSlug, companyId);
     const companyIdentifier = company?.identifier;
+    const { data: parentIssueData } = useIssueDetail(workspaceSlug, companyId, issue?.parentId ?? '');
+    const { data: allIssuesData } = useIssues(workspaceSlug, companyId);
+    const subIssues = (allIssuesData?.items ?? []).filter((i) => i.parentId === issueId);
     const issueIdentifier = `${companyIdentifier ?? 'ISS'}-${issue?.sequenceId ?? ''}`;
+    const { data: estimates = [] } = useEstimates(workspaceSlug, companyId);
+    const allEstimatePoints = estimates.flatMap((e) => (e.points ?? []).map((p) => ({ ...p, estimateName: e.name })));
 
     const { mutate: updateIssue, isPending: isUpdating } = useUpdateIssue(workspaceSlug, companyId);
+
+    const [descSaveState, setDescSaveState] = useState<'idle' | 'saving' | 'saved'>('idle');
+    const descDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    const handleDescriptionChange = (field: 'descriptionHtml' | 'descriptionJson', value: string): void => {
+        if (descDebounceRef.current) clearTimeout(descDebounceRef.current);
+        setDescSaveState('saving');
+        descDebounceRef.current = setTimeout(() => {
+            if (!issue) return;
+            updateIssue(
+                { issueId: issue.id, data: { [field]: value } },
+                {
+                    onSuccess: () => {
+                        setDescSaveState('saved');
+                        setTimeout(() => setDescSaveState('idle'), 2000);
+                    },
+                    onError: () => setDescSaveState('idle'),
+                },
+            );
+        }, 1500);
+    };
+
     const { mutate: addReaction, isPending: isAddingReaction } = useAddReaction(
         workspaceSlug,
         companyId,
@@ -776,6 +986,17 @@ export const IssueDetailPage = (): React.ReactElement => {
                             <ArrowLeft size={14} />
                             Issues
                         </Link>
+                        {issue.parentId && parentIssueData && (
+                            <>
+                                <ChevronRight size={12} className="text-placeholder shrink-0" aria-hidden="true" />
+                                <Link
+                                    to={`/${workspaceSlug}/companies/${companyId}/issues/${issue.parentId}`}
+                                    className="text-xs font-mono text-tertiary hover:text-secondary transition-colors shrink-0"
+                                >
+                                    {companyIdentifier ?? 'ISS'}-{parentIssueData.sequenceId}
+                                </Link>
+                            </>
+                        )}
                         <ChevronRight size={12} className="text-placeholder shrink-0" aria-hidden="true" />
                         <span className="text-xs font-mono text-tertiary shrink-0">
                             {issueIdentifier}
@@ -849,13 +1070,17 @@ export const IssueDetailPage = (): React.ReactElement => {
                             </div>
                             <div className="rounded-lg border border-subtle bg-surface-1 px-4 py-3">
                                 <RichTextEditor
-                                    content={issue.description ?? ''}
+                                    content={issue.descriptionHtml ?? issue.description ?? ''}
                                     placeholder="Agrega una descripción..."
-                                    onChange={(html) =>
-                                        updateIssue({ issueId: issue.id, data: { description: html } })
-                                    }
+                                    onChange={(html) => handleDescriptionChange('descriptionHtml', html)}
+                                    onChangeJson={(json) => handleDescriptionChange('descriptionJson', json)}
                                     editable
                                 />
+                                {descSaveState !== 'idle' && (
+                                    <p className="text-[11px] text-placeholder mt-1.5 text-right">
+                                        {descSaveState === 'saving' ? 'Guardando...' : 'Guardado'}
+                                    </p>
+                                )}
                             </div>
                         </div>
 
@@ -894,6 +1119,58 @@ export const IssueDetailPage = (): React.ReactElement => {
                                 issueId={issueId}
                                 companyIdentifier={companyIdentifier}
                             />
+                        </div>
+
+                        <Separator className="bg-subtle mb-5" />
+
+                        {/* Sub-issues */}
+                        <div className="mb-5">
+                            <div className="flex items-center justify-between mb-3">
+                                <h3 className="text-sm font-medium text-secondary flex items-center gap-1.5">
+                                    <GitBranch size={13} className="text-placeholder" />
+                                    Sub-tareas
+                                    {subIssues.length > 0 && (
+                                        <span className="text-xs bg-layer-2 text-placeholder rounded-full px-1.5 py-0.5 ml-1">
+                                            {subIssues.length}
+                                        </span>
+                                    )}
+                                </h3>
+                                <CreateIssueDialog
+                                    workspaceSlug={workspaceSlug}
+                                    companyId={companyId}
+                                    defaultParentId={issue.id}
+                                    trigger={
+                                        <button
+                                            type="button"
+                                            className="flex items-center gap-1 text-xs text-placeholder hover:text-secondary transition-colors"
+                                            aria-label="Agregar sub-tarea"
+                                        >
+                                            <Plus size={13} />
+                                            Agregar
+                                        </button>
+                                    }
+                                />
+                            </div>
+                            {subIssues.length === 0 ? (
+                                <p className="text-xs text-placeholder italic">Sin sub-tareas</p>
+                            ) : (
+                                <div className="space-y-1">
+                                    {subIssues.map((sub) => (
+                                        <Link
+                                            key={sub.id}
+                                            to={`/${workspaceSlug}/companies/${companyId}/issues/${sub.id}`}
+                                            className="flex items-center gap-2 px-3 py-2 rounded-md hover:bg-layer-2 transition-colors group"
+                                        >
+                                            <span className="text-[10px] font-mono text-tertiary shrink-0">
+                                                {companyIdentifier ?? 'ISS'}-{sub.sequenceId}
+                                            </span>
+                                            <span className="text-xs text-secondary truncate group-hover:text-primary transition-colors">
+                                                {sub.title}
+                                            </span>
+                                        </Link>
+                                    ))}
+                                </div>
+                            )}
                         </div>
 
                         <Separator className="bg-subtle mb-5" />
@@ -940,10 +1217,10 @@ export const IssueDetailPage = (): React.ReactElement => {
                                     <IssuePriorityBadge priority={issue.priority} />
                                 </PropertyRow>
 
-                                <PropertyRow label="Asignado a">
-                                    {issue.assigneeId ? (
-                                        <span className="text-xs text-secondary font-mono">
-                                            {issue.assigneeId.slice(0, 8)}…
+                                <PropertyRow label="Asignados">
+                                    {issue.assigneeIds.length > 0 ? (
+                                        <span className="text-xs text-secondary">
+                                            {issue.assigneeIds.length} asignado{issue.assigneeIds.length > 1 ? 's' : ''}
                                         </span>
                                     ) : (
                                         <span className="text-xs text-placeholder italic">Sin asignar</span>
@@ -980,17 +1257,77 @@ export const IssueDetailPage = (): React.ReactElement => {
 
                                 <PropertyRow label="Padre">
                                     {issue.parentId ? (
-                                        <span className="text-xs font-mono text-tertiary truncate">
-                                            {issue.parentId.slice(0, 8)}…
-                                        </span>
+                                        <Link
+                                            to={`/${workspaceSlug}/companies/${companyId}/issues/${issue.parentId}`}
+                                            className="text-xs font-mono text-blue-400 hover:text-blue-300 transition-colors truncate"
+                                        >
+                                            {parentIssueData
+                                                ? `${companyIdentifier ?? 'ISS'}-${parentIssueData.sequenceId}`
+                                                : `${issue.parentId.slice(0, 8)}…`}
+                                        </Link>
                                     ) : (
                                         <span className="text-xs text-placeholder italic">Sin padre</span>
                                     )}
                                 </PropertyRow>
 
                                 <PropertyRow label="Etiquetas">
-                                    <span className="text-xs text-placeholder italic">Sin etiquetas</span>
+                                    {issue.labelIds.length > 0 ? (
+                                        <span className="text-xs text-secondary">
+                                            {issue.labelIds.length} etiqueta{issue.labelIds.length > 1 ? 's' : ''}
+                                        </span>
+                                    ) : (
+                                        <span className="text-xs text-placeholder italic">Sin etiquetas</span>
+                                    )}
                                 </PropertyRow>
+
+                                <PropertyRow label="Ciclo">
+                                    {issue.cycleId ? (
+                                        <span className="text-xs text-secondary font-mono">
+                                            {issue.cycleId.slice(0, 8)}…
+                                        </span>
+                                    ) : (
+                                        <span className="text-xs text-placeholder italic">Sin ciclo</span>
+                                    )}
+                                </PropertyRow>
+
+                                {allEstimatePoints.length > 0 && (
+                                    <PropertyRow label="Estimación">
+                                        <select
+                                            value={issue.estimatePointId ?? ''}
+                                            onChange={(e) =>
+                                                updateIssue({
+                                                    issueId: issue.id,
+                                                    data: { estimatePointId: e.target.value || undefined },
+                                                })
+                                            }
+                                            className="text-xs bg-layer-1 border border-subtle rounded px-2 py-0.5 text-secondary focus:outline-none focus:border-strong max-w-[140px]"
+                                            aria-label="Seleccionar estimación"
+                                        >
+                                            <option value="">Sin estimar</option>
+                                            {allEstimatePoints.map((p) => (
+                                                <option key={p.id} value={p.id}>
+                                                    {p.value} ({p.estimateName})
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </PropertyRow>
+                                )}
+
+                                <PropertyRow label="Módulos">
+                                    {issue.moduleIds.length > 0 ? (
+                                        <span className="text-xs text-secondary">
+                                            {issue.moduleIds.length} módulo{issue.moduleIds.length > 1 ? 's' : ''}
+                                        </span>
+                                    ) : (
+                                        <span className="text-xs text-placeholder italic">Sin módulos</span>
+                                    )}
+                                </PropertyRow>
+
+                                {issue.isDraft && (
+                                    <PropertyRow label="Estado">
+                                        <span className="text-xs text-yellow-500 font-medium">Borrador</span>
+                                    </PropertyRow>
+                                )}
 
                                 <PropertyRow label="Creado">
                                     <span className="text-xs text-tertiary">

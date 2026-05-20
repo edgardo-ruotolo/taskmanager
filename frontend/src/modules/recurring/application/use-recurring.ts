@@ -44,7 +44,7 @@ export const useCreateRecurringTemplate = (workspaceSlug: string) => {
             void qc.invalidateQueries({ queryKey: listKey(workspaceSlug) });
             toast.success('Tarea recurrente creada');
         },
-        onError: () => toast.error('Error al crear la tarea recurrente'),
+        onError: (error: unknown) => { const e = error as { response?: { data?: { message?: string } } }; toast.error(e?.response?.data?.message ?? 'Error al crear la tarea recurrente'); },
     });
 };
 
@@ -58,7 +58,7 @@ export const useUpdateRecurringTemplate = (workspaceSlug: string, id: string) =>
             void qc.invalidateQueries({ queryKey: detailKey(workspaceSlug, id) });
             toast.success('Tarea recurrente actualizada');
         },
-        onError: () => toast.error('Error al actualizar la tarea recurrente'),
+        onError: (error: unknown) => { const e = error as { response?: { data?: { message?: string } } }; toast.error(e?.response?.data?.message ?? 'Error al actualizar la tarea recurrente'); },
     });
 };
 
@@ -71,7 +71,7 @@ export const useDeleteRecurringTemplate = (workspaceSlug: string) => {
             qc.removeQueries({ queryKey: detailKey(workspaceSlug, id) });
             toast.success('Tarea recurrente eliminada');
         },
-        onError: () => toast.error('Error al eliminar la tarea recurrente'),
+        onError: (error: unknown) => { const e = error as { response?: { data?: { message?: string } } }; toast.error(e?.response?.data?.message ?? 'Error al eliminar la tarea recurrente'); },
     });
 };
 
@@ -84,7 +84,7 @@ export const usePauseRecurring = (workspaceSlug: string) => {
             void qc.invalidateQueries({ queryKey: detailKey(workspaceSlug, id) });
             toast.success('Tarea pausada');
         },
-        onError: () => toast.error('Error al pausar la tarea'),
+        onError: (error: unknown) => { const e = error as { response?: { data?: { message?: string } } }; toast.error(e?.response?.data?.message ?? 'Error al pausar la tarea'); },
     });
 };
 
@@ -97,7 +97,7 @@ export const useResumeRecurring = (workspaceSlug: string) => {
             void qc.invalidateQueries({ queryKey: detailKey(workspaceSlug, id) });
             toast.success('Tarea reanudada');
         },
-        onError: () => toast.error('Error al reanudar la tarea'),
+        onError: (error: unknown) => { const e = error as { response?: { data?: { message?: string } } }; toast.error(e?.response?.data?.message ?? 'Error al reanudar la tarea'); },
     });
 };
 
@@ -109,7 +109,7 @@ export const useSkipNextRecurring = (workspaceSlug: string) => {
             void qc.invalidateQueries({ queryKey: detailKey(workspaceSlug, id) });
             toast.success('Próxima ejecución omitida');
         },
-        onError: () => toast.error('Error al omitir la ejecución'),
+        onError: (error: unknown) => { const e = error as { response?: { data?: { message?: string } } }; toast.error(e?.response?.data?.message ?? 'Error al omitir la ejecución'); },
     });
 };
 
@@ -121,6 +121,6 @@ export const useRunNowRecurring = (workspaceSlug: string) => {
             void qc.invalidateQueries({ queryKey: runsKey(workspaceSlug, id) });
             toast.success('Ejecución iniciada');
         },
-        onError: () => toast.error('Error al ejecutar la tarea'),
+        onError: (error: unknown) => { const e = error as { response?: { data?: { message?: string } } }; toast.error(e?.response?.data?.message ?? 'Error al ejecutar la tarea'); },
     });
 };

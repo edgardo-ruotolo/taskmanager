@@ -12,6 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { forgotPasswordSchema, type ForgotPasswordFormData } from '../../application/schemas';
 import { authRepository } from '../../infrastructure/auth-repository';
+import { applyServerErrors } from '@/shared/lib/api-errors';
 
 export const ForgotPasswordPage = (): React.ReactElement => {
     const [submitted, setSubmitted] = useState(false);
@@ -23,16 +24,21 @@ export const ForgotPasswordPage = (): React.ReactElement => {
     });
 
     const onSubmit = async (data: ForgotPasswordFormData): Promise<void> => {
+        if (isLoading) return;
         setIsLoading(true);
         try {
             await authRepository.forgotPassword(data.email);
             setSubmitted(true);
         } catch (err) {
-            let message = 'Error al enviar el correo';
-            if (axios.isAxiosError(err) && err.response?.data?.message) {
-                message = String(err.response.data.message);
+            if (!applyServerErrors(err, form.setError)) {
+                let message = 'Error al enviar el correo';
+                if (axios.isAxiosError(err) && err.response?.data?.error) {
+                    message = String(err.response.data.error);
+                } else if (axios.isAxiosError(err) && err.response?.data?.message) {
+                    message = String(err.response.data.message);
+                }
+                toast.error(message);
             }
-            toast.error(message);
         } finally {
             setIsLoading(false);
         }

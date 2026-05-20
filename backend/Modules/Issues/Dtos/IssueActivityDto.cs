@@ -6,6 +6,10 @@ public class IssueActivityDto
     public string Field { get; set; } = "";
     public string? OldValue { get; set; }
     public string? NewValue { get; set; }
+    public string? Verb { get; set; }
+    public long Epoch { get; set; }
+    public Guid? OldIdentifier { get; set; }
+    public Guid? NewIdentifier { get; set; }
     public Guid ActorId { get; set; }
     public string ActorName { get; set; } = "";
     public DateTime CreatedAt { get; set; }

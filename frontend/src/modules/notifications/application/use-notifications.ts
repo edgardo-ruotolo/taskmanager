@@ -9,6 +9,9 @@ export const useNotifications = () =>
     useQuery({
         queryKey: notificationsKey,
         queryFn: () => notificationRepository.getMyNotifications(),
+        // Real-time critical: notifications must always be fresh.
+        staleTime: 0,
+        refetchOnWindowFocus: true,
     });
 
 export const useMarkAsRead = () => {
@@ -18,7 +21,7 @@ export const useMarkAsRead = () => {
         onSuccess: () => {
             void qc.invalidateQueries({ queryKey: notificationsKey });
         },
-        onError: () => toast.error('Error al marcar la notificación'),
+        onError: (error: unknown) => { const e = error as { response?: { data?: { message?: string } } }; toast.error(e?.response?.data?.message ?? 'Error al marcar la notificación'); },
     });
 };
 
@@ -30,7 +33,7 @@ export const useMarkAllAsRead = () => {
             void qc.invalidateQueries({ queryKey: notificationsKey });
             toast.success('Todas las notificaciones marcadas como leídas');
         },
-        onError: () => toast.error('Error al marcar las notificaciones'),
+        onError: (error: unknown) => { const e = error as { response?: { data?: { message?: string } } }; toast.error(e?.response?.data?.message ?? 'Error al marcar las notificaciones'); },
     });
 };
 
@@ -51,6 +54,6 @@ export const useUpsertNotificationPreferences = () => {
             void qc.invalidateQueries({ queryKey: notificationPreferencesKey });
             toast.success('Preferencias guardadas');
         },
-        onError: () => toast.error('Error al guardar las preferencias'),
+        onError: (error: unknown) => { const e = error as { response?: { data?: { message?: string } } }; toast.error(e?.response?.data?.message ?? 'Error al guardar las preferencias'); },
     });
 };

@@ -4,5 +4,26 @@
   },
   "Brevo": {
     "ApiKey": "your-brevo-api-key-here"
+  },
+  "App": {
+    "FrontendUrl": "http://localhost:5173"
+  },
+  "Auth": {
+    "MagicLinkSecret": "replace-with-a-32-byte-random-base64-string",
+    "RefreshTokenSecret": "replace-with-a-32-byte-random-base64-string"
+  },
+  "Cors": {
+    "AllowedOrigins": [
+      "http://localhost:5173",
+      "http://localhost:5174",
+      "http://localhost:5175"
+    ]
+  },
+  "Admin": {
+    "Username": "",
+    "Email": "",
+    "Password": "",
+    "FirstName": "",
+    "LastName": ""
   }
 }

@@ -1,7 +1,7 @@
 import type React from 'react';
 import { useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { FileText, Plus, Send, Trash2 } from 'lucide-react';
+import { Plus, Send, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -14,6 +14,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
+import { Eyebrow } from '@/components/ui/eyebrow';
 import { useCreateDraft, useDeleteDraft, useDrafts, usePublishDraft } from '../../application/use-drafts';
 import type { CreateDraftIssueData, IssuePriority } from '../../domain/types';
 
@@ -25,6 +26,103 @@ const PRIORITY_LABELS: Record<IssuePriority, string> = {
     4: 'Baja',
 };
 
+function formatRelative(iso: string): string {
+    const diff = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
+    if (diff < 60) return 'justo ahora';
+    if (diff < 3600) return `hace ${Math.floor(diff / 60)} min`;
+    if (diff < 86400) return `hace ${Math.floor(diff / 3600)} h`;
+    if (diff < 172800) return 'ayer';
+    return `hace ${Math.floor(diff / 86400)} días`;
+}
+
+interface DraftItem {
+    id: string;
+    title: string;
+    priority: IssuePriority;
+    createdAt: string;
+}
+
+interface DraftSectionProps {
+    title: string;
+    count: number;
+    accent: string;
+    items: DraftItem[];
+    onPublish: (id: string) => void;
+    onDelete: (id: string) => void;
+    publishPending: boolean;
+    deletePending: boolean;
+}
+
+function DraftSection({ title, count, accent, items, onPublish, onDelete, publishPending, deletePending }: DraftSectionProps): React.ReactElement {
+    return (
+        <div className="mb-7">
+            <div className="flex items-center gap-2.5 mb-2.5">
+                <span className="w-1 h-[18px] rounded-full shrink-0" style={{ background: accent }} aria-hidden="true" />
+                <span className="text-[17px] font-medium text-[var(--neutral-1200)] tracking-[-0.02em]">{title}</span>
+                <span className="font-mono text-[11px] text-[var(--neutral-600)]">{count}</span>
+            </div>
+            {items.length === 0 ? (
+                <div className="py-8 text-center text-[13px] text-[var(--neutral-600)] bg-white border border-[var(--neutral-400)] rounded-lg">
+                    Sin borradores en esta categoría
+                </div>
+            ) : (
+                <div className="bg-white border border-[var(--neutral-400)] rounded-lg overflow-hidden">
+                    {items.map((item, i) => {
+                        const isRecent = Date.now() - new Date(item.createdAt).getTime() < 3600_000;
+                        return (
+                            <div
+                                key={item.id}
+                                className="grid items-center gap-3.5 px-4 py-3"
+                                style={{
+                                    gridTemplateColumns: '1fr 100px 80px 24px',
+                                    borderTop: i === 0 ? 'none' : '1px solid var(--neutral-400)',
+                                }}
+                            >
+                                <div>
+                                    <div className="text-[13.5px] font-medium text-[var(--neutral-1200)] tracking-[-0.005em] truncate">
+                                        {item.title}
+                                    </div>
+                                    <div className="font-mono text-[10.5px] text-[var(--neutral-600)] mt-0.5 tracking-[0.04em]">
+                                        {PRIORITY_LABELS[item.priority]}
+                                    </div>
+                                </div>
+                                <span className="font-mono text-[11px] text-[var(--neutral-600)]">
+                                    {formatRelative(item.createdAt)}
+                                </span>
+                                <div className="flex items-center gap-1.5">
+                                    {isRecent && (
+                                        <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-[color-mix(in_oklch,var(--brand-700)_12%,white)] text-[var(--brand-700)] font-mono text-[10px] font-medium">
+                                            ● Reciente
+                                        </span>
+                                    )}
+                                    <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        disabled={publishPending}
+                                        onClick={() => onPublish(item.id)}
+                                        className="h-6 w-6 p-0 text-[var(--neutral-600)] hover:text-[var(--neutral-1200)] hover:bg-[var(--neutral-100)]"
+                                    >
+                                        <Send size={11} />
+                                    </Button>
+                                </div>
+                                <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    disabled={deletePending}
+                                    onClick={() => onDelete(item.id)}
+                                    className="h-6 w-6 p-0 text-[var(--neutral-600)] hover:text-red-500 hover:bg-[var(--neutral-100)]"
+                                >
+                                    <Trash2 size={11} />
+                                </Button>
+                            </div>
+                        );
+                    })}
+                </div>
+            )}
+        </div>
+    );
+}
+
 interface NewDraftForm {
     title: string;
     description: string;
@@ -32,20 +130,6 @@ interface NewDraftForm {
 }
 
 const EMPTY_FORM: NewDraftForm = { title: '', description: '', companyId: '' };
-
-function EmptyDrafts(): React.ReactElement {
-    return (
-        <div className="flex flex-col items-center justify-center py-20 text-center">
-            <div className="w-14 h-14 rounded-2xl bg-surface-2 border border-subtle flex items-center justify-center mb-4">
-                <FileText size={24} className="text-placeholder" />
-            </div>
-            <h3 className="text-sm font-semibold text-secondary mb-1">Sin borradores</h3>
-            <p className="text-xs text-placeholder max-w-xs">
-                Los borradores te permiten guardar tareas incompletas antes de publicarlas.
-            </p>
-        </div>
-    );
-}
 
 export const DraftsPage = (): React.ReactElement => {
     const { workspaceSlug = '' } = useParams<{ workspaceSlug: string }>();
@@ -70,94 +154,75 @@ export const DraftsPage = (): React.ReactElement => {
             description: form.description.trim() || undefined,
             priority: 0,
         };
-        createDraft.mutate(payload, {
-            onSuccess: () => setDialogOpen(false),
-        });
+        createDraft.mutate(payload, { onSuccess: () => setDialogOpen(false) });
     };
 
-    const formatDate = (iso: string): string =>
-        new Date(iso).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' });
-
     return (
-        <div className="p-6 md:p-8">
-            <div className="max-w-4xl mx-auto">
-                {/* Header */}
-                <div className="flex items-center justify-between mb-6">
-                    <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-lg bg-surface-2 border border-subtle flex items-center justify-center">
-                            <FileText size={16} className="text-placeholder" />
-                        </div>
+        <>
+            <div className="h-full overflow-y-auto">
+                <div className="mx-auto max-w-4xl px-10 py-8">
+                    <div className="flex items-start justify-between mb-7">
                         <div>
-                            <p className="text-xs text-placeholder uppercase tracking-wider leading-none mb-0.5">
-                                {workspaceSlug}
-                            </p>
-                            <h1 className="text-xl font-semibold text-primary">Borradores</h1>
+                            <Eyebrow>Lo que dejaste a medias · {isLoading ? '…' : `${drafts.length} issues`}</Eyebrow>
+                            <h1 className="mt-2 text-[48px] font-medium tracking-[-0.045em] leading-[0.95] text-[var(--neutral-1200)]">
+                                Borradores.
+                            </h1>
+                        </div>
+                        <div className="shrink-0 mt-2">
+                            <Button
+                                size="sm"
+                                onClick={handleOpenDialog}
+                                className="gap-1.5 bg-[var(--neutral-1200)] hover:bg-[var(--neutral-1000)] text-[#f0eadf]"
+                            >
+                                <Plus size={13} />
+                                Nuevo borrador
+                            </Button>
                         </div>
                     </div>
-                    <Button size="sm" onClick={handleOpenDialog} className="gap-1.5">
-                        <Plus size={14} />
-                        Nuevo borrador
-                    </Button>
-                </div>
 
-                {/* Content */}
-                {isLoading ? (
-                    <div className="border border-subtle rounded-lg overflow-hidden">
-                        {[1, 2, 3].map(n => (
-                            <div key={n} className="flex items-center gap-3 px-4 py-3 border-b border-subtle last:border-b-0">
-                                <div className="flex-1 space-y-1.5">
-                                    <Skeleton className="h-4 w-2/3" />
-                                    <Skeleton className="h-3 w-1/3" />
-                                </div>
-                                <Skeleton className="h-7 w-20" />
-                                <Skeleton className="h-7 w-7" />
-                            </div>
-                        ))}
-                    </div>
-                ) : drafts.length === 0 ? (
-                    <EmptyDrafts />
-                ) : (
-                    <div className="border border-subtle rounded-lg overflow-hidden">
-                        {drafts.map((draft) => (
-                            <div
-                                key={draft.id}
-                                className="flex items-center gap-3 px-4 py-3 border-b border-subtle last:border-b-0 hover:bg-surface-2 transition-colors"
-                            >
-                                <FileText size={14} className="text-placeholder shrink-0" />
-                                <div className="flex-1 min-w-0">
-                                    <p className="text-sm text-primary truncate">{draft.title}</p>
-                                    <p className="text-xs text-placeholder mt-0.5">
-                                        {PRIORITY_LABELS[draft.priority]} · Creado {formatDate(draft.createdAt)}
-                                    </p>
-                                </div>
-                                <div className="flex items-center gap-2 shrink-0">
-                                    <Button
-                                        size="sm"
-                                        variant="outline"
-                                        disabled={publishDraft.isPending}
-                                        onClick={() => publishDraft.mutate(draft.id)}
-                                        className="h-7 px-3 text-xs border-subtle text-secondary hover:text-primary gap-1.5"
-                                    >
-                                        <Send size={11} />
-                                        Publicar
-                                    </Button>
-                                    <Button
-                                        size="sm"
-                                        variant="ghost"
-                                        disabled={deleteDraft.isPending}
-                                        onClick={() => deleteDraft.mutate(draft.id)}
-                                        className="h-7 w-7 p-0 text-placeholder hover:text-red-500"
-                                    >
-                                        <Trash2 size={13} />
-                                    </Button>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                )}
+                    {isLoading ? (
+                        <div className="space-y-3">
+                            {[1, 2, 3].map((n) => (
+                                <Skeleton key={n} className="h-14 w-full rounded-lg bg-[var(--neutral-200)]" />
+                            ))}
+                        </div>
+                    ) : (
+                        <>
+                            <DraftSection
+                                title="Issues sin publicar"
+                                count={drafts.length}
+                                accent="var(--brand-700)"
+                                items={drafts}
+                                onPublish={(id) => publishDraft.mutate(id)}
+                                onDelete={(id) => deleteDraft.mutate(id)}
+                                publishPending={publishDraft.isPending}
+                                deletePending={deleteDraft.isPending}
+                            />
+                            <DraftSection
+                                title="Páginas sin publicar"
+                                count={0}
+                                accent="var(--green-700)"
+                                items={[]}
+                                onPublish={() => undefined}
+                                onDelete={() => undefined}
+                                publishPending={false}
+                                deletePending={false}
+                            />
+                            <DraftSection
+                                title="Comentarios sin enviar"
+                                count={0}
+                                accent="#6b6298"
+                                items={[]}
+                                onPublish={() => undefined}
+                                onDelete={() => undefined}
+                                publishPending={false}
+                                deletePending={false}
+                            />
+                        </>
+                    )}
+                </div>
             </div>
 
-            {/* New Draft Dialog */}
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
                 <DialogContent className="sm:max-w-md">
                     <DialogHeader>
@@ -170,7 +235,7 @@ export const DraftsPage = (): React.ReactElement => {
                                 id="draft-title"
                                 placeholder="Título del borrador"
                                 value={form.title}
-                                onChange={(e) => setForm(f => ({ ...f, title: e.target.value }))}
+                                onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
                             />
                         </div>
                         <div className="space-y-1.5">
@@ -179,7 +244,7 @@ export const DraftsPage = (): React.ReactElement => {
                                 id="draft-company"
                                 placeholder="company-id"
                                 value={form.companyId}
-                                onChange={(e) => setForm(f => ({ ...f, companyId: e.target.value }))}
+                                onChange={(e) => setForm((f) => ({ ...f, companyId: e.target.value }))}
                             />
                         </div>
                         <div className="space-y-1.5">
@@ -189,14 +254,12 @@ export const DraftsPage = (): React.ReactElement => {
                                 placeholder="Descripción opcional..."
                                 rows={3}
                                 value={form.description}
-                                onChange={(e) => setForm(f => ({ ...f, description: e.target.value }))}
+                                onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
                             />
                         </div>
                     </div>
                     <DialogFooter>
-                        <Button variant="outline" onClick={() => setDialogOpen(false)}>
-                            Cancelar
-                        </Button>
+                        <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button>
                         <Button
                             onClick={handleCreate}
                             disabled={!form.title.trim() || !form.companyId.trim() || createDraft.isPending}
@@ -206,6 +269,6 @@ export const DraftsPage = (): React.ReactElement => {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
-        </div>
+        </>
     );
 };

@@ -8,10 +8,8 @@ import {
     Inbox,
     Settings,
     Tag,
-    Webhook,
     Layers,
     LayoutList,
-    KeyRound,
     Archive,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -92,13 +90,7 @@ export function ExtendedSidebar({
                             <Archive size={14} aria-hidden="true" />
                             Archivos
                         </NavLink>
-                        <NavLink
-                            to={`/${workspaceSlug}/companies/${companyId}/settings`}
-                            className={navLinkClass}
-                        >
-                            <Settings size={14} aria-hidden="true" />
-                            Configuración
-                        </NavLink>
+
                     </>
                 )}
 
@@ -119,13 +111,6 @@ export function ExtendedSidebar({
                             Etiquetas
                         </NavLink>
                         <NavLink
-                            to={`/${workspaceSlug}/settings/webhooks`}
-                            className={navLinkClass}
-                        >
-                            <Webhook size={14} aria-hidden="true" />
-                            Webhooks
-                        </NavLink>
-                        <NavLink
                             to={`/${workspaceSlug}/settings/issue-types`}
                             className={navLinkClass}
                         >
@@ -138,13 +123,6 @@ export function ExtendedSidebar({
                         >
                             <LayoutList size={14} aria-hidden="true" />
                             Vistas
-                        </NavLink>
-                        <NavLink
-                            to={`/${workspaceSlug}/settings/tokens`}
-                            className={navLinkClass}
-                        >
-                            <KeyRound size={14} aria-hidden="true" />
-                            API Tokens
                         </NavLink>
                     </>
                 )}

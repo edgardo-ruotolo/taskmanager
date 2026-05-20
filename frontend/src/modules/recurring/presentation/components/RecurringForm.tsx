@@ -62,6 +62,7 @@ export function RecurringForm({ workspaceSlug, data, prefill, onSubmit, onClose 
         handleSubmit,
         watch,
         reset,
+        setValue,
         formState: { errors, isSubmitting },
     } = useForm<RecurringTemplateFormValues>({
         resolver: zodResolver(recurringTemplateSchema),
@@ -90,6 +91,17 @@ export function RecurringForm({ workspaceSlug, data, prefill, onSubmit, onClose 
     });
 
     const frequency = watch('frequency');
+    const watchedCompanyIds = watch('companyIds');
+
+    // Pre-select first company when creating new template and no company is selected
+    useEffect(() => {
+        if (!data && companiesData?.items.length && (!watchedCompanyIds || watchedCompanyIds.length === 0)) {
+            const firstId = companiesData.items[0]?.id;
+            if (firstId) {
+                setValue('companyIds', [firstId]);
+            }
+        }
+    }, [companiesData, data, watchedCompanyIds, watchedCompanyIds?.length, setValue]);
 
     useEffect(() => {
         if (data) {

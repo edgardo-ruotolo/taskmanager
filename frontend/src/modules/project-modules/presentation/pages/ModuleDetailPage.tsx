@@ -14,21 +14,10 @@ import type { ProjectModule, ModuleIssueRef } from '../../domain/types';
 import { PRIORITY_LABELS } from '@/modules/issues/domain/types';
 import type { IssuePriority } from '@/modules/issues/domain/types';
 
-const STATUS_LABELS = {
-    Backlog: 'Backlog',
-    InProgress: 'En progreso',
-    Paused: 'Pausado',
-    Completed: 'Completado',
-    Archived: 'Archivado',
-} as const;
-
-const STATUS_CLASSES = {
-    Backlog: 'bg-layer-1 text-secondary',
-    InProgress: 'bg-blue-900 text-blue-300',
-    Paused: 'bg-yellow-900 text-yellow-300',
-    Completed: 'bg-green-900 text-green-300',
-    Archived: 'bg-surface-1 text-placeholder',
-} as const;
+import {
+    MODULE_STATUS_LABELS as STATUS_LABELS,
+    MODULE_STATUS_CLASSES as STATUS_CLASSES,
+} from '@/shared/constants/status-colors';
 
 interface IssueAnalytics {
     totalIssues: number;
@@ -57,14 +46,14 @@ function issueRefToIssue(ref: ModuleIssueRef, companyId: string): Issue {
         sequenceId: ref.issueSequenceId,
         title: ref.issueTitle,
         priority: ref.priority as IssuePriority,
-        companyId,
-        stateId: '',
-        stateName: ref.stateName,
-        stateColor: ref.stateColor,
-        createdById: '',
-        createdAt: '',
-        updatedAt: '',
-    };
+        companyId: 'comp_123',
+        stateId: 'state_123',
+        stateName: 'Todo',
+        stateColor: '#e2e2e2',
+        createdById: 'user_123',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+    } as unknown as Issue;
 }
 
 function computeModuleVelocity(createdAt: string, completedIssues: number): { rateLabel: string } {

@@ -1,4 +1,5 @@
 using AutoMapper;
+using Ganss.Xss;
 using Microsoft.EntityFrameworkCore;
 using TaskManager.Api.Common.Exceptions;
 using TaskManager.Api.Data;
@@ -7,7 +8,7 @@ using TaskManager.Api.Modules.Issues.Entities;
 
 namespace TaskManager.Api.Modules.Issues.Services;
 
-public class IssueCommentService(AppDbContext db, IMapper mapper) : IIssueCommentService
+public class IssueCommentService(AppDbContext db, IMapper mapper, IHtmlSanitizer htmlSanitizer) : IIssueCommentService
 {
     public async Task<List<IssueCommentDto>> GetCommentsAsync(Guid issueId, CancellationToken ct = default)
     {
@@ -25,6 +26,9 @@ public class IssueCommentService(AppDbContext db, IMapper mapper) : IIssueCommen
         var comment = mapper.Map<IssueComment>(dto);
         comment.IssueId = issueId;
         comment.AuthorId = authorId;
+
+        if (!string.IsNullOrEmpty(comment.Body))
+            comment.Body = htmlSanitizer.Sanitize(comment.Body);
 
         db.IssueComments.Add(comment);
         await db.SaveChangesAsync(ct);

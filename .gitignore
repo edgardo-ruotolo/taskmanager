@@ -41,3 +41,10 @@ logs/
 # Misc
 .cache/
 .turbo/
+
+# Local archives / snapshots
+TaskManager.zip
+*.zip
+
+# Claude Code worktrees
+.claude/

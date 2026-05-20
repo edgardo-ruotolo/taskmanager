@@ -1,7 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
+import type { FieldValues, UseFormSetError } from 'react-hook-form';
+import { useServerMutation } from '@/shared/hooks/useServerMutation';
+import { trackEvent } from '@/shared/lib/posthog';
+import type { PagedResult } from '@/shared/types/pagination';
 import { issueRepository } from '../infrastructure/issue-repository';
-import type { CreateIssueData, UpdateIssueData } from '../domain/types';
+import type { CreateIssueData, Issue, UpdateIssueData } from '../domain/types';
 import {
     issueDetailKey,
     activitiesKey,
@@ -21,10 +25,14 @@ export const useIssues = (workspaceSlug: string, companyId: string) =>
         enabled: !!workspaceSlug && !!companyId,
     });
 
-export const useCreateIssue = (workspaceSlug: string, companyId: string) => {
+export const useCreateIssue = <TFormValues extends FieldValues = FieldValues>(
+    workspaceSlug: string,
+    companyId: string,
+    options?: { setError?: UseFormSetError<TFormValues> },
+) => {
     const qc = useQueryClient();
-    return useMutation({
-        mutationFn: (data: CreateIssueData) =>
+    return useServerMutation<unknown, CreateIssueData, TFormValues>({
+        mutationFn: (data) =>
             issueRepository.create(workspaceSlug, companyId, data),
         onSuccess: () => {
             void qc.invalidateQueries({ queryKey: issuesKey(workspaceSlug, companyId) });
@@ -32,18 +40,73 @@ export const useCreateIssue = (workspaceSlug: string, companyId: string) => {
             void qc.invalidateQueries({ queryKey: ['module-issues', workspaceSlug, companyId] });
             void qc.invalidateQueries({ queryKey: ['workspace-activity', workspaceSlug] });
             void qc.invalidateQueries({ queryKey: ['analytics', 'overview', workspaceSlug] });
+            trackEvent('issue_created', { companyId });
             toast.success('Tarea creada');
         },
-        onError: () => toast.error('Error al crear la tarea'),
+        setError: options?.setError,
+        fallbackMessage: 'Error al crear la tarea',
     });
 };
 
-export const useUpdateIssue = (workspaceSlug: string, companyId: string) => {
+interface UpdateIssueContext {
+    prevList?: PagedResult<Issue> | Issue[];
+    prevDetail?: Issue;
+}
+
+type UpdateIssueVars = { issueId: string; data: UpdateIssueData };
+
+export const useUpdateIssue = <TFormValues extends FieldValues = FieldValues>(
+    workspaceSlug: string,
+    companyId: string,
+    options?: { setError?: UseFormSetError<TFormValues> },
+) => {
     const qc = useQueryClient();
-    return useMutation({
-        mutationFn: ({ issueId, data }: { issueId: string; data: UpdateIssueData }) =>
+    return useServerMutation<unknown, UpdateIssueVars, TFormValues>({
+        mutationFn: ({ issueId, data }) =>
             issueRepository.update(workspaceSlug, companyId, issueId, data),
-        onSuccess: (_, { issueId }) => {
+        onMutate: async ({ issueId, data }): Promise<UpdateIssueContext> => {
+            await qc.cancelQueries({ queryKey: issuesKey(workspaceSlug, companyId) });
+            await qc.cancelQueries({ queryKey: issueDetailKey(workspaceSlug, companyId, issueId) });
+
+            const prevList = qc.getQueryData<PagedResult<Issue> | Issue[]>(issuesKey(workspaceSlug, companyId));
+            const prevDetail = qc.getQueryData<Issue>(issueDetailKey(workspaceSlug, companyId, issueId));
+
+            if (prevList) {
+                qc.setQueryData<PagedResult<Issue> | Issue[]>(
+                    issuesKey(workspaceSlug, companyId),
+                    Array.isArray(prevList)
+                        ? prevList.map((i) => (i.id === issueId ? { ...i, ...data } : i))
+                        : {
+                              ...prevList,
+                              items: prevList.items.map((i) =>
+                                  i.id === issueId ? { ...i, ...data } : i,
+                              ),
+                          },
+                );
+            }
+            if (prevDetail) {
+                qc.setQueryData<Issue>(
+                    issueDetailKey(workspaceSlug, companyId, issueId),
+                    { ...prevDetail, ...data },
+                );
+            }
+
+            return { prevList, prevDetail };
+        },
+        onError: (_err, { issueId }, ctx) => {
+            const context = ctx as UpdateIssueContext | undefined;
+            if (context?.prevList) {
+                qc.setQueryData(issuesKey(workspaceSlug, companyId), context.prevList);
+            }
+            if (context?.prevDetail) {
+                qc.setQueryData(
+                    issueDetailKey(workspaceSlug, companyId, issueId),
+                    context.prevDetail,
+                );
+            }
+        },
+        onSettled: (_data, _err, { issueId }) => {
+            // Re-sync with the server, but lazily — UI already shows optimistic state.
             void qc.invalidateQueries({ queryKey: issuesKey(workspaceSlug, companyId) });
             void qc.invalidateQueries({ queryKey: issueDetailKey(workspaceSlug, companyId, issueId) });
             void qc.invalidateQueries({ queryKey: activitiesKey(workspaceSlug, companyId, issueId) });
@@ -51,12 +114,43 @@ export const useUpdateIssue = (workspaceSlug: string, companyId: string) => {
             void qc.invalidateQueries({ queryKey: ['module-issues', workspaceSlug, companyId] });
             void qc.invalidateQueries({ queryKey: ['workspace-activity', workspaceSlug] });
             void qc.invalidateQueries({ queryKey: ['analytics', 'overview', workspaceSlug] });
-            void qc.invalidateQueries({ queryKey: ['favorites', workspaceSlug] });
-            void qc.invalidateQueries({ queryKey: ['notifications'] });
             void qc.invalidateQueries({ queryKey: ['intake', workspaceSlug, companyId] });
+            void qc.invalidateQueries({ queryKey: ['notifications'] });
+        },
+        onSuccess: () => {
             toast.success('Tarea actualizada');
         },
-        onError: () => toast.error('Error al actualizar la tarea'),
+        setError: options?.setError,
+        fallbackMessage: 'Error al actualizar la tarea',
+    });
+};
+
+export const useArchiveIssue = (workspaceSlug: string, companyId: string) => {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: (issueId: string) =>
+            issueRepository.archive(workspaceSlug, companyId, issueId),
+        onSuccess: (_data, issueId) => {
+            qc.removeQueries({ queryKey: issueDetailKey(workspaceSlug, companyId, issueId) });
+            void qc.invalidateQueries({ queryKey: issuesKey(workspaceSlug, companyId) });
+            void qc.invalidateQueries({ queryKey: ['cycle-issues', workspaceSlug, companyId] });
+            void qc.invalidateQueries({ queryKey: ['module-issues', workspaceSlug, companyId] });
+            toast.success('Tarea archivada');
+        },
+        onError: () => toast.error('Error al archivar la tarea'),
+    });
+};
+
+export const useDuplicateIssue = (workspaceSlug: string, companyId: string) => {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: (issueId: string) =>
+            issueRepository.duplicate(workspaceSlug, companyId, issueId),
+        onSuccess: () => {
+            void qc.invalidateQueries({ queryKey: issuesKey(workspaceSlug, companyId) });
+            toast.success('Tarea duplicada');
+        },
+        onError: () => toast.error('Error al duplicar la tarea'),
     });
 };
 
@@ -65,24 +159,41 @@ export const useDeleteIssue = (workspaceSlug: string, companyId: string) => {
     return useMutation({
         mutationFn: (issueId: string) =>
             issueRepository.delete(workspaceSlug, companyId, issueId),
-        onSuccess: (_, issueId) => {
-            void qc.invalidateQueries({ queryKey: issuesKey(workspaceSlug, companyId) });
+        onMutate: async (issueId): Promise<{ prevList?: PagedResult<Issue> | Issue[] }> => {
+            await qc.cancelQueries({ queryKey: issuesKey(workspaceSlug, companyId) });
+            const prevList = qc.getQueryData<PagedResult<Issue> | Issue[]>(issuesKey(workspaceSlug, companyId));
+            if (prevList) {
+                qc.setQueryData<PagedResult<Issue> | Issue[]>(
+                    issuesKey(workspaceSlug, companyId),
+                    Array.isArray(prevList)
+                        ? prevList.filter((i) => i.id !== issueId)
+                        : {
+                              ...prevList,
+                              items: prevList.items.filter((i) => i.id !== issueId),
+                          },
+                );
+            }
+            return { prevList };
+        },
+        onError: (_err, _issueId, ctx) => {
+            if (ctx?.prevList) {
+                qc.setQueryData(issuesKey(workspaceSlug, companyId), ctx.prevList);
+            }
+            toast.error('Error al eliminar la tarea');
+        },
+        onSuccess: (_data, issueId) => {
+            // Granular invalidation: the optimistic remove already updated the list.
+            // We only purge the detail and its sub-queries, and refresh the cycle/module
+            // membership caches where the issue might appear.
+            qc.removeQueries({ queryKey: issueDetailKey(workspaceSlug, companyId, issueId) });
+            qc.removeQueries({ queryKey: activitiesKey(workspaceSlug, companyId, issueId) });
+            qc.removeQueries({ queryKey: commentsKey(workspaceSlug, companyId, issueId) });
+            qc.removeQueries({ queryKey: reactionsKey(workspaceSlug, companyId, issueId) });
+            qc.removeQueries({ queryKey: linksKey(workspaceSlug, companyId, issueId) });
+            qc.removeQueries({ queryKey: relationsKey(workspaceSlug, companyId, issueId) });
             void qc.invalidateQueries({ queryKey: ['cycle-issues', workspaceSlug, companyId] });
             void qc.invalidateQueries({ queryKey: ['module-issues', workspaceSlug, companyId] });
-            qc.removeQueries({ queryKey: issueDetailKey(workspaceSlug, companyId, issueId) });
-            void qc.invalidateQueries({ queryKey: activitiesKey(workspaceSlug, companyId, issueId) });
-            void qc.invalidateQueries({ queryKey: commentsKey(workspaceSlug, companyId, issueId) });
-            void qc.invalidateQueries({ queryKey: reactionsKey(workspaceSlug, companyId, issueId) });
-            void qc.invalidateQueries({ queryKey: ['issue-subscribers', workspaceSlug, companyId, issueId] });
-            void qc.invalidateQueries({ queryKey: linksKey(workspaceSlug, companyId, issueId) });
-            void qc.invalidateQueries({ queryKey: relationsKey(workspaceSlug, companyId, issueId) });
-            void qc.invalidateQueries({ queryKey: ['workspace-activity', workspaceSlug] });
-            void qc.invalidateQueries({ queryKey: ['analytics', 'overview', workspaceSlug] });
-            void qc.invalidateQueries({ queryKey: ['favorites', workspaceSlug] });
-            void qc.invalidateQueries({ queryKey: ['intake', workspaceSlug, companyId] });
-            void qc.invalidateQueries({ queryKey: ['notifications'] });
             toast.success('Tarea eliminada');
         },
-        onError: () => toast.error('Error al eliminar la tarea'),
     });
 };

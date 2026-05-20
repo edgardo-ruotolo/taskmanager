@@ -21,7 +21,7 @@ export const useCreateIssueView = (workspaceSlug: string) => {
             void qc.invalidateQueries({ queryKey: issueViewsKey(workspaceSlug) });
             toast.success('Vista creada');
         },
-        onError: () => toast.error('Error al crear la vista'),
+        onError: (error: unknown) => { const e = error as { response?: { data?: { message?: string } } }; toast.error(e?.response?.data?.message ?? 'Error al crear la vista'); },
     });
 };
 
@@ -33,6 +33,6 @@ export const useDeleteIssueView = (workspaceSlug: string) => {
             void qc.invalidateQueries({ queryKey: issueViewsKey(workspaceSlug) });
             toast.success('Vista eliminada');
         },
-        onError: () => toast.error('Error al eliminar la vista'),
+        onError: (error: unknown) => { const e = error as { response?: { data?: { message?: string } } }; toast.error(e?.response?.data?.message ?? 'Error al eliminar la vista'); },
     });
 };

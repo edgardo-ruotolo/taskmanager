@@ -276,7 +276,7 @@ export const TeamsPage = (): React.ReactElement => {
                                                 </AlertDialogCancel>
                                                 <AlertDialogAction
                                                     onClick={() => deleteTeam.mutate(team.id)}
-                                                    className="bg-destructive hover:bg-destructive/90 text-on-color"
+                                                    className="bg-red-600 hover:bg-red-700 text-white"
                                                 >
                                                     Eliminar
                                                 </AlertDialogAction>

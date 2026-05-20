@@ -30,7 +30,7 @@ export const useUpdateInstanceConfig = () => {
             void queryClient.invalidateQueries({ queryKey: adminConfigKey });
             toast.success('Configuración guardada');
         },
-        onError: () => toast.error('Error al guardar'),
+        onError: (error: unknown) => { const e = error as { response?: { data?: { message?: string } } }; toast.error(e?.response?.data?.message ?? 'Error al guardar'); },
     });
 };
 
@@ -48,7 +48,7 @@ export const useCreateAdminUser = () => {
             void queryClient.invalidateQueries({ queryKey: ['admin', 'users'] });
             toast.success('Usuario creado');
         },
-        onError: () => toast.error('Error al crear usuario'),
+        onError: (error: unknown) => { const e = error as { response?: { data?: { message?: string } } }; toast.error(e?.response?.data?.message ?? 'Error al crear usuario'); },
     });
 };
 
@@ -64,7 +64,7 @@ export const useUpdateAdminUser = () => {
             void queryClient.invalidateQueries({ queryKey: ['notifications'] });
             toast.success('Usuario actualizado');
         },
-        onError: () => toast.error('Error al actualizar usuario'),
+        onError: (error: unknown) => { const e = error as { response?: { data?: { message?: string } } }; toast.error(e?.response?.data?.message ?? 'Error al actualizar usuario'); },
     });
 };
 
@@ -82,7 +82,7 @@ export const useDeleteAdminUser = () => {
             void queryClient.invalidateQueries({ queryKey: ['activities'] });
             toast.success('Usuario eliminado');
         },
-        onError: () => toast.error('Error al eliminar usuario'),
+        onError: (error: unknown) => { const e = error as { response?: { data?: { message?: string } } }; toast.error(e?.response?.data?.message ?? 'Error al eliminar usuario'); },
     });
 };
 
@@ -114,7 +114,7 @@ export const useAddCompanyMember = (companyId: string) => {
             void queryClient.invalidateQueries({ queryKey: ['notifications'] });
             toast.success('Miembro agregado');
         },
-        onError: () => toast.error('Error al agregar miembro'),
+        onError: (error: unknown) => { const e = error as { response?: { data?: { message?: string } } }; toast.error(e?.response?.data?.message ?? 'Error al agregar miembro'); },
     });
 };
 
@@ -129,7 +129,7 @@ export const useRemoveCompanyMember = (companyId: string) => {
             void queryClient.invalidateQueries({ queryKey: ['notifications'] });
             toast.success('Miembro removido');
         },
-        onError: () => toast.error('Error al remover miembro'),
+        onError: (error: unknown) => { const e = error as { response?: { data?: { message?: string } } }; toast.error(e?.response?.data?.message ?? 'Error al remover miembro'); },
     });
 };
 
@@ -150,6 +150,6 @@ export const useUpdateAdminCompany = () => {
             void queryClient.invalidateQueries({ queryKey: ['module-issues'] });
             toast.success('Empresa actualizada');
         },
-        onError: () => toast.error('Error al actualizar empresa'),
+        onError: (error: unknown) => { const e = error as { response?: { data?: { message?: string } } }; toast.error(e?.response?.data?.message ?? 'Error al actualizar empresa'); },
     });
 };

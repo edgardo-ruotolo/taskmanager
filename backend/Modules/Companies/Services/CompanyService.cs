@@ -44,10 +44,11 @@ public class CompanyService(AppDbContext db, IMapper mapper, IEmailService email
 
     public async Task<PagedResult<CompanyDto>> GetAllAsync(string workspaceSlug, int page, int pageSize, CancellationToken ct = default)
     {
-        var workspace = await db.Workspaces.FirstOrDefaultAsync(w => w.Slug == workspaceSlug, ct)
+        var workspace = await db.Workspaces.AsNoTracking()
+            .FirstOrDefaultAsync(w => w.Slug == workspaceSlug, ct)
             ?? throw new NotFoundException($"Workspace '{workspaceSlug}' not found.");
 
-        var query = db.Companies.Where(c => c.WorkspaceId == workspace.Id);
+        var query = db.Companies.AsNoTracking().Where(c => c.WorkspaceId == workspace.Id);
         var total = await query.CountAsync(ct);
         var items = await query.OrderBy(c => c.Name).Skip((page - 1) * pageSize).Take(pageSize).ToListAsync(ct);
 
@@ -62,10 +63,12 @@ public class CompanyService(AppDbContext db, IMapper mapper, IEmailService email
 
     public async Task<CompanyDto> GetByIdAsync(string workspaceSlug, Guid companyId, CancellationToken ct = default)
     {
-        var workspace = await db.Workspaces.FirstOrDefaultAsync(w => w.Slug == workspaceSlug, ct)
+        var workspace = await db.Workspaces.AsNoTracking()
+            .FirstOrDefaultAsync(w => w.Slug == workspaceSlug, ct)
             ?? throw new NotFoundException($"Workspace '{workspaceSlug}' not found.");
 
-        var company = await db.Companies.FirstOrDefaultAsync(c => c.Id == companyId && c.WorkspaceId == workspace.Id, ct)
+        var company = await db.Companies.AsNoTracking()
+            .FirstOrDefaultAsync(c => c.Id == companyId && c.WorkspaceId == workspace.Id, ct)
             ?? throw new NotFoundException("Company not found.");
 
         return mapper.Map<CompanyDto>(company);
@@ -111,13 +114,16 @@ public class CompanyService(AppDbContext db, IMapper mapper, IEmailService email
 
     public async Task<IEnumerable<CompanyMemberDto>> GetMembersAsync(string workspaceSlug, Guid companyId, CancellationToken ct = default)
     {
-        var workspace = await db.Workspaces.FirstOrDefaultAsync(w => w.Slug == workspaceSlug, ct)
+        var workspace = await db.Workspaces.AsNoTracking()
+            .FirstOrDefaultAsync(w => w.Slug == workspaceSlug, ct)
             ?? throw new NotFoundException($"Workspace '{workspaceSlug}' not found.");
 
-        var company = await db.Companies.FirstOrDefaultAsync(c => c.Id == companyId && c.WorkspaceId == workspace.Id, ct)
+        var company = await db.Companies.AsNoTracking()
+            .FirstOrDefaultAsync(c => c.Id == companyId && c.WorkspaceId == workspace.Id, ct)
             ?? throw new NotFoundException("Company not found.");
 
         var members = await db.CompanyMembers
+            .AsNoTracking()
             .Include(m => m.User)
             .Where(m => m.CompanyId == company.Id)
             .OrderBy(m => m.User.Email)
@@ -253,13 +259,16 @@ public class CompanyService(AppDbContext db, IMapper mapper, IEmailService email
 
     public async Task<IEnumerable<CompanyInvitationDto>> GetPendingInvitationsAsync(string workspaceSlug, Guid companyId, CancellationToken ct = default)
     {
-        var workspace = await db.Workspaces.FirstOrDefaultAsync(w => w.Slug == workspaceSlug, ct)
+        var workspace = await db.Workspaces.AsNoTracking()
+            .FirstOrDefaultAsync(w => w.Slug == workspaceSlug, ct)
             ?? throw new NotFoundException($"Workspace '{workspaceSlug}' not found.");
 
-        var company = await db.Companies.FirstOrDefaultAsync(c => c.Id == companyId && c.WorkspaceId == workspace.Id, ct)
+        var company = await db.Companies.AsNoTracking()
+            .FirstOrDefaultAsync(c => c.Id == companyId && c.WorkspaceId == workspace.Id, ct)
             ?? throw new NotFoundException("Company not found.");
 
         var invitations = await db.CompanyInvitations
+            .AsNoTracking()
             .Where(i => i.CompanyId == company.Id && i.AcceptedAt == null && i.ExpiresAt > DateTime.UtcNow)
             .OrderByDescending(i => i.CreatedAt)
             .ToListAsync(ct);

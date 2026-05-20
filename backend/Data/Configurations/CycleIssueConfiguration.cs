@@ -16,7 +16,7 @@ public class CycleIssueConfiguration : IEntityTypeConfiguration<CycleIssue>
             .OnDelete(DeleteBehavior.Cascade);
 
         builder.HasOne(ci => ci.Issue)
-            .WithMany()
+            .WithMany(i => i.CycleIssues)
             .HasForeignKey(ci => ci.IssueId)
             .OnDelete(DeleteBehavior.Cascade);
     }

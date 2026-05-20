@@ -23,13 +23,29 @@ vi.mock('@/modules/workspaces/infrastructure/workspace-repository', () => ({
     },
 }));
 
-// Mock useAuthStore
+// Mock auth-store and use-auth-me — user lives in Query cache, store only tracks the flag.
 vi.mock('../../application/auth-store', () => ({
-    useAuthStore: () => ({
-        setUser: vi.fn(),
-        user: null,
-        isAuthenticated: true,
-    }),
+    useAuthStore: Object.assign(
+        () => ({
+            isAuthenticated: true,
+            setAuthenticated: vi.fn(),
+            clearAuth: vi.fn(),
+        }),
+        {
+            getState: () => ({
+                isAuthenticated: true,
+                setAuthenticated: vi.fn(),
+                clearAuth: vi.fn(),
+            }),
+        },
+    ),
+}));
+
+vi.mock('../../application/use-auth-me', () => ({
+    useAuthMe: () => ({ data: null, isLoading: false, isError: false }),
+    setAuthSession: vi.fn(),
+    getCurrentUser: () => null,
+    authMeKey: ['auth', 'me'],
 }));
 
 beforeEach(() => {

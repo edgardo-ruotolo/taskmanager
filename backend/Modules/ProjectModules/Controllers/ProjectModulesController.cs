@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using System.Security.Claims;
+using TaskManager.Api.Common.Auth;
+using TaskManager.Api.Common.Authorization;
 using TaskManager.Api.Common.Pagination;
 using TaskManager.Api.Modules.ProjectModules.Dtos;
 using TaskManager.Api.Modules.ProjectModules.Services;
@@ -10,9 +11,9 @@ namespace TaskManager.Api.Modules.ProjectModules.Controllers;
 [ApiController]
 [Route("api/workspaces/{workspaceSlug}/companies/{companyId:guid}/modules")]
 [Authorize]
-public class ProjectModulesController(IProjectModuleService moduleService) : ControllerBase
+[ServiceFilter(typeof(RequireCompanyMemberAttribute))]
+public class ProjectModulesController(IProjectModuleService moduleService, ICurrentUser currentUser) : ControllerBase
 {
-    private Guid CurrentUserId => Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
     [HttpGet]
     public async Task<ActionResult<PagedResult<ProjectModuleDto>>> GetAll(
@@ -36,7 +37,7 @@ public class ProjectModulesController(IProjectModuleService moduleService) : Con
     [HttpPost]
     public async Task<ActionResult<ProjectModuleDto>> Create(string workspaceSlug, Guid companyId, [FromBody] CreateProjectModuleDto dto, CancellationToken ct = default)
     {
-        var module = await moduleService.CreateAsync(workspaceSlug, companyId, CurrentUserId, dto, ct);
+        var module = await moduleService.CreateAsync(workspaceSlug, companyId, currentUser.UserId, dto, ct);
         return CreatedAtAction(nameof(GetById), new { workspaceSlug, companyId, moduleId = module.Id }, module);
     }
 
@@ -57,7 +58,7 @@ public class ProjectModulesController(IProjectModuleService moduleService) : Con
     [HttpPost("{moduleId:guid}/issues")]
     public async Task<IActionResult> AddIssue(string workspaceSlug, Guid companyId, Guid moduleId, [FromBody] AddModuleIssueDto dto, CancellationToken ct = default)
     {
-        await moduleService.AddIssueAsync(workspaceSlug, companyId, moduleId, dto.IssueId, CurrentUserId, ct);
+        await moduleService.AddIssueAsync(workspaceSlug, companyId, moduleId, dto.IssueId, currentUser.UserId, ct);
         return NoContent();
     }
 
@@ -71,7 +72,7 @@ public class ProjectModulesController(IProjectModuleService moduleService) : Con
     [HttpPost("{moduleId:guid}/links")]
     public async Task<IActionResult> AddLink(string workspaceSlug, Guid companyId, Guid moduleId, [FromBody] AddModuleLinkDto dto, CancellationToken ct = default)
     {
-        await moduleService.AddLinkAsync(workspaceSlug, companyId, moduleId, dto, CurrentUserId, ct);
+        await moduleService.AddLinkAsync(workspaceSlug, companyId, moduleId, dto, currentUser.UserId, ct);
         return NoContent();
     }
 

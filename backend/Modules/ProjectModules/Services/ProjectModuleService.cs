@@ -11,10 +11,12 @@ public class ProjectModuleService(AppDbContext db) : IProjectModuleService
 {
     public async Task<PagedResult<ProjectModuleDto>> GetAllAsync(string workspaceSlug, Guid companyId, int page, int pageSize, CancellationToken ct = default)
     {
-        var workspace = await db.Workspaces.FirstOrDefaultAsync(w => w.Slug == workspaceSlug, ct)
+        var workspace = await db.Workspaces.AsNoTracking()
+            .FirstOrDefaultAsync(w => w.Slug == workspaceSlug, ct)
             ?? throw new NotFoundException($"Workspace '{workspaceSlug}' not found.");
 
         var query = db.ProjectModules
+            .AsNoTracking()
             .Include(m => m.ModuleIssues)
             .Where(m => m.CompanyId == companyId && m.Company.WorkspaceId == workspace.Id);
 
@@ -36,10 +38,12 @@ public class ProjectModuleService(AppDbContext db) : IProjectModuleService
 
     public async Task<ProjectModuleDto> GetByIdAsync(string workspaceSlug, Guid companyId, Guid moduleId, CancellationToken ct = default)
     {
-        var workspace = await db.Workspaces.FirstOrDefaultAsync(w => w.Slug == workspaceSlug, ct)
+        var workspace = await db.Workspaces.AsNoTracking()
+            .FirstOrDefaultAsync(w => w.Slug == workspaceSlug, ct)
             ?? throw new NotFoundException($"Workspace '{workspaceSlug}' not found.");
 
         var module = await db.ProjectModules
+            .AsNoTracking()
             .Include(m => m.ModuleIssues)
             .FirstOrDefaultAsync(m => m.Id == moduleId && m.CompanyId == companyId && m.Company.WorkspaceId == workspace.Id, ct)
             ?? throw new NotFoundException("Module not found.");
@@ -233,10 +237,12 @@ public class ProjectModuleService(AppDbContext db) : IProjectModuleService
 
     public async Task<List<ProjectModuleDto>> GetArchivedAsync(string workspaceSlug, Guid companyId, CancellationToken ct = default)
     {
-        var workspace = await db.Workspaces.FirstOrDefaultAsync(w => w.Slug == workspaceSlug, ct)
+        var workspace = await db.Workspaces.AsNoTracking()
+            .FirstOrDefaultAsync(w => w.Slug == workspaceSlug, ct)
             ?? throw new NotFoundException($"Workspace '{workspaceSlug}' not found.");
 
         return await db.ProjectModules
+            .AsNoTracking()
             .IgnoreQueryFilters()
             .Include(m => m.ModuleIssues)
             .Where(m => m.IsArchived && !m.IsDeleted && m.CompanyId == companyId && m.Company.WorkspaceId == workspace.Id)

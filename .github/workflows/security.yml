@@ -1,0 +1,66 @@
+name: Security
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: '0 6 * * 1'   # Lunes 06:00 UTC
+
+jobs:
+  dotnet-vulnerable:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+      - name: Restore
+        working-directory: backend
+        run: dotnet restore
+      - name: List vulnerable packages
+        working-directory: backend
+        run: |
+          dotnet list package --vulnerable --include-transitive > vulnerable.txt
+          cat vulnerable.txt
+          if grep -E "Critical|High" vulnerable.txt; then
+            echo "::error::High or Critical vulnerability detected in NuGet dependencies"
+            exit 1
+          fi
+
+  pnpm-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+          cache-dependency-path: frontend/pnpm-lock.yaml
+      - name: Install
+        working-directory: frontend
+        run: pnpm install --frozen-lockfile
+      - name: Audit
+        working-directory: frontend
+        run: pnpm audit --prod --audit-level=high
+
+  codeql:
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+      actions: read
+      contents: read
+    strategy:
+      matrix:
+        language: ['csharp', 'javascript']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: github/codeql-action/init@v3
+        with:
+          languages: ${{ matrix.language }}
+      - uses: github/codeql-action/autobuild@v3
+      - uses: github/codeql-action/analyze@v3

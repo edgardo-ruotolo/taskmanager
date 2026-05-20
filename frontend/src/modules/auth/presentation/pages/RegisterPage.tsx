@@ -11,6 +11,8 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { registerSchema, type RegisterFormData } from '../../application/schemas';
 import { authRepository } from '../../infrastructure/auth-repository';
+import { applyServerErrors } from '@/shared/lib/api-errors';
+import { trackEvent } from '@/shared/lib/posthog';
 
 export const RegisterPage = (): React.ReactElement => {
     const navigate = useNavigate();
@@ -28,17 +30,23 @@ export const RegisterPage = (): React.ReactElement => {
     });
 
     const onSubmit = async (data: RegisterFormData): Promise<void> => {
+        if (isLoading) return;
         setIsLoading(true);
         try {
             await authRepository.register(data);
+            trackEvent('signup', { method: 'email' });
             toast.success('Cuenta creada correctamente. Inicia sesión.');
             void navigate('/login');
         } catch (err) {
-            let message = 'Error al crear la cuenta';
-            if (axios.isAxiosError(err) && err.response?.data?.message) {
-                message = String(err.response.data.message);
+            if (!applyServerErrors(err, form.setError)) {
+                let message = 'Error al crear la cuenta';
+                if (axios.isAxiosError(err) && err.response?.data?.error) {
+                    message = String(err.response.data.error);
+                } else if (axios.isAxiosError(err) && err.response?.data?.message) {
+                    message = String(err.response.data.message);
+                }
+                toast.error(message);
             }
-            toast.error(message);
         } finally {
             setIsLoading(false);
         }

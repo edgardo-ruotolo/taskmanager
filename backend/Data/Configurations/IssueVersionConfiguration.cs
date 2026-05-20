@@ -17,5 +17,11 @@ public class IssueVersionConfiguration : IEntityTypeConfiguration<IssueVersion>
             .WithMany()
             .HasForeignKey(v => v.OwnedById)
             .OnDelete(DeleteBehavior.Restrict);
+
+        builder.Property(v => v.AssigneeIdsJson).HasColumnType("text");
+        builder.Property(v => v.LabelIdsJson).HasColumnType("text");
+        builder.Property(v => v.ModuleIdsJson).HasColumnType("text");
+        builder.Property(v => v.PropertiesJson).HasColumnType("text");
+        builder.Property(v => v.MetaJson).HasColumnType("text");
     }
 }

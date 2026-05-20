@@ -14,6 +14,17 @@ import {
     DialogTrigger,
 } from '@/components/ui/dialog';
 import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
+import {
     Sheet,
     SheetContent,
     SheetHeader,
@@ -321,15 +332,37 @@ export const EstimatesPage = (): React.ReactElement => {
                                     >
                                         {estimate.name}
                                     </button>
-                                    <button
-                                        type="button"
-                                        disabled={isDeleting}
-                                        onClick={() => deleteEstimate(estimate.id)}
-                                        className="relative z-10 text-placeholder hover:text-red-400 transition-colors shrink-0"
-                                        aria-label="Eliminar estimación"
-                                    >
-                                        <Trash2 size={14} />
-                                    </button>
+                                    <AlertDialog>
+                                        <AlertDialogTrigger asChild>
+                                            <button
+                                                type="button"
+                                                disabled={isDeleting}
+                                                className="relative z-10 text-placeholder hover:text-red-400 transition-colors shrink-0"
+                                                aria-label="Eliminar estimación"
+                                            >
+                                                <Trash2 size={14} />
+                                            </button>
+                                        </AlertDialogTrigger>
+                                        <AlertDialogContent className="bg-surface-1 border-subtle text-primary">
+                                            <AlertDialogHeader>
+                                                <AlertDialogTitle>Eliminar estimación</AlertDialogTitle>
+                                                <AlertDialogDescription className="text-secondary">
+                                                    ¿Estás seguro de que querés eliminar &ldquo;{estimate.name}&rdquo;? Esta acción no se puede deshacer y perderás todos los puntos configurados.
+                                                </AlertDialogDescription>
+                                            </AlertDialogHeader>
+                                            <AlertDialogFooter>
+                                                <AlertDialogCancel className="border-subtle text-secondary hover:bg-layer-1-hover">
+                                                    Cancelar
+                                                </AlertDialogCancel>
+                                                <AlertDialogAction
+                                                    onClick={() => deleteEstimate(estimate.id)}
+                                                    className="bg-red-600 hover:bg-red-700 text-white"
+                                                >
+                                                    Eliminar
+                                                </AlertDialogAction>
+                                            </AlertDialogFooter>
+                                        </AlertDialogContent>
+                                    </AlertDialog>
                                 </div>
 
                                 {estimate.description && (

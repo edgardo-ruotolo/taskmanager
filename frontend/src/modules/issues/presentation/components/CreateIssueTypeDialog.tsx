@@ -6,6 +6,7 @@ import { z } from 'zod';
 import {
     Dialog,
     DialogContent,
+    DialogDescription,
     DialogHeader,
     DialogTitle,
     DialogTrigger,
@@ -63,6 +64,9 @@ export const CreateIssueTypeDialog = ({
             <DialogContent className="bg-surface-1 border-subtle text-primary sm:max-w-md">
                 <DialogHeader>
                     <DialogTitle className="text-primary">Nuevo Tipo de Tarea</DialogTitle>
+                    <DialogDescription className="sr-only">
+                        Crea un tipo de tarea con nombre, color e ícono.
+                    </DialogDescription>
                 </DialogHeader>
                 <Form {...form}>
                     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">

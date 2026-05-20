@@ -3,6 +3,8 @@ using TaskManager.Api.Modules.Auth.Entities;
 
 namespace TaskManager.Api.Modules.Issues.Entities;
 
+public enum CommentAccess { Internal, External }
+
 public class IssueComment : AuditableEntity
 {
     public string Body { get; set; } = "";
@@ -14,4 +16,6 @@ public class IssueComment : AuditableEntity
     public IssueComment? Parent { get; set; }
     public ICollection<IssueComment> Replies { get; set; } = [];
     public ICollection<CommentReaction> Reactions { get; set; } = [];
+    public CommentAccess Access { get; set; } = CommentAccess.Internal;
+    public DateTime? EditedAt { get; set; }
 }

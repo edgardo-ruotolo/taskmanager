@@ -12,6 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { resetPasswordSchema, type ResetPasswordFormData } from '../../application/schemas';
 import { authRepository } from '../../infrastructure/auth-repository';
+import { applyServerErrors } from '@/shared/lib/api-errors';
 
 export const ResetPasswordPage = (): React.ReactElement => {
     const navigate = useNavigate();
@@ -28,6 +29,7 @@ export const ResetPasswordPage = (): React.ReactElement => {
 
     const onSubmit = async (data: ResetPasswordFormData): Promise<void> => {
         if (!email || !token) return;
+        if (isLoading) return;
 
         setIsLoading(true);
         try {
@@ -35,11 +37,15 @@ export const ResetPasswordPage = (): React.ReactElement => {
             toast.success('Contraseña restablecida correctamente');
             void navigate('/login');
         } catch (err) {
-            let message = 'Error al restablecer la contraseña';
-            if (axios.isAxiosError(err) && err.response?.data?.message) {
-                message = String(err.response.data.message);
+            if (!applyServerErrors(err, form.setError)) {
+                let message = 'Error al restablecer la contraseña';
+                if (axios.isAxiosError(err) && err.response?.data?.error) {
+                    message = String(err.response.data.error);
+                } else if (axios.isAxiosError(err) && err.response?.data?.message) {
+                    message = String(err.response.data.message);
+                }
+                toast.error(message);
             }
-            toast.error(message);
         } finally {
             setIsLoading(false);
         }

@@ -18,6 +18,11 @@ import type {
     CreateIssueLinkData,
     IssueRelation,
     CreateIssueRelationData,
+    IssueVersion,
+    IssueMention,
+    IssueTemplate,
+    CreateIssueTemplateData,
+    SearchSimilarIssuesData,
 } from '../domain/types';
 
 export const issueRepository = {
@@ -62,6 +67,14 @@ export const issueRepository = {
                 `/api/workspaces/${workspaceSlug}/companies/${companyId}/issues/${issueId}`,
             )
             .then((r) => r.data),
+    archive: (workspaceSlug: string, companyId: string, issueId: string): Promise<void> =>
+        apiClient
+            .post(`/api/workspaces/${workspaceSlug}/companies/${companyId}/issues/${issueId}/archive`)
+            .then(() => undefined),
+    duplicate: (workspaceSlug: string, companyId: string, issueId: string): Promise<Issue> =>
+        apiClient
+            .post<Issue>(`/api/workspaces/${workspaceSlug}/companies/${companyId}/issues/${issueId}/duplicate`)
+            .then((r) => r.data),
 };
 
 // Comments
@@ -85,6 +98,20 @@ export const createComment = (
     apiClient
         .post<IssueComment>(
             `/api/workspaces/${workspaceSlug}/companies/${companyId}/issues/${issueId}/comments`,
+            data,
+        )
+        .then((r) => r.data);
+
+export const updateComment = (
+    workspaceSlug: string,
+    companyId: string,
+    issueId: string,
+    commentId: string,
+    data: { body: string },
+): Promise<IssueComment> =>
+    apiClient
+        .patch<IssueComment>(
+            `/api/workspaces/${workspaceSlug}/companies/${companyId}/issues/${issueId}/comments/${commentId}`,
             data,
         )
         .then((r) => r.data);
@@ -296,3 +323,158 @@ export const getActivities = (
             `/api/workspaces/${workspaceSlug}/companies/${companyId}/issues/${issueId}/activities`,
         )
         .then((r) => r.data);
+
+// DeDupe — search similar
+export const searchSimilarIssues = (
+    workspaceSlug: string,
+    companyId: string,
+    data: SearchSimilarIssuesData,
+): Promise<Issue[]> =>
+    apiClient
+        .post<Issue[]>(
+            `/api/workspaces/${workspaceSlug}/companies/${companyId}/issues/search-similar`,
+            data,
+        )
+        .then((r) => r.data);
+
+// Cycle
+export const attachCycle = (
+    workspaceSlug: string,
+    companyId: string,
+    issueId: string,
+    cycleId: string,
+): Promise<void> =>
+    apiClient
+        .post(`/api/workspaces/${workspaceSlug}/companies/${companyId}/issues/${issueId}/cycle`, { cycleId })
+        .then(() => undefined);
+
+export const detachCycle = (
+    workspaceSlug: string,
+    companyId: string,
+    issueId: string,
+): Promise<void> =>
+    apiClient
+        .delete(`/api/workspaces/${workspaceSlug}/companies/${companyId}/issues/${issueId}/cycle`)
+        .then(() => undefined);
+
+// Modules
+export const attachModules = (
+    workspaceSlug: string,
+    companyId: string,
+    issueId: string,
+    moduleIds: string[],
+): Promise<void> =>
+    apiClient
+        .post(`/api/workspaces/${workspaceSlug}/companies/${companyId}/issues/${issueId}/modules`, { moduleIds })
+        .then(() => undefined);
+
+export const detachModule = (
+    workspaceSlug: string,
+    companyId: string,
+    issueId: string,
+    moduleId: string,
+): Promise<void> =>
+    apiClient
+        .delete(`/api/workspaces/${workspaceSlug}/companies/${companyId}/issues/${issueId}/modules/${moduleId}`)
+        .then(() => undefined);
+
+// Attachments
+export const getAttachments = (
+    workspaceSlug: string,
+    companyId: string,
+    issueId: string,
+): Promise<Array<{ id: string; fileName: string; contentType: string; sizeBytes: number; url: string; createdAt: string }>> =>
+    apiClient
+        .get(`/api/workspaces/${workspaceSlug}/companies/${companyId}/issues/${issueId}/attachments`)
+        .then((r) => r.data);
+
+export const uploadAttachment = (
+    workspaceSlug: string,
+    companyId: string,
+    issueId: string,
+    file: File,
+): Promise<{ id: string; fileName: string; url: string }> => {
+    const form = new FormData();
+    form.append('file', file);
+    return apiClient
+        .post(
+            `/api/workspaces/${workspaceSlug}/companies/${companyId}/issues/${issueId}/attachments`,
+            form,
+            { headers: { 'Content-Type': 'multipart/form-data' } },
+        )
+        .then((r) => r.data);
+};
+
+export const deleteAttachment = (
+    workspaceSlug: string,
+    companyId: string,
+    attachmentId: string,
+): Promise<void> =>
+    apiClient
+        .delete(`/api/workspaces/${workspaceSlug}/companies/${companyId}/issues/attachments/${attachmentId}`)
+        .then(() => undefined);
+
+// Mentions
+export const getMentions = (
+    workspaceSlug: string,
+    companyId: string,
+    issueId: string,
+): Promise<IssueMention[]> =>
+    apiClient
+        .get<IssueMention[]>(
+            `/api/workspaces/${workspaceSlug}/companies/${companyId}/issues/${issueId}/mentions`,
+        )
+        .then((r) => r.data);
+
+export const syncMentions = (
+    workspaceSlug: string,
+    companyId: string,
+    issueId: string,
+    mentionedUserIds: string[],
+): Promise<void> =>
+    apiClient
+        .post(
+            `/api/workspaces/${workspaceSlug}/companies/${companyId}/issues/${issueId}/mentions`,
+            { mentionedUserIds },
+        )
+        .then(() => undefined);
+
+// Versions
+export const getVersions = (
+    workspaceSlug: string,
+    companyId: string,
+    issueId: string,
+): Promise<IssueVersion[]> =>
+    apiClient
+        .get<IssueVersion[]>(
+            `/api/workspaces/${workspaceSlug}/companies/${companyId}/issues/${issueId}/versions`,
+        )
+        .then((r) => r.data);
+
+// Templates
+export const getTemplates = (workspaceSlug: string): Promise<IssueTemplate[]> =>
+    apiClient
+        .get<IssueTemplate[]>(`/api/workspaces/${workspaceSlug}/templates`)
+        .then((r) => r.data);
+
+export const createTemplate = (
+    workspaceSlug: string,
+    data: CreateIssueTemplateData,
+): Promise<IssueTemplate> =>
+    apiClient
+        .post<IssueTemplate>(`/api/workspaces/${workspaceSlug}/templates`, data)
+        .then((r) => r.data);
+
+export const updateTemplate = (
+    workspaceSlug: string,
+    templateId: string,
+    data: CreateIssueTemplateData,
+): Promise<IssueTemplate> =>
+    apiClient
+        .patch<IssueTemplate>(`/api/workspaces/${workspaceSlug}/templates/${templateId}`, data)
+        .then((r) => r.data);
+
+export const deleteTemplate = (workspaceSlug: string, templateId: string): Promise<void> =>
+    apiClient
+        .delete(`/api/workspaces/${workspaceSlug}/templates/${templateId}`)
+        .then(() => undefined);

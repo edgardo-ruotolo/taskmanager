@@ -11,12 +11,12 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { ThemeSwitcher } from '@/shared/components/ThemeSwitcher';
-import { useAuthStore } from '@/modules/auth/application/auth-store';
+import { useAuthMe } from '@/modules/auth/application/use-auth-me';
 import { authRepository } from '@/modules/auth/infrastructure/auth-repository';
+import { handleAuthFailure } from '@/shared/lib/api-client';
 
 export function UserMenu(): React.ReactElement {
-    const user = useAuthStore((s) => s.user);
-    const clearAuth = useAuthStore((s) => s.clearAuth);
+    const { data: user } = useAuthMe();
     const navigate = useNavigate();
     const { workspaceSlug } = useParams<{ workspaceSlug: string }>();
 
@@ -24,11 +24,10 @@ export function UserMenu(): React.ReactElement {
         try {
             await authRepository.logout();
         } catch {
-            // always clear local auth
+            // even if server call fails, always clear local auth
         } finally {
-            clearAuth();
+            handleAuthFailure();
             toast.success('Sesión cerrada');
-            void navigate('/login');
         }
     };
 

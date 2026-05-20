@@ -114,8 +114,9 @@ export function FileAttachments({
                         className="h-6 w-6 shrink-0"
                         onClick={() => deleteMutation.mutate(file.id)}
                         disabled={deleteMutation.isPending}
+                        aria-label={`Eliminar adjunto ${file.fileName}`}
                     >
-                        <Trash2 size={12} />
+                        <Trash2 size={12} aria-hidden="true" />
                     </Button>
                 </div>
             ))}

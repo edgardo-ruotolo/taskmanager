@@ -13,7 +13,7 @@ import {
     Circle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useAuthStore } from '@/modules/auth/application/auth-store';
+import { useAuthMe } from '@/modules/auth/application/use-auth-me';
 
 interface NavItem {
     path: string;
@@ -48,7 +48,7 @@ const SECTION_LABELS: Record<string, string> = {
 export function GodModeLayout(): React.ReactElement {
     const navigate = useNavigate();
     const location = useLocation();
-    const user = useAuthStore((s) => s.user);
+    const { data: user } = useAuthMe();
 
     const segments = location.pathname.split('/').filter(Boolean);
     const currentSection = segments[1] ?? 'general';
@@ -69,6 +69,13 @@ export function GodModeLayout(): React.ReactElement {
 
     return (
         <div className="min-h-screen flex bg-canvas">
+            {/* Skip link for keyboard users */}
+            <a
+                href="#main"
+                className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50 focus:rounded-md focus:bg-accent-primary focus:px-3 focus:py-2 focus:text-sm focus:font-medium focus:text-on-color focus:outline-none focus:ring-2 focus:ring-accent-strong"
+            >
+                Saltar al contenido principal
+            </a>
             {/* Sidebar */}
             <aside className="w-[235px] shrink-0 flex flex-col bg-surface-2 border-r border-subtle">
                 {/* Header */}
@@ -159,7 +166,11 @@ export function GodModeLayout(): React.ReactElement {
                 </header>
 
                 {/* Content */}
-                <main className="flex-1 overflow-auto p-[var(--padding-page)]">
+                <main
+                    id="main"
+                    tabIndex={-1}
+                    className="flex-1 overflow-auto p-[var(--padding-page)] focus:outline-none"
+                >
                     <Outlet />
                 </main>
             </div>

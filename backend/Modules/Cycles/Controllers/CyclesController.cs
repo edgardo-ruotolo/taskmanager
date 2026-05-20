@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using System.Security.Claims;
+using TaskManager.Api.Common.Auth;
+using TaskManager.Api.Common.Authorization;
 using TaskManager.Api.Common.Pagination;
 using TaskManager.Api.Modules.Cycles.Dtos;
 using TaskManager.Api.Modules.Cycles.Services;
@@ -10,9 +11,9 @@ namespace TaskManager.Api.Modules.Cycles.Controllers;
 [ApiController]
 [Route("api/workspaces/{workspaceSlug}/companies/{companyId:guid}/cycles")]
 [Authorize]
-public class CyclesController(ICycleService cycleService) : ControllerBase
+[ServiceFilter(typeof(RequireCompanyMemberAttribute))]
+public class CyclesController(ICycleService cycleService, ICurrentUser currentUser) : ControllerBase
 {
-    private Guid CurrentUserId => Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
     [HttpGet]
     public async Task<ActionResult<PagedResult<CycleDto>>> GetAll(
@@ -36,7 +37,7 @@ public class CyclesController(ICycleService cycleService) : ControllerBase
     [HttpPost]
     public async Task<ActionResult<CycleDto>> Create(string workspaceSlug, Guid companyId, [FromBody] CreateCycleDto dto, CancellationToken ct = default)
     {
-        var cycle = await cycleService.CreateAsync(workspaceSlug, companyId, CurrentUserId, dto, ct);
+        var cycle = await cycleService.CreateAsync(workspaceSlug, companyId, currentUser.UserId, dto, ct);
         return CreatedAtAction(nameof(GetById), new { workspaceSlug, companyId, cycleId = cycle.Id }, cycle);
     }
 
@@ -57,7 +58,7 @@ public class CyclesController(ICycleService cycleService) : ControllerBase
     [HttpPost("{cycleId:guid}/issues")]
     public async Task<IActionResult> AddIssue(string workspaceSlug, Guid companyId, Guid cycleId, [FromBody] AddCycleIssueDto dto, CancellationToken ct = default)
     {
-        await cycleService.AddIssueAsync(workspaceSlug, companyId, cycleId, dto.IssueId, CurrentUserId, ct);
+        await cycleService.AddIssueAsync(workspaceSlug, companyId, cycleId, dto.IssueId, currentUser.UserId, ct);
         return NoContent();
     }
 

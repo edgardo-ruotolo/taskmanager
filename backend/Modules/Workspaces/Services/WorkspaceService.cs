@@ -36,6 +36,7 @@ public class WorkspaceService(AppDbContext db, IMapper mapper, IEmailService ema
     public async Task<PagedResult<WorkspaceDto>> GetUserWorkspacesAsync(Guid userId, int page, int pageSize, CancellationToken ct = default)
     {
         var query = db.Workspaces
+            .AsNoTracking()
             .Where(w => w.Members.Any(m => m.UserId == userId && m.IsActive));
 
         var total = await query.CountAsync(ct);
@@ -56,7 +57,8 @@ public class WorkspaceService(AppDbContext db, IMapper mapper, IEmailService ema
 
     public async Task<WorkspaceDto> GetBySlugAsync(string slug, CancellationToken ct = default)
     {
-        var workspace = await db.Workspaces.FirstOrDefaultAsync(w => w.Slug == slug, ct)
+        var workspace = await db.Workspaces.AsNoTracking()
+            .FirstOrDefaultAsync(w => w.Slug == slug, ct)
             ?? throw new NotFoundException($"Workspace '{slug}' not found.");
         return mapper.Map<WorkspaceDto>(workspace);
     }
@@ -95,10 +97,12 @@ public class WorkspaceService(AppDbContext db, IMapper mapper, IEmailService ema
 
     public async Task<IEnumerable<WorkspaceMemberDto>> GetMembersAsync(string slug, CancellationToken ct = default)
     {
-        var workspace = await db.Workspaces.FirstOrDefaultAsync(w => w.Slug == slug, ct)
+        var workspace = await db.Workspaces.AsNoTracking()
+            .FirstOrDefaultAsync(w => w.Slug == slug, ct)
             ?? throw new NotFoundException($"Workspace '{slug}' not found.");
 
         var members = await db.WorkspaceMembers
+            .AsNoTracking()
             .Include(m => m.User)
             .Where(m => m.WorkspaceId == workspace.Id)
             .OrderBy(m => m.User.Email)
@@ -226,10 +230,12 @@ public class WorkspaceService(AppDbContext db, IMapper mapper, IEmailService ema
 
     public async Task<IEnumerable<WorkspaceInvitationDto>> GetPendingInvitationsAsync(string slug, CancellationToken ct = default)
     {
-        var workspace = await db.Workspaces.FirstOrDefaultAsync(w => w.Slug == slug, ct)
+        var workspace = await db.Workspaces.AsNoTracking()
+            .FirstOrDefaultAsync(w => w.Slug == slug, ct)
             ?? throw new NotFoundException($"Workspace '{slug}' not found.");
 
         var invitations = await db.WorkspaceInvitations
+            .AsNoTracking()
             .Where(i => i.WorkspaceId == workspace.Id && i.AcceptedAt == null && i.ExpiresAt > DateTime.UtcNow)
             .OrderByDescending(i => i.CreatedAt)
             .ToListAsync(ct);

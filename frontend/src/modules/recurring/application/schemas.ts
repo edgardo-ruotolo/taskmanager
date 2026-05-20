@@ -18,7 +18,7 @@ export const recurringTemplateSchema = z.object({
     startDateOffsetDays: z.number().int(),
     targetDateOffsetDays: z.number().int(),
     blockPolicy: z.string(),
-    companyIds: z.array(z.string()),
+    companyIds: z.array(z.string()).min(1, 'Selecciona al menos una empresa'),
     assigneeIds: z.array(z.string()),
     labelIds: z.array(z.string()),
 });

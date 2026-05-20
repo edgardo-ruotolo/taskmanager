@@ -90,7 +90,7 @@ function EditCompanyGroupDialog({ company, onClose }: EditCompanyGroupDialogProp
                     toast.success('Grupo actualizado');
                     onClose();
                 },
-                onError: () => toast.error('Error al actualizar el grupo'),
+                onError: (error: unknown) => { const e = error as { response?: { data?: { message?: string } } }; toast.error(e?.response?.data?.message ?? 'Error al actualizar el grupo'); },
             },
         );
     };

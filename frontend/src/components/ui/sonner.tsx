@@ -1,3 +1,4 @@
+import type { ComponentProps } from "react"
 import {
   CircleCheck,
   Info,
@@ -5,26 +6,27 @@ import {
   OctagonX,
   TriangleAlert,
 } from "lucide-react"
-import { useTheme } from "next-themes"
 import { Toaster as Sonner } from "sonner"
 
-type ToasterProps = React.ComponentProps<typeof Sonner>
+type ToasterProps = ComponentProps<typeof Sonner>
 
 const Toaster = ({ ...props }: ToasterProps) => {
-  const { theme = "system" } = useTheme()
-
   return (
     <Sonner
-      theme={theme as ToasterProps["theme"]}
+      theme="system"
       className="toaster group"
+      containerAriaLabel="Notificaciones"
       icons={{
-        success: <CircleCheck className="h-4 w-4" />,
-        info: <Info className="h-4 w-4" />,
-        warning: <TriangleAlert className="h-4 w-4" />,
-        error: <OctagonX className="h-4 w-4" />,
-        loading: <LoaderCircle className="h-4 w-4 animate-spin" />,
+        success: <CircleCheck className="h-4 w-4" aria-hidden="true" />,
+        info: <Info className="h-4 w-4" aria-hidden="true" />,
+        warning: <TriangleAlert className="h-4 w-4" aria-hidden="true" />,
+        error: <OctagonX className="h-4 w-4" aria-hidden="true" />,
+        loading: <LoaderCircle className="h-4 w-4 animate-spin" aria-hidden="true" />,
       }}
       toastOptions={{
+        // Sonner sets role="status" + aria-live="polite" automatically for
+        // success/info/loading toasts, and role="alert" + aria-live="assertive"
+        // for error toasts (handled internally by the library).
         classNames: {
           toast:
             "group toast group-[.toaster]:bg-background group-[.toaster]:text-foreground group-[.toaster]:border-border group-[.toaster]:shadow-lg",

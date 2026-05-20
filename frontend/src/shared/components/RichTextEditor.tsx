@@ -7,6 +7,7 @@ import Link from '@tiptap/extension-link';
 import TaskList from '@tiptap/extension-task-list';
 import TaskItem from '@tiptap/extension-task-item';
 import Typography from '@tiptap/extension-typography';
+import DOMPurify from 'dompurify';
 import {
     Bold,
     Italic,
@@ -19,10 +20,21 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
+// Restricts allowed link protocols to prevent javascript: and data: URL injection.
+const SAFE_LINK_PROTOCOL = /^(https?:\/\/|mailto:|\/|#)/;
+
+const sanitizeHtml = (html: string): string =>
+    DOMPurify.sanitize(html, {
+        USE_PROFILES: { html: true },
+        ALLOWED_ATTR: ['href', 'rel', 'target', 'class', 'data-type', 'data-checked'],
+        FORBID_TAGS: ['style', 'script', 'iframe', 'object', 'embed'],
+    });
+
 interface RichTextEditorProps {
     content?: string;
     placeholder?: string;
     onChange?: (html: string) => void;
+    onChangeJson?: (json: string) => void;
     className?: string;
     editable?: boolean;
 }
@@ -31,22 +43,31 @@ export function RichTextEditor({
     content,
     placeholder,
     onChange,
+    onChangeJson,
     className,
     editable = true,
 }: RichTextEditorProps): React.ReactElement {
     const editor = useEditor({
         extensions: [
-            StarterKit,
+            // StarterKit 3.x ships its own Link extension; disable it so the
+            // custom-configured Link below (with validate) is the only one loaded.
+            StarterKit.configure({ link: false }),
             Placeholder.configure({ placeholder: placeholder ?? 'Agrega una descripción...' }),
-            Link.configure({ openOnClick: false }),
+            Link.configure({
+                openOnClick: false,
+                validate: (href: string) => SAFE_LINK_PROTOCOL.test(href),
+            }),
             TaskList,
             TaskItem.configure({ nested: true }),
             Typography,
         ],
-        content: content ?? '',
+        // Sanitize incoming content to strip script/style/iframe and disallowed
+        // attributes such as inline event handlers (XSS protection).
+        content: sanitizeHtml(content ?? ''),
         editable,
         onUpdate: ({ editor: e }) => {
-            onChange?.(e.getHTML());
+            onChange?.(sanitizeHtml(e.getHTML()));
+            onChangeJson?.(JSON.stringify(e.getJSON()));
         },
     });
 

@@ -5,6 +5,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import {
     Dialog,
     DialogContent,
+    DialogDescription,
     DialogHeader,
     DialogTitle,
     DialogTrigger,
@@ -29,11 +30,14 @@ interface CreateWorkspaceDialogProps {
 
 export const CreateWorkspaceDialog = ({ trigger }: CreateWorkspaceDialogProps): React.ReactElement => {
     const [open, setOpen] = useState(false);
-    const { mutate, isPending } = useCreateWorkspace();
 
     const form = useForm<CreateWorkspaceFormData>({
         resolver: zodResolver(createWorkspaceSchema),
         defaultValues: { name: '', slug: '', description: '' },
+    });
+
+    const { mutate, isPending } = useCreateWorkspace<CreateWorkspaceFormData>({
+        setError: form.setError,
     });
 
     const nameValue = form.watch('name');
@@ -63,6 +67,9 @@ export const CreateWorkspaceDialog = ({ trigger }: CreateWorkspaceDialogProps): 
             <DialogContent className="bg-surface-1 border-subtle text-primary sm:max-w-md">
                 <DialogHeader>
                     <DialogTitle className="text-primary">Nuevo espacio de trabajo</DialogTitle>
+                    <DialogDescription className="sr-only">
+                        Define el nombre y el slug del workspace que agrupará tus empresas y tareas.
+                    </DialogDescription>
                 </DialogHeader>
                 <Form {...form}>
                     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">

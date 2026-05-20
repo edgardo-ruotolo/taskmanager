@@ -21,7 +21,7 @@ export const useCreateDraft = (workspaceSlug: string) => {
             void qc.invalidateQueries({ queryKey: listKey(workspaceSlug) });
             toast.success('Borrador creado');
         },
-        onError: () => toast.error('Error al crear el borrador'),
+        onError: (error: unknown) => { const e = error as { response?: { data?: { message?: string } } }; toast.error(e?.response?.data?.message ?? 'Error al crear el borrador'); },
     });
 };
 
@@ -33,7 +33,7 @@ export const useUpdateDraft = (workspaceSlug: string) => {
         onSuccess: () => {
             void qc.invalidateQueries({ queryKey: listKey(workspaceSlug) });
         },
-        onError: () => toast.error('Error al actualizar el borrador'),
+        onError: (error: unknown) => { const e = error as { response?: { data?: { message?: string } } }; toast.error(e?.response?.data?.message ?? 'Error al actualizar el borrador'); },
     });
 };
 
@@ -45,7 +45,7 @@ export const useDeleteDraft = (workspaceSlug: string) => {
             void qc.invalidateQueries({ queryKey: listKey(workspaceSlug) });
             toast.success('Borrador eliminado');
         },
-        onError: () => toast.error('Error al eliminar el borrador'),
+        onError: (error: unknown) => { const e = error as { response?: { data?: { message?: string } } }; toast.error(e?.response?.data?.message ?? 'Error al eliminar el borrador'); },
     });
 };
 
@@ -57,6 +57,6 @@ export const usePublishDraft = (workspaceSlug: string) => {
             void qc.invalidateQueries({ queryKey: listKey(workspaceSlug) });
             toast.success('Borrador publicado como tarea');
         },
-        onError: () => toast.error('Error al publicar el borrador'),
+        onError: (error: unknown) => { const e = error as { response?: { data?: { message?: string } } }; toast.error(e?.response?.data?.message ?? 'Error al publicar el borrador'); },
     });
 };

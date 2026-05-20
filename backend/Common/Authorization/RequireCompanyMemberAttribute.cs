@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.EntityFrameworkCore;
 using TaskManager.Api.Common.Auth;
+using TaskManager.Api.Common.Multitenancy;
 using TaskManager.Api.Data;
 
 namespace TaskManager.Api.Common.Authorization;
@@ -37,6 +38,10 @@ public class RequireCompanyMemberAttribute : Attribute, IAsyncActionFilter
         }
 
         context.HttpContext.Items["CompanyRole"] = member.Role;
+
+        var companyContext = context.HttpContext.RequestServices.GetRequiredService<ICurrentCompanyContext>();
+        companyContext.SetCompanyId(companyId);
+
         await next();
     }
 }

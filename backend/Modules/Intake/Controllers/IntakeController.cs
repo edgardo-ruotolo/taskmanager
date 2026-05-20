@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using System.Security.Claims;
+using TaskManager.Api.Common.Auth;
+using TaskManager.Api.Common.Authorization;
 using TaskManager.Api.Common.Pagination;
 using TaskManager.Api.Modules.Intake.Dtos;
 using TaskManager.Api.Modules.Intake.Services;
@@ -10,9 +11,9 @@ namespace TaskManager.Api.Modules.Intake.Controllers;
 [ApiController]
 [Route("api/workspaces/{workspaceSlug}/companies/{companyId}/intake")]
 [Authorize]
-public class IntakeController(IIntakeService intakeService) : ControllerBase
+[ServiceFilter(typeof(RequireCompanyMemberAttribute))]
+public class IntakeController(IIntakeService intakeService, ICurrentUser currentUser) : ControllerBase
 {
-    private Guid CurrentUserId => Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
     [HttpGet]
     public async Task<ActionResult<PagedResult<IntakeIssueDto>>> GetAll(
@@ -44,7 +45,7 @@ public class IntakeController(IIntakeService intakeService) : ControllerBase
         Guid id,
         [FromBody] ReviewIntakeIssueDto dto,
         CancellationToken ct)
-        => Ok(await intakeService.ReviewAsync(id, CurrentUserId, dto, ct));
+        => Ok(await intakeService.ReviewAsync(id, currentUser.UserId, dto, ct));
 
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct)

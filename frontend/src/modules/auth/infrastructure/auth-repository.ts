@@ -1,5 +1,5 @@
 import { apiClient } from '@/shared/lib/api-client';
-import type { User, ApiToken, CreateApiTokenData, CreateApiTokenResponse } from '../domain/types';
+import type { User } from '../domain/types';
 
 export interface RegisterData {
     email: string;
@@ -23,14 +23,6 @@ export const authRepository = {
         apiClient.post('/api/auth/logout').then(() => undefined),
     me: (): Promise<User> =>
         apiClient.get<User>('/api/auth/me').then((r) => r.data),
-    getTokens: (): Promise<ApiToken[]> =>
-        apiClient.get<ApiToken[]>('/api/auth/tokens').then((r) => r.data),
-    createToken: (data: CreateApiTokenData): Promise<CreateApiTokenResponse> =>
-        apiClient
-            .post<CreateApiTokenResponse>('/api/auth/tokens', data)
-            .then((r) => r.data),
-    revokeToken: (id: string): Promise<void> =>
-        apiClient.delete(`/api/auth/tokens/${id}`).then(() => undefined),
     forgotPassword: (email: string): Promise<void> =>
         apiClient.post('/api/auth/forgot-password', { email }).then(() => undefined),
     resetPassword: (data: { email: string; token: string; newPassword: string }): Promise<void> =>

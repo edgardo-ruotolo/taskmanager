@@ -1,7 +1,6 @@
 import { Fragment } from 'react';
 import type React from 'react';
 import { Link } from 'react-router-dom';
-import { ChevronRight } from 'lucide-react';
 import { useBreadcrumbs } from '@/shared/hooks/useBreadcrumbs';
 
 export const BreadcrumbBar = (): React.ReactElement | null => {
@@ -10,21 +9,21 @@ export const BreadcrumbBar = (): React.ReactElement | null => {
     if (crumbs.length === 0) return null;
 
     return (
-        <div className="h-9 shrink-0 flex items-center px-6 border-b border-subtle bg-surface-1 gap-1.5">
+        <div className="flex items-center gap-2">
             {crumbs.map((crumb, index) => (
                 <Fragment key={`${crumb.label}-${crumb.href ?? 'active'}`}>
                     {index > 0 && (
-                        <ChevronRight size={12} className="text-tertiary shrink-0" aria-hidden="true" />
+                        <span className="text-[var(--neutral-600)] text-[10px] shrink-0 opacity-40">/</span>
                     )}
                     {crumb.href ? (
                         <Link
                             to={crumb.href}
-                            className="text-xs text-secondary hover:text-primary transition-colors duration-150"
+                            className="text-[13px] text-[var(--neutral-1100)] hover:text-[var(--neutral-1200)] transition-colors duration-150 tracking-[-0.01em]"
                         >
                             {crumb.label}
                         </Link>
                     ) : (
-                        <span className="text-xs text-primary font-medium">{crumb.label}</span>
+                        <span className="text-[14px] text-[var(--neutral-1200)] font-medium tracking-[-0.01em]">{crumb.label}</span>
                     )}
                 </Fragment>
             ))}

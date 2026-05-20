@@ -27,7 +27,9 @@ public class IssueActivityService(AppDbContext db, IMapper mapper) : IIssueActiv
             ActorId = actorId,
             Field = field,
             OldValue = oldValue,
-            NewValue = newValue
+            NewValue = newValue,
+            Verb = oldValue == null ? "created" : newValue == null ? "deleted" : "updated",
+            Epoch = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
         };
 
         db.IssueActivities.Add(activity);

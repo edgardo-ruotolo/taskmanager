@@ -30,7 +30,7 @@ export const useCreateQuickLink = (workspaceSlug: string) => {
             void qc.invalidateQueries({ queryKey: ['home', workspaceSlug, 'quick-links'] });
             toast.success('Link agregado');
         },
-        onError: () => toast.error('Error al agregar el link'),
+        onError: (error: unknown) => { const e = error as { response?: { data?: { message?: string } } }; toast.error(e?.response?.data?.message ?? 'Error al agregar el link'); },
     });
 };
 
@@ -42,6 +42,6 @@ export const useDeleteQuickLink = (workspaceSlug: string) => {
             void qc.invalidateQueries({ queryKey: ['home', workspaceSlug, 'quick-links'] });
             toast.success('Link eliminado');
         },
-        onError: () => toast.error('Error al eliminar el link'),
+        onError: (error: unknown) => { const e = error as { response?: { data?: { message?: string } } }; toast.error(e?.response?.data?.message ?? 'Error al eliminar el link'); },
     });
 };

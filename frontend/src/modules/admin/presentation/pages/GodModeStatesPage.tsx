@@ -137,7 +137,7 @@ function CreateGroupDialog({ open, onClose }: CreateGroupDialogProps): React.Rea
                     toast.success('Grupo creado');
                     handleClose();
                 },
-                onError: () => toast.error('Error al crear el grupo'),
+                onError: (error: unknown) => { const e = error as { response?: { data?: { message?: string } } }; toast.error(e?.response?.data?.message ?? 'Error al crear el grupo'); },
             },
         );
     };
@@ -220,7 +220,7 @@ function EditGroupDialog({ group, onClose }: EditGroupDialogProps): React.ReactE
                     toast.success('Grupo actualizado');
                     onClose();
                 },
-                onError: () => toast.error('Error al actualizar el grupo'),
+                onError: (error: unknown) => { const e = error as { response?: { data?: { message?: string } } }; toast.error(e?.response?.data?.message ?? 'Error al actualizar el grupo'); },
             },
         );
     };
@@ -309,7 +309,7 @@ function CreateStateDialog({ stateGroupId, onClose }: CreateStateDialogProps): R
                     toast.success('Estado creado');
                     handleClose();
                 },
-                onError: () => toast.error('Error al crear el estado'),
+                onError: (error: unknown) => { const e = error as { response?: { data?: { message?: string } } }; toast.error(e?.response?.data?.message ?? 'Error al crear el estado'); },
             },
         );
     };
@@ -442,7 +442,7 @@ function EditStateDialog({ state, onClose }: EditStateDialogProps): React.ReactE
                     toast.success('Estado actualizado');
                     onClose();
                 },
-                onError: () => toast.error('Error al actualizar el estado'),
+                onError: (error: unknown) => { const e = error as { response?: { data?: { message?: string } } }; toast.error(e?.response?.data?.message ?? 'Error al actualizar el estado'); },
             },
         );
     };
@@ -631,30 +631,35 @@ function StateGroupCard({
 
     return (
         <div className="rounded-lg border border-subtle overflow-hidden">
-            <button
-                type="button"
-                className="w-full flex items-center gap-2 px-4 py-2.5 bg-layer-1 hover:bg-layer-2 transition-colors text-left"
-                onClick={() => setExpanded((v) => !v)}
-                aria-expanded={expanded}
-            >
-                {expanded ? (
-                    <ChevronDown size={14} className="text-tertiary shrink-0" aria-hidden="true" />
-                ) : (
-                    <ChevronRight size={14} className="text-tertiary shrink-0" aria-hidden="true" />
-                )}
-                <span className="flex-1 text-sm font-medium text-primary">{group.name}</span>
-                {group.isDefault && (
-                    <Badge variant="secondary" className="text-xs bg-accent-subtle text-accent-primary border-none">
-                        Por defecto
-                    </Badge>
-                )}
-                <span className="text-xs text-tertiary">{group.states.length} estados</span>
+            {/* Nesting buttons inside a button is invalid HTML — split the toggle
+                trigger and the row-level actions into siblings inside a flex row. */}
+            <div className="w-full flex items-center gap-2 px-4 py-2.5 bg-layer-1 hover:bg-layer-2 transition-colors">
+                <button
+                    type="button"
+                    className="flex flex-1 items-center gap-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] rounded-sm"
+                    onClick={() => setExpanded((v) => !v)}
+                    aria-expanded={expanded}
+                    aria-label={expanded ? `Contraer grupo ${group.name}` : `Expandir grupo ${group.name}`}
+                >
+                    {expanded ? (
+                        <ChevronDown size={14} className="text-tertiary shrink-0" aria-hidden="true" />
+                    ) : (
+                        <ChevronRight size={14} className="text-tertiary shrink-0" aria-hidden="true" />
+                    )}
+                    <span className="flex-1 text-sm font-medium text-primary">{group.name}</span>
+                    {group.isDefault && (
+                        <Badge variant="secondary" className="text-xs bg-accent-subtle text-accent-primary border-none">
+                            Por defecto
+                        </Badge>
+                    )}
+                    <span className="text-xs text-tertiary">{group.states.length} estados</span>
+                </button>
                 <div className="flex items-center gap-1 ml-2">
                     <Button
                         variant="ghost"
                         size="icon"
                         className="h-6 w-6 text-secondary hover:text-primary"
-                        onClick={(e) => { e.stopPropagation(); onEditGroup(group); }}
+                        onClick={() => onEditGroup(group)}
                         disabled={group.isDefault}
                         aria-label="Renombrar grupo"
                     >
@@ -664,14 +669,14 @@ function StateGroupCard({
                         variant="ghost"
                         size="icon"
                         className="h-6 w-6 text-secondary hover:text-danger-primary"
-                        onClick={(e) => { e.stopPropagation(); onDeleteGroup(group); }}
+                        onClick={() => onDeleteGroup(group)}
                         disabled={group.isDefault}
                         aria-label="Eliminar grupo"
                     >
                         <Trash2 size={12} aria-hidden="true" />
                     </Button>
                 </div>
-            </button>
+            </div>
 
             {expanded && (
                 <div>
@@ -767,7 +772,7 @@ export const GodModeStatesPage = (): React.ReactElement => {
                 toast.success('Grupo eliminado');
                 setDeleteGroup(null);
             },
-            onError: () => toast.error('Error al eliminar el grupo'),
+            onError: (error: unknown) => { const e = error as { response?: { data?: { message?: string } } }; toast.error(e?.response?.data?.message ?? 'Error al eliminar el grupo'); },
         });
     };
 
@@ -778,7 +783,7 @@ export const GodModeStatesPage = (): React.ReactElement => {
                 toast.success('Estado eliminado');
                 setDeleteState(null);
             },
-            onError: () => toast.error('Error al eliminar el estado'),
+            onError: (error: unknown) => { const e = error as { response?: { data?: { message?: string } } }; toast.error(e?.response?.data?.message ?? 'Error al eliminar el estado'); },
         });
     };
 

@@ -1,11 +1,18 @@
 import { apiClient } from '@/shared/lib/api-client';
 import type { Team, TeamMember, CreateTeamData, UpdateTeamData } from '../domain/types';
 
+interface PagedResponse<T> {
+    items: T[];
+    totalCount: number;
+    page: number;
+    pageSize: number;
+}
+
 const base = (slug: string): string => `/api/workspaces/${slug}/teams`;
 
 export const teamsRepository = {
     getAll: (workspaceSlug: string): Promise<Team[]> =>
-        apiClient.get<Team[]>(base(workspaceSlug)).then((r) => r.data),
+        apiClient.get<PagedResponse<Team>>(`${base(workspaceSlug)}?pageSize=100`).then((r) => r.data.items),
 
     getOne: (workspaceSlug: string, teamId: string): Promise<Team> =>
         apiClient.get<Team>(`${base(workspaceSlug)}/${teamId}`).then((r) => r.data),

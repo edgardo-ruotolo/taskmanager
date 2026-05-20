@@ -1,671 +1,561 @@
-import { useState } from 'react';
 import type React from 'react';
+import { useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import {
+    ComposedChart,
+    Area,
+    Line,
     XAxis,
     YAxis,
     CartesianGrid,
     Tooltip,
     ResponsiveContainer,
-    Legend,
-    AreaChart,
-    Area,
-    RadarChart,
-    PolarGrid,
-    PolarAngleAxis,
-    Radar,
-    BarChart,
-    Bar,
-    Cell,
 } from 'recharts';
-import { BookmarkPlus, Download, FileJson, FileSpreadsheet, FileText, Trash2 } from 'lucide-react';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Button } from '@/components/ui/button';
-import {
-    Dialog,
-    DialogContent,
-    DialogHeader,
-    DialogTitle,
-    DialogFooter,
-} from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { Eyebrow } from '@/components/ui/eyebrow';
 import { cn } from '@/lib/utils';
 import {
     useAnalyticsOverview,
-    useAnalyticViews,
-    useCreateAnalyticView,
-    useDeleteAnalyticView,
-    useExports,
-    useCreateExport,
+    useCompanyActivity,
+    useCreatedVsResolved,
+    useIssuesByPriority,
+    useIssuesByState,
 } from '../../application/use-analytics';
-import { analyticsRepository } from '../../infrastructure/analytics-repository';
+import type {
+    CompanyActivityPoint,
+    CreatedVsResolvedPoint,
+    PriorityBucket,
+    StateBucket,
+} from '../../domain/types';
+import { ChartSkeleton } from '../components/ChartSkeleton';
+import { ChartEmpty } from '../components/ChartEmpty';
 
-const TOOLTIP_STYLE = {
-    backgroundColor: 'var(--bg-surface-2)',
-    border: '1px solid var(--border-subtle)',
-    borderRadius: '6px',
-    color: 'var(--txt-primary)',
-    fontSize: 12,
-} as const;
+const STATE_COLORS = [
+    'var(--brand-700)',
+    'var(--green-700)',
+    'var(--amber-700)',
+    'var(--red-700)',
+    'var(--neutral-700)',
+];
 
-const PRIORITY_LABELS: Record<number, string> = {
-    0: 'Sin prioridad',
-    1: 'Urgente',
-    2: 'Alta',
-    3: 'Media',
-    4: 'Baja',
+const PRIORITY_LABELS: Record<string, string> = {
+    Urgent: 'Urgente',
+    High: 'Alta',
+    Medium: 'Media',
+    Low: 'Baja',
+    None: 'Sin prioridad',
 };
 
-const PRIORITY_COLORS: Record<number, string> = {
-    0: '#6b7280',
-    1: '#ef4444',
-    2: '#f97316',
-    3: '#3b82f6',
-    4: '#22c55e',
-};
-
-interface InsightCardProps {
+interface KpiCardProps {
     label: string;
     value: number | string;
+    unit?: string;
+    delta: string;
+    trend: 'up' | 'down' | 'flat';
 }
 
-function InsightCard({ label, value }: InsightCardProps): React.ReactElement {
+function KpiCard({ label, value, unit, delta, trend }: KpiCardProps): React.ReactElement {
     return (
-        <div className="flex flex-col gap-1 py-4 border-r border-subtle last:border-r-0 px-4 first:pl-0">
-            <p className="text-[13px] text-tertiary">{label}</p>
-            <p className="text-[20px] font-bold text-primary leading-none">{value}</p>
+        <div className="bg-white p-[18px] rounded-lg border border-[var(--neutral-400)]">
+            <Eyebrow>{label}</Eyebrow>
+            <div className="flex items-baseline gap-1.5 mt-3">
+                <span className="text-[44px] font-medium leading-none tracking-[-0.05em] text-[var(--neutral-1200)]">
+                    {value}
+                </span>
+                {unit && <span className="text-[13px] text-[var(--neutral-600)]">{unit}</span>}
+            </div>
+            <div
+                className={cn(
+                    'font-mono text-[10.5px] mt-2 tracking-[0.05em] flex items-center gap-1',
+                    trend === 'up'
+                        ? 'text-[var(--green-700)]'
+                        : trend === 'down'
+                          ? 'text-[#c54a3a]'
+                          : 'text-[var(--neutral-600)]',
+                )}
+            >
+                {trend === 'up' && '↗'}
+                {trend === 'down' && '↘'}
+                {trend === 'flat' && '→'} {delta}
+            </div>
         </div>
     );
 }
 
-function LoadingSkeleton(): React.ReactElement {
-    return (
-        <div className="space-y-8">
-            <div className="grid grid-cols-4 gap-0 border border-subtle rounded-lg">
-                {([0, 1, 2, 3] as const).map((k) => (
-                    <Skeleton key={k} className="h-16 bg-layer-1 m-4" />
-                ))}
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <Skeleton className="h-64 rounded-lg bg-layer-1" />
-                <Skeleton className="h-64 rounded-lg bg-layer-1" />
-            </div>
-        </div>
-    );
-}
+/* ── Trend chart ── */
 
-type TabId = 'overview' | 'work-items';
+type TrendView = 'daily' | 'weekly';
 
-interface TabButtonProps {
-    id: TabId;
+interface TrendPoint {
     label: string;
-    activeTab: TabId;
-    onSelect: (id: TabId) => void;
+    created: number;
+    closed: number;
 }
 
-function TabButton({ id, label, activeTab, onSelect }: TabButtonProps): React.ReactElement {
-    const isActive = activeTab === id;
-    return (
-        <button
-            type="button"
-            onClick={() => onSelect(id)}
-            className={cn(
-                'px-3 py-1.5 text-[13px] font-medium rounded-sm transition-colors',
-                isActive
-                    ? 'bg-layer-2 text-primary border border-subtle'
-                    : 'text-secondary hover:text-primary hover:bg-layer-transparent-hover',
-            )}
-        >
-            {label}
-        </button>
-    );
-}
-
-interface StateChartPoint {
-    name: string;
-    count: number;
-    color: string;
-}
-
-interface PriorityChartPoint {
-    name: string;
-    count: number;
-    color: string;
-}
-
-function useAnalyticsData(workspaceSlug: string): {
-    radarData: { dimension: string; value: number }[];
-    trendData: { week: string; created: number; resolved: number }[];
-    stateData: StateChartPoint[];
-    priorityData: PriorityChartPoint[];
-    data: ReturnType<typeof useAnalyticsOverview>['data'];
-    isLoading: boolean;
-} {
-    const { data, isLoading } = useAnalyticsOverview(workspaceSlug);
-    const radarData = [
-        { dimension: 'Tareas', value: data?.totalIssues ?? 0 },
-        { dimension: 'Completados', value: data?.completedIssues ?? 0 },
-        { dimension: 'Ciclos', value: 0 },
-        { dimension: 'Módulos', value: 0 },
-        { dimension: 'Miembros', value: 0 },
-        { dimension: 'Atrasados', value: data?.overdueIssues ?? 0 },
-    ];
-    const trendData = Array.from({ length: 8 }, (_, i) => ({
-        week: `Sem ${i + 1}`,
-        created: (i * 3 + 1) % 5,
-        resolved: (i * 2) % 4,
-    }));
-    const stateData: StateChartPoint[] = (data?.issuesByState ?? []).map((s) => ({
-        name: s.stateName,
-        count: s.count,
-        color: s.stateColor,
-    }));
-    const priorityData: PriorityChartPoint[] = (data?.issuesByPriority ?? []).map((p) => ({
-        name: PRIORITY_LABELS[p.priority] ?? `P${p.priority}`,
-        count: p.count,
-        color: PRIORITY_COLORS[p.priority] ?? '#6b7280',
-    }));
-    return { radarData, trendData, stateData, priorityData, data, isLoading };
-}
-
-interface StateBarChartProps {
-    stateData: StateChartPoint[];
-}
-
-function StateBarChart({ stateData }: StateBarChartProps): React.ReactElement {
-    if (stateData.length === 0) {
-        return (
-            <div className="flex items-center justify-center h-[200px]">
-                <p className="text-xs text-placeholder italic">Sin datos</p>
-            </div>
-        );
+function buildWeeklySeries(points: CreatedVsResolvedPoint[]): TrendPoint[] {
+    if (points.length === 0) return [];
+    // Group by ISO week starting Monday. Output up to 4 weeks (W1..W4).
+    const sorted = [...points].sort((a, b) => a.date.localeCompare(b.date));
+    const buckets = new Map<string, { created: number; closed: number }>();
+    let index = 0;
+    let lastWeekKey = '';
+    for (const p of sorted) {
+        const d = new Date(p.date);
+        const weekKey = `${d.getFullYear()}-${getIsoWeek(d)}`;
+        if (weekKey !== lastWeekKey) {
+            lastWeekKey = weekKey;
+            index += 1;
+        }
+        const acc = buckets.get(weekKey) ?? { created: 0, closed: 0 };
+        acc.created += p.created;
+        acc.closed += p.resolved;
+        buckets.set(weekKey, acc);
     }
-    return (
-        <ResponsiveContainer width="100%" height={200}>
-            <BarChart data={stateData} margin={{ top: 4, right: 4, left: -20, bottom: 24 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--border-subtle)" vertical={false} />
-                <XAxis
-                    dataKey="name"
-                    tick={{ fill: 'var(--txt-tertiary)', fontSize: 10 }}
-                    axisLine={false}
-                    tickLine={false}
-                    angle={-25}
-                    textAnchor="end"
-                />
-                <YAxis
-                    tick={{ fill: 'var(--txt-tertiary)', fontSize: 10 }}
-                    axisLine={false}
-                    tickLine={false}
-                    allowDecimals={false}
-                />
-                <Tooltip contentStyle={TOOLTIP_STYLE} />
-                <Bar dataKey="count" name="Tareas" radius={[4, 4, 0, 0]}>
-                    {stateData.map((entry) => (
-                        <Cell key={entry.name} fill={entry.color} />
-                    ))}
-                </Bar>
-            </BarChart>
-        </ResponsiveContainer>
-    );
+    return Array.from(buckets.entries())
+        .map(([_, value], i) => ({ label: `W${i + 1}`, ...value }));
 }
 
-interface PriorityBarChartProps {
-    priorityData: PriorityChartPoint[];
+function getIsoWeek(d: Date): number {
+    const target = new Date(d.valueOf());
+    const dayNr = (d.getDay() + 6) % 7;
+    target.setDate(target.getDate() - dayNr + 3);
+    const firstThursday = new Date(target.getFullYear(), 0, 4);
+    const diff = target.getTime() - firstThursday.getTime();
+    return 1 + Math.round(diff / 604_800_000);
 }
 
-function PriorityBarChart({ priorityData }: PriorityBarChartProps): React.ReactElement {
-    if (priorityData.length === 0) {
-        return (
-            <div className="flex items-center justify-center h-[200px]">
-                <p className="text-xs text-placeholder italic">Sin datos</p>
-            </div>
-        );
-    }
-    return (
-        <ResponsiveContainer width="100%" height={200}>
-            <BarChart data={priorityData} margin={{ top: 4, right: 4, left: -20, bottom: 4 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--border-subtle)" vertical={false} />
-                <XAxis
-                    dataKey="name"
-                    tick={{ fill: 'var(--txt-tertiary)', fontSize: 10 }}
-                    axisLine={false}
-                    tickLine={false}
-                />
-                <YAxis
-                    tick={{ fill: 'var(--txt-tertiary)', fontSize: 10 }}
-                    axisLine={false}
-                    tickLine={false}
-                    allowDecimals={false}
-                />
-                <Tooltip contentStyle={TOOLTIP_STYLE} />
-                <Bar dataKey="count" name="Tareas" radius={[4, 4, 0, 0]}>
-                    {priorityData.map((entry) => (
-                        <Cell key={entry.name} fill={entry.color} />
-                    ))}
-                </Bar>
-            </BarChart>
-        </ResponsiveContainer>
-    );
+function buildDailySeries(points: CreatedVsResolvedPoint[]): TrendPoint[] {
+    return [...points]
+        .sort((a, b) => a.date.localeCompare(b.date))
+        .map((p) => ({
+            label: new Date(p.date).toLocaleDateString('es', { month: 'short', day: 'numeric' }),
+            created: p.created,
+            closed: p.resolved,
+        }));
 }
 
-interface SaveViewDialogProps {
-    open: boolean;
-    onOpenChange: (open: boolean) => void;
-    onSave: (name: string, description: string) => void;
-    isPending: boolean;
-}
-
-function SaveViewDialog({
-    open,
-    onOpenChange,
-    onSave,
-    isPending,
-}: SaveViewDialogProps): React.ReactElement {
-    const [name, setName] = useState('');
-    const [description, setDescription] = useState('');
-
-    const handleSave = (): void => {
-        if (!name.trim()) return;
-        onSave(name.trim(), description.trim());
-        setName('');
-        setDescription('');
-    };
-
-    return (
-        <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-md">
-                <DialogHeader>
-                    <DialogTitle>Guardar vista</DialogTitle>
-                </DialogHeader>
-                <div className="space-y-4 py-2">
-                    <div className="space-y-1.5">
-                        <Label htmlFor="view-name">Nombre</Label>
-                        <Input
-                            id="view-name"
-                            value={name}
-                            onChange={(e) => setName(e.target.value)}
-                            placeholder="Ej: Issues por prioridad"
-                        />
-                    </div>
-                    <div className="space-y-1.5">
-                        <Label htmlFor="view-desc">Descripción (opcional)</Label>
-                        <Input
-                            id="view-desc"
-                            value={description}
-                            onChange={(e) => setDescription(e.target.value)}
-                            placeholder="Descripción de la vista"
-                        />
-                    </div>
-                </div>
-                <DialogFooter>
-                    <Button variant="outline" onClick={() => onOpenChange(false)}>
-                        Cancelar
-                    </Button>
-                    <Button onClick={handleSave} disabled={!name.trim() || isPending}>
-                        Guardar
-                    </Button>
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
-    );
-}
-
-interface SavedViewsPanelProps {
+interface TrendChartProps {
     workspaceSlug: string;
 }
 
-function SavedViewsPanel({ workspaceSlug }: SavedViewsPanelProps): React.ReactElement {
-    const [dialogOpen, setDialogOpen] = useState(false);
-    const { data: views = [], isLoading } = useAnalyticViews(workspaceSlug);
-    const createView = useCreateAnalyticView(workspaceSlug);
-    const deleteView = useDeleteAnalyticView(workspaceSlug);
+function TrendChart({ workspaceSlug }: TrendChartProps): React.ReactElement {
+    const { data, isLoading } = useCreatedVsResolved(workspaceSlug);
+    const [view, setView] = useState<TrendView>('weekly');
 
-    const handleSave = (name: string, description: string): void => {
-        createView.mutate(
-            { name, description: description || undefined },
-            { onSuccess: () => setDialogOpen(false) },
-        );
-    };
+    const series = useMemo(() => {
+        if (!data) return [];
+        return view === 'weekly' ? buildWeeklySeries(data) : buildDailySeries(data);
+    }, [data, view]);
 
     return (
-        <div className="border border-subtle rounded-lg p-4">
-            <div className="flex items-center justify-between mb-3">
-                <h3 className="text-sm font-semibold text-primary">Vistas guardadas</h3>
-                <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => setDialogOpen(true)}
-                    className="h-7 text-xs gap-1.5"
-                >
-                    <BookmarkPlus className="size-3.5" />
-                    Guardar vista actual
-                </Button>
+        <div className="bg-white p-[22px] rounded-lg border border-[var(--neutral-400)] col-span-2">
+            <div className="flex items-start justify-between mb-4">
+                <div>
+                    <Eyebrow>Issues creados vs cerrados</Eyebrow>
+                    <div className="text-[22px] font-medium tracking-[-0.025em] text-[var(--neutral-1200)] mt-1.5 leading-tight">
+                        Tendencia del flujo de trabajo.
+                    </div>
+                </div>
+                <div className="flex items-center gap-3 shrink-0 ml-4">
+                    <div role="tablist" aria-label="Vista" className="flex rounded-md border border-[var(--neutral-400)] overflow-hidden text-[11px] font-mono">
+                        <button
+                            type="button"
+                            role="tab"
+                            aria-selected={view === 'daily'}
+                            onClick={() => setView('daily')}
+                            className={cn('px-2.5 py-1', view === 'daily' ? 'bg-[var(--neutral-200)]' : 'bg-white')}
+                        >
+                            DÍA
+                        </button>
+                        <button
+                            type="button"
+                            role="tab"
+                            aria-selected={view === 'weekly'}
+                            onClick={() => setView('weekly')}
+                            className={cn('px-2.5 py-1 border-l border-[var(--neutral-400)]', view === 'weekly' ? 'bg-[var(--neutral-200)]' : 'bg-white')}
+                        >
+                            SEM
+                        </button>
+                    </div>
+                    <span className="flex items-center gap-1.5 font-mono text-[11px] text-[var(--neutral-600)]">
+                        <span className="w-2.5 h-0.5 bg-[var(--brand-700)] inline-block" aria-hidden="true" />
+                        CERRADOS
+                    </span>
+                    <span className="flex items-center gap-1.5 font-mono text-[11px] text-[var(--neutral-600)]">
+                        <span
+                            className="w-2.5 inline-block"
+                            style={{ borderTop: '1.5px dashed var(--neutral-1200)', marginBottom: 1 }}
+                            aria-hidden="true"
+                        />
+                        CREADOS
+                    </span>
+                </div>
             </div>
 
             {isLoading ? (
-                <div className="space-y-2">
-                    <Skeleton className="h-8 rounded bg-layer-1" />
-                    <Skeleton className="h-8 rounded bg-layer-1" />
-                </div>
-            ) : views.length === 0 ? (
-                <p className="text-xs text-placeholder italic py-3 text-center">
-                    No hay vistas guardadas
-                </p>
+                <ChartSkeleton variant="line" />
+            ) : series.length === 0 ? (
+                <ChartEmpty />
             ) : (
-                <ul className="space-y-1">
-                    {views.map((view) => (
-                        <li
-                            key={view.id}
-                            className="flex items-center justify-between px-2 py-1.5 rounded-sm hover:bg-layer-transparent-hover group"
-                        >
-                            <div className="min-w-0">
-                                <p className="text-[13px] text-primary truncate">{view.name}</p>
-                                {view.description && (
-                                    <p className="text-[11px] text-tertiary truncate">
-                                        {view.description}
-                                    </p>
-                                )}
-                            </div>
-                            <button
-                                type="button"
-                                onClick={() => deleteView.mutate(view.id)}
-                                className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-layer-2 text-tertiary hover:text-destructive"
-                                aria-label="Eliminar vista"
-                            >
-                                <Trash2 className="size-3.5" />
-                            </button>
-                        </li>
-                    ))}
-                </ul>
+                <ResponsiveContainer width="100%" height={220}>
+                    <ComposedChart data={series} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
+                        <defs>
+                            <linearGradient id="closedGrad" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stopColor="var(--brand-700)" stopOpacity={0.25} />
+                                <stop offset="100%" stopColor="var(--brand-700)" stopOpacity={0} />
+                            </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" stroke="var(--neutral-400)" vertical={false} />
+                        <XAxis
+                            dataKey="label"
+                            tick={{ fill: 'var(--neutral-600)', fontSize: 9 }}
+                            axisLine={false}
+                            tickLine={false}
+                        />
+                        <YAxis
+                            tick={{ fill: 'var(--neutral-600)', fontSize: 9 }}
+                            axisLine={false}
+                            tickLine={false}
+                            allowDecimals={false}
+                        />
+                        <Tooltip
+                            contentStyle={{
+                                background: 'white',
+                                border: '1px solid var(--neutral-400)',
+                                borderRadius: 6,
+                                fontSize: 12,
+                            }}
+                        />
+                        <Area
+                            type="monotone"
+                            dataKey="closed"
+                            name="Cerrados"
+                            stroke="var(--brand-700)"
+                            strokeWidth={2}
+                            fill="url(#closedGrad)"
+                            dot={{ fill: 'var(--brand-700)', strokeWidth: 1.5, r: 3, stroke: 'white' }}
+                        />
+                        <Line
+                            type="monotone"
+                            dataKey="created"
+                            name="Creados"
+                            stroke="var(--neutral-1200)"
+                            strokeWidth={1.5}
+                            strokeDasharray="4 4"
+                            dot={false}
+                        />
+                    </ComposedChart>
+                </ResponsiveContainer>
             )}
-
-            <SaveViewDialog
-                open={dialogOpen}
-                onOpenChange={setDialogOpen}
-                onSave={handleSave}
-                isPending={createView.isPending}
-            />
         </div>
     );
 }
 
-const EXPORT_FORMATS = [
-    { id: 'Csv', label: 'CSV', icon: FileText },
-    { id: 'Xlsx', label: 'Excel', icon: FileSpreadsheet },
-    { id: 'Json', label: 'JSON', icon: FileJson },
-] as const;
+/* ── Donut by state ── */
 
-interface ExportPanelProps {
+interface DonutSegment {
+    label: string;
+    value: number;
+    color: string;
+    pct: number;
+}
+
+function buildDonutSegments(buckets: StateBucket[]): { segments: DonutSegment[]; total: number } {
+    const total = buckets.reduce((acc, b) => acc + b.count, 0);
+    if (total === 0) {
+        return {
+            segments: [{ label: 'Sin datos', value: 1, color: 'var(--neutral-400)', pct: 100 }],
+            total: 0,
+        };
+    }
+    const segments = buckets.map((b, i) => ({
+        label: b.stateName,
+        value: b.count,
+        color: STATE_COLORS[i % STATE_COLORS.length]!,
+        pct: Math.round((b.count / total) * 100),
+    }));
+    return { segments, total };
+}
+
+interface DonutChartProps {
     workspaceSlug: string;
 }
 
-function ExportPanel({ workspaceSlug }: ExportPanelProps): React.ReactElement {
-    const { data: exports = [], isLoading } = useExports(workspaceSlug);
-    const createExport = useCreateExport(workspaceSlug);
+function DonutChart({ workspaceSlug }: DonutChartProps): React.ReactElement {
+    const { data, isLoading } = useIssuesByState(workspaceSlug);
+    const { segments, total } = useMemo(() => buildDonutSegments(data ?? []), [data]);
+
+    // Render dasharray for the SVG donut: circumference = 2π·40 ≈ 251.3
+    const circumference = 2 * Math.PI * 40;
+    let cumulative = 0;
+    const segmentsWithOffsets = segments.map((s) => {
+        const fraction = s.value / segments.reduce((acc, x) => acc + x.value, 0);
+        const dash = fraction * circumference;
+        const offset = -cumulative * circumference;
+        cumulative += fraction;
+        return { ...s, dash, offset };
+    });
 
     return (
-        <div className="border border-subtle rounded-lg p-4">
-            <div className="flex items-center gap-2 mb-3">
-                <Download className="size-4 text-secondary" />
-                <h3 className="text-sm font-semibold text-primary">Exportar datos</h3>
+        <div className="bg-white p-[22px] rounded-lg border border-[var(--neutral-400)]">
+            <Eyebrow>Composición por estado</Eyebrow>
+            <div className="text-[16px] font-medium tracking-[-0.02em] text-[var(--neutral-1200)] mt-1.5 mb-4">
+                {total} {total === 1 ? 'issue' : 'issues'}
             </div>
-
-            <div className="flex flex-wrap gap-2 mb-4">
-                {EXPORT_FORMATS.map(({ id, label, icon: Icon }) => (
-                    <Button
-                        key={id}
-                        size="sm"
-                        variant="outline"
-                        onClick={() => createExport.mutate({ format: id })}
-                        disabled={createExport.isPending}
-                        className="h-8 text-xs gap-1.5"
-                    >
-                        <Icon className="size-3.5" />
-                        {label}
-                    </Button>
-                ))}
-            </div>
-
-            <div>
-                <p className="text-[11px] text-tertiary uppercase tracking-wide mb-2">
-                    Exportaciones recientes
-                </p>
-                {isLoading ? (
-                    <div className="space-y-2">
-                        <Skeleton className="h-8 rounded bg-layer-1" />
+            {isLoading ? (
+                <ChartSkeleton variant="donut" />
+            ) : (
+                <>
+                    <div className="relative flex justify-center">
+                        <svg
+                            viewBox="0 0 100 100"
+                            className="w-40 h-40"
+                            style={{ transform: 'rotate(-90deg)' }}
+                            aria-hidden="true"
+                        >
+                            {segmentsWithOffsets.map((s) => (
+                                <circle
+                                    key={s.label}
+                                    cx="50"
+                                    cy="50"
+                                    r="40"
+                                    fill="none"
+                                    stroke={s.color}
+                                    strokeWidth="12"
+                                    strokeDasharray={`${s.dash} ${circumference}`}
+                                    strokeDashoffset={s.offset}
+                                />
+                            ))}
+                        </svg>
+                        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center">
+                            <div className="text-[28px] font-medium tracking-[-0.03em] text-[var(--neutral-1200)]">
+                                {total}
+                            </div>
+                            <div className="font-mono text-[9.5px] text-[var(--neutral-600)] tracking-[0.1em] uppercase">
+                                Total
+                            </div>
+                        </div>
                     </div>
-                ) : exports.length === 0 ? (
-                    <p className="text-xs text-placeholder italic py-2 text-center">
-                        No hay exportaciones
-                    </p>
-                ) : (
-                    <ul className="space-y-1">
-                        {exports.map((exp) => (
-                            <li
-                                key={exp.id}
-                                className="flex items-center justify-between px-2 py-1.5 rounded-sm text-[12px]"
+                    <div className="mt-5 flex flex-col gap-1.5">
+                        {segments.map((s) => (
+                            <div
+                                key={s.label}
+                                className="grid items-center gap-2"
+                                style={{ gridTemplateColumns: '14px 1fr auto auto' }}
                             >
-                                <span className="text-secondary">
-                                    {exp.format} —{' '}
-                                    <span
-                                        className={cn(
-                                            exp.status === 'Completed'
-                                                ? 'text-green-600'
-                                                : exp.status === 'Failed'
-                                                  ? 'text-destructive'
-                                                  : 'text-tertiary',
-                                        )}
-                                    >
-                                        {exp.status}
-                                    </span>
+                                <span
+                                    className="w-2.5 h-2.5 rounded-sm"
+                                    style={{ background: s.color }}
+                                    aria-hidden="true"
+                                />
+                                <span className="text-[12px] font-medium text-[var(--neutral-1200)]">
+                                    {s.label}
                                 </span>
-                                {exp.status === 'Completed' && (
-                                    <a
-                                        href={analyticsRepository.getExportDownloadUrl(
-                                            workspaceSlug,
-                                            exp.id,
-                                        )}
-                                        download
-                                        className="text-brand hover:underline text-[11px] flex items-center gap-1"
-                                    >
-                                        <Download className="size-3" />
-                                        Descargar
-                                    </a>
-                                )}
-                            </li>
+                                <span className="font-mono text-[12px] text-[var(--neutral-600)] tabular-nums">
+                                    {s.value}
+                                </span>
+                                <span className="font-mono text-[12px] text-[var(--neutral-1200)]">
+                                    {s.pct}%
+                                </span>
+                            </div>
                         ))}
-                    </ul>
-                )}
-            </div>
+                    </div>
+                </>
+            )}
         </div>
     );
 }
 
-export const AnalyticsPage = (): React.ReactElement => {
-    const { workspaceSlug = '' } = useParams<{ workspaceSlug: string }>();
-    const [activeTab, setActiveTab] = useState<TabId>('overview');
-    const { radarData, trendData, stateData, priorityData, data, isLoading } =
-        useAnalyticsData(workspaceSlug);
+/* ── Priority distribution ── */
+
+interface PriorityChartProps {
+    workspaceSlug: string;
+}
+
+function PriorityChart({ workspaceSlug }: PriorityChartProps): React.ReactElement {
+    const { data, isLoading } = useIssuesByPriority(workspaceSlug);
+    const buckets: PriorityBucket[] = data ?? [];
+    const total = buckets.reduce((acc, b) => acc + b.count, 0);
 
     return (
-        <div className="p-6 md:p-8">
-            <div className="max-w-6xl mx-auto">
-                <div className="mb-6">
-                    <div className="flex items-center gap-1 mb-4">
-                        <div className="flex items-center gap-1 border border-subtle rounded-sm p-0.5 bg-layer-1">
-                            <TabButton
-                                id="overview"
-                                label="Resumen"
-                                activeTab={activeTab}
-                                onSelect={setActiveTab}
-                            />
-                            <TabButton
-                                id="work-items"
-                                label="Elementos de trabajo"
-                                activeTab={activeTab}
-                                onSelect={setActiveTab}
-                            />
-                        </div>
+        <div className="bg-white p-[22px] rounded-lg border border-[var(--neutral-400)]">
+            <Eyebrow>Distribución por prioridad</Eyebrow>
+            <div className="text-[16px] font-medium tracking-[-0.02em] text-[var(--neutral-1200)] mt-1.5 mb-4">
+                {total} {total === 1 ? 'issue' : 'issues'}
+            </div>
+            {isLoading ? (
+                <ChartSkeleton variant="bar" />
+            ) : total === 0 ? (
+                <ChartEmpty />
+            ) : (
+                <div className="flex flex-col gap-2">
+                    {buckets.map((b, i) => {
+                        const pct = total > 0 ? (b.count / total) * 100 : 0;
+                        const color = STATE_COLORS[i % STATE_COLORS.length];
+                        return (
+                            <div key={b.priority} className="flex items-center gap-3">
+                                <span className="w-20 text-[12px] text-[var(--neutral-1200)] truncate">
+                                    {PRIORITY_LABELS[b.priority] ?? b.priority}
+                                </span>
+                                <div className="flex-1 bg-[var(--neutral-200)] h-2 rounded-sm overflow-hidden">
+                                    <div
+                                        className="h-full rounded-sm transition-[width] duration-300"
+                                        style={{ width: `${pct}%`, background: color }}
+                                    />
+                                </div>
+                                <span className="font-mono text-[11px] text-[var(--neutral-600)] tabular-nums w-10 text-right">
+                                    {b.count}
+                                </span>
+                            </div>
+                        );
+                    })}
+                </div>
+            )}
+        </div>
+    );
+}
+
+/* ── Company activity heatmap ── */
+
+interface CompanyActivityHeatmapProps {
+    workspaceSlug: string;
+    companyIdentifier?: string;
+}
+
+function intensityClass(value: number): string {
+    if (value === 0) return 'bg-[var(--neutral-200)]';
+    if (value <= 3) return 'bg-[var(--brand-300)]';
+    if (value <= 7) return 'bg-[var(--brand-500)]';
+    return 'bg-[var(--brand-700)]';
+}
+
+function CompanyActivityHeatmap({ workspaceSlug, companyIdentifier }: CompanyActivityHeatmapProps): React.ReactElement {
+    const enabled = !!companyIdentifier;
+    const { data, isLoading } = useCompanyActivity(workspaceSlug, companyIdentifier ?? '');
+
+    return (
+        <div className="bg-white p-[22px] rounded-lg border border-[var(--neutral-400)]">
+            <div className="mb-4 flex items-end justify-between gap-3">
+                <div>
+                    <Eyebrow>Actividad del equipo · 30 días</Eyebrow>
+                    <div className="text-[22px] font-medium tracking-[-0.025em] text-[var(--neutral-1200)] mt-1.5">
+                        Issues completados por día.
                     </div>
                 </div>
+                <Legend />
+            </div>
+            {!enabled ? (
+                <ChartEmpty
+                    title="Selecciona una empresa"
+                    description="La actividad por equipo se muestra al filtrar por empresa."
+                />
+            ) : isLoading ? (
+                <ChartSkeleton variant="heatmap" />
+            ) : !data || data.length === 0 ? (
+                <ChartEmpty />
+            ) : (
+                <HeatmapGrid points={data} />
+            )}
+        </div>
+    );
+}
 
-                {isLoading ? (
-                    <LoadingSkeleton />
-                ) : (
-                    <div className="space-y-8 animate-fade-in">
-                        {activeTab === 'overview' && (
-                            <>
-                                <div>
-                                    <h2 className="text-xl font-bold text-primary mb-4">Resumen</h2>
+function Legend(): React.ReactElement {
+    return (
+        <div className="flex items-center gap-2 font-mono text-[10px] text-[var(--neutral-600)] uppercase tracking-[0.1em]">
+            <span>—</span>
+            {['var(--neutral-200)', 'var(--brand-300)', 'var(--brand-500)', 'var(--brand-700)'].map((c) => (
+                <span
+                    key={c}
+                    className="size-3 rounded-sm inline-block"
+                    style={{ background: c }}
+                    aria-hidden="true"
+                />
+            ))}
+            <span>+</span>
+        </div>
+    );
+}
 
-                                    <div className="grid grid-cols-2 md:grid-cols-4 border border-subtle rounded-t-lg overflow-hidden">
-                                        <InsightCard label="Total de elementos" value={data?.totalIssues ?? 0} />
-                                        <InsightCard label="Abiertos" value={data?.openIssues ?? 0} />
-                                        <InsightCard label="Completados" value={data?.completedIssues ?? 0} />
-                                        <InsightCard label="Atrasados" value={data?.overdueIssues ?? 0} />
-                                    </div>
-                                    <div className="grid grid-cols-2 md:grid-cols-4 border border-subtle border-t-0 rounded-b-lg overflow-hidden">
-                                        <InsightCard label="Ciclos activos" value={0} />
-                                        <InsightCard label="Módulos activos" value={0} />
-                                        <InsightCard label="Vistas" value={0} />
-                                        <InsightCard label="Miembros" value={0} />
-                                    </div>
-                                </div>
+function HeatmapGrid({ points }: { points: CompanyActivityPoint[] }): React.ReactElement {
+    // Backend already returns 30 contiguous days ordered ascending. We render as a
+    // single-row strip; if multi-member support is added later this becomes
+    // `N members × 30 days`.
+    return (
+        <div
+            className="grid gap-1"
+            style={{ gridTemplateColumns: `repeat(${points.length}, 1fr)` }}
+        >
+            {points.map((p) => (
+                <div
+                    key={p.date}
+                    className={cn('h-5 rounded-sm flex items-center justify-center', intensityClass(p.completed))}
+                    title={`${p.date}: ${p.completed} completados`}
+                >
+                    <span
+                        className="font-mono text-[9px]"
+                        style={{ color: p.completed > 3 ? '#fff' : 'var(--neutral-1200)' }}
+                    >
+                        {p.completed > 0 ? p.completed : ''}
+                    </span>
+                </div>
+            ))}
+        </div>
+    );
+}
 
-                                <div className="space-y-2">
-                                    <h3 className="text-sm font-semibold text-primary">
-                                        Información del workspace
-                                    </h3>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                        <div className="border border-subtle rounded-lg p-4">
-                                            <h4 className="text-sm font-medium text-secondary mb-4">
-                                                Resumen de actividad
-                                            </h4>
-                                            <ResponsiveContainer width="100%" height={220}>
-                                                <RadarChart
-                                                    data={radarData}
-                                                    margin={{ top: 10, right: 20, left: 20, bottom: 10 }}
-                                                >
-                                                    <PolarGrid stroke="var(--border-subtle)" />
-                                                    <PolarAngleAxis
-                                                        dataKey="dimension"
-                                                        tick={{ fill: 'var(--txt-tertiary)', fontSize: 11 }}
-                                                    />
-                                                    <Radar
-                                                        dataKey="value"
-                                                        stroke="#3b82f6"
-                                                        fill="#3b82f6"
-                                                        fillOpacity={0.2}
-                                                        strokeWidth={2}
-                                                    />
-                                                    <Tooltip contentStyle={TOOLTIP_STYLE} />
-                                                </RadarChart>
-                                            </ResponsiveContainer>
-                                        </div>
+/* ── Page ── */
 
-                                        <div className="border border-subtle rounded-lg p-4">
-                                            <h4 className="text-sm font-medium text-secondary mb-4">
-                                                Issues por estado
-                                            </h4>
-                                            <StateBarChart stateData={stateData} />
-                                        </div>
-                                    </div>
-                                </div>
-                            </>
-                        )}
+export const AnalyticsPage = (): React.ReactElement => {
+    const { workspaceSlug = '', companyId } = useParams<{ workspaceSlug: string; companyId?: string }>();
+    const { data: overview } = useAnalyticsOverview(workspaceSlug);
 
-                        {activeTab === 'work-items' && (
-                            <>
-                                <div>
-                                    <h2 className="text-xl font-bold text-primary mb-4">
-                                        Elementos de trabajo
-                                    </h2>
-                                    <div className="grid grid-cols-2 md:grid-cols-5 border border-subtle rounded-lg overflow-hidden">
-                                        <InsightCard label="Total" value={data?.totalIssues ?? 0} />
-                                        <InsightCard label="Iniciados" value={0} />
-                                        <InsightCard label="En backlog" value={data?.openIssues ?? 0} />
-                                        <InsightCard label="No iniciados" value={0} />
-                                        <InsightCard label="Completados" value={data?.completedIssues ?? 0} />
-                                    </div>
-                                </div>
+    const kpiItems: KpiCardProps[] = useMemo(() => {
+        const total = overview?.totalIssues ?? 0;
+        const open = overview?.openIssues ?? 0;
+        const completed = overview?.completedIssues ?? 0;
+        const overdue = overview?.overdueIssues ?? 0;
+        return [
+            { label: 'Total · issues', value: total, delta: '', trend: 'flat' },
+            { label: 'En curso', value: open, unit: 'issues', delta: '', trend: 'flat' },
+            { label: 'Completados', value: completed, delta: '', trend: 'up' },
+            { label: 'Vencidos', value: overdue, delta: '', trend: overdue > 0 ? 'down' : 'flat' },
+        ];
+    }, [overview]);
 
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <div className="border border-subtle rounded-lg p-4">
-                                        <h4 className="text-sm font-semibold text-primary mb-4">
-                                            Issues por prioridad
-                                        </h4>
-                                        <PriorityBarChart priorityData={priorityData} />
-                                    </div>
+    return (
+        <div className="h-full overflow-y-auto">
+            <div className="mx-auto max-w-5xl px-10 py-8 flex flex-col gap-7">
+                {/* Header */}
+                <div>
+                    <Eyebrow>Analytics · workspace en vivo</Eyebrow>
+                    <h1 className="mt-2 text-[56px] font-medium tracking-[-0.05em] leading-[0.95] text-[var(--neutral-1200)]">
+                        Velocidad,{' '}
+                        <span className="font-serif italic font-normal">composición</span>, salud.
+                    </h1>
+                    <p className="mt-2 text-[15px] text-[var(--neutral-600)] max-w-[640px]">
+                        Indicadores en tiempo real del workspace activo. Cambia de workspace en la barra lateral
+                        para ver datos distintos.
+                    </p>
+                </div>
 
-                                    <div className="border border-subtle rounded-lg p-4">
-                                        <h4 className="text-sm font-semibold text-primary mb-4">
-                                            Creado vs Resuelto
-                                        </h4>
-                                        <ResponsiveContainer width="100%" height={200}>
-                                            <AreaChart
-                                                data={trendData}
-                                                margin={{ top: 0, right: 0, left: -20, bottom: 0 }}
-                                            >
-                                                <defs>
-                                                    <linearGradient id="colorCreated" x1="0" y1="0" x2="0" y2="1">
-                                                        <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
-                                                        <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
-                                                    </linearGradient>
-                                                    <linearGradient id="colorResolved" x1="0" y1="0" x2="0" y2="1">
-                                                        <stop offset="5%" stopColor="#22c55e" stopOpacity={0.3} />
-                                                        <stop offset="95%" stopColor="#22c55e" stopOpacity={0} />
-                                                    </linearGradient>
-                                                </defs>
-                                                <CartesianGrid
-                                                    strokeDasharray="3 3"
-                                                    stroke="var(--border-subtle)"
-                                                    vertical={false}
-                                                />
-                                                <XAxis
-                                                    dataKey="week"
-                                                    tick={{ fill: 'var(--txt-tertiary)', fontSize: 11 }}
-                                                    axisLine={false}
-                                                    tickLine={false}
-                                                />
-                                                <YAxis
-                                                    tick={{ fill: 'var(--txt-tertiary)', fontSize: 11 }}
-                                                    axisLine={false}
-                                                    tickLine={false}
-                                                    allowDecimals={false}
-                                                />
-                                                <Tooltip contentStyle={TOOLTIP_STYLE} cursor={{ fill: 'rgba(255,255,255,0.04)' }} />
-                                                <Legend wrapperStyle={{ fontSize: 11, color: 'var(--txt-tertiary)' }} />
-                                                <Area
-                                                    type="monotone"
-                                                    dataKey="created"
-                                                    name="Creado"
-                                                    stroke="#3b82f6"
-                                                    fill="url(#colorCreated)"
-                                                    strokeWidth={2}
-                                                />
-                                                <Area
-                                                    type="monotone"
-                                                    dataKey="resolved"
-                                                    name="Resuelto"
-                                                    stroke="#22c55e"
-                                                    fill="url(#colorResolved)"
-                                                    strokeWidth={2}
-                                                />
-                                            </AreaChart>
-                                        </ResponsiveContainer>
-                                    </div>
-                                </div>
-                            </>
-                        )}
+                {/* KPI grid */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    {kpiItems.map((kpi) => (
+                        <KpiCard key={kpi.label} {...kpi} />
+                    ))}
+                </div>
 
-                        {/* Saved Views & Export panels — visible in both tabs */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <SavedViewsPanel workspaceSlug={workspaceSlug} />
-                            <ExportPanel workspaceSlug={workspaceSlug} />
-                        </div>
-                    </div>
-                )}
+                {/* Chart row */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                    <TrendChart workspaceSlug={workspaceSlug} />
+                    <DonutChart workspaceSlug={workspaceSlug} />
+                </div>
+
+                {/* Priority + team activity */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <PriorityChart workspaceSlug={workspaceSlug} />
+                    <CompanyActivityHeatmap workspaceSlug={workspaceSlug} companyIdentifier={companyId} />
+                </div>
             </div>
         </div>
     );

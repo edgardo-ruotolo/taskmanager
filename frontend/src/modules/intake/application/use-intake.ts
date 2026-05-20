@@ -11,6 +11,9 @@ export const useIntake = (workspaceSlug: string, companyId: string, status?: Int
         queryKey: qKey(workspaceSlug, companyId, status),
         queryFn: () => intakeRepository.getAll(workspaceSlug, companyId, status),
         enabled: !!workspaceSlug && !!companyId,
+        // Intake is a triage queue — always show latest pending count.
+        staleTime: 0,
+        refetchOnWindowFocus: true,
     });
 
 export const useCreateIntake = (workspaceSlug: string, companyId: string) => {
@@ -22,7 +25,7 @@ export const useCreateIntake = (workspaceSlug: string, companyId: string) => {
             void qc.invalidateQueries({ queryKey: ['intake', workspaceSlug, companyId] });
             toast.success('Tarea creada en la bandeja');
         },
-        onError: () => toast.error('Error al crear la solicitud'),
+        onError: (error: unknown) => { const e = error as { response?: { data?: { message?: string } } }; toast.error(e?.response?.data?.message ?? 'Error al crear la solicitud'); },
     });
 };
 
@@ -38,7 +41,7 @@ export const useReviewIntake = (workspaceSlug: string, companyId: string) => {
             void qc.invalidateQueries({ queryKey: ['notifications'] });
             toast.success('Estado actualizado');
         },
-        onError: () => toast.error('Error al actualizar la solicitud'),
+        onError: (error: unknown) => { const e = error as { response?: { data?: { message?: string } } }; toast.error(e?.response?.data?.message ?? 'Error al actualizar la solicitud'); },
     });
 };
 
@@ -50,6 +53,6 @@ export const useDeleteIntake = (workspaceSlug: string, companyId: string) => {
             void qc.invalidateQueries({ queryKey: ['intake', workspaceSlug, companyId] });
             toast.success('Eliminado');
         },
-        onError: () => toast.error('Error al eliminar'),
+        onError: (error: unknown) => { const e = error as { response?: { data?: { message?: string } } }; toast.error(e?.response?.data?.message ?? 'Error al eliminar'); },
     });
 };

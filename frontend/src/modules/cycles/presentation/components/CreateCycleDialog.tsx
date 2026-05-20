@@ -5,6 +5,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import {
     Dialog,
     DialogContent,
+    DialogDescription,
     DialogHeader,
     DialogTitle,
     DialogTrigger,
@@ -35,11 +36,14 @@ export const CreateCycleDialog = ({
     trigger,
 }: CreateCycleDialogProps): React.ReactElement => {
     const [open, setOpen] = useState(false);
-    const { mutate, isPending } = useCreateCycle(workspaceSlug, companyId);
 
     const form = useForm<CreateCycleFormData>({
         resolver: zodResolver(createCycleSchema),
         defaultValues: { name: '', description: '', startDate: '', endDate: '' },
+    });
+
+    const { mutate, isPending } = useCreateCycle<CreateCycleFormData>(workspaceSlug, companyId, {
+        setError: form.setError,
     });
 
     const onSubmit = (data: CreateCycleFormData): void => {
@@ -63,6 +67,9 @@ export const CreateCycleDialog = ({
             <DialogContent className="bg-surface-1 border-subtle text-primary sm:max-w-md">
                 <DialogHeader>
                     <DialogTitle className="text-primary">Nuevo Ciclo</DialogTitle>
+                    <DialogDescription className="sr-only">
+                        Define un sprint con nombre, fechas y descripción opcional.
+                    </DialogDescription>
                 </DialogHeader>
                 <Form {...form}>
                     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">

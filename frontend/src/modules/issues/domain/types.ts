@@ -21,6 +21,8 @@ export interface Issue {
     sequenceId: number;
     title: string;
     description?: string;
+    descriptionHtml?: string;
+    descriptionJson?: string;
     priority: IssuePriority;
     companyId: string;
     stateId: string;
@@ -28,12 +30,29 @@ export interface Issue {
     stateColor: string;
     stateGroup?: string;
     createdById: string;
+    updatedById?: string;
     assigneeId?: string;
+    assigneeIds: string[];
+    labelIds: string[];
+    moduleIds: string[];
+    cycleId?: string;
     parentId?: string;
+    issueTypeId?: string;
+    estimatePointId?: string;
+    point?: number;
     startDate?: string;
-    targetDate?: string;
     dueDate?: string;
     completedAt?: string;
+    sortOrder: number;
+    isDraft: boolean;
+    isArchived: boolean;
+    archivedAt?: string;
+    externalSource?: string;
+    externalId?: string;
+    requiresAdminApproval: boolean;
+    approvalRequiredStateIds: string[];
+    approvedById: string | null;
+    approvedAt: string | null;
     createdAt: string;
     updatedAt: string;
 }
@@ -41,19 +60,43 @@ export interface Issue {
 export interface CreateIssueData {
     title: string;
     description?: string;
+    descriptionHtml?: string;
+    descriptionJson?: string;
     priority: IssuePriority;
     stateId: string;
     assigneeId?: string;
+    assigneeIds?: string[];
+    labelIds?: string[];
+    moduleIds?: string[];
+    cycleId?: string;
+    parentId?: string;
+    issueTypeId?: string;
+    estimatePointId?: string;
+    startDate?: string;
     dueDate?: string;
+    isDraft?: boolean;
+    sortOrder?: number;
 }
 
 export interface UpdateIssueData {
     title?: string;
     description?: string;
+    descriptionHtml?: string;
+    descriptionJson?: string;
     priority?: IssuePriority;
     stateId?: string;
     assigneeId?: string;
+    assigneeIds?: string[];
+    labelIds?: string[];
+    moduleIds?: string[];
+    cycleId?: string;
+    parentId?: string;
+    issueTypeId?: string;
+    estimatePointId?: string;
+    startDate?: string;
     dueDate?: string;
+    isDraft?: boolean;
+    sortOrder?: number;
 }
 
 export interface IssueComment {
@@ -63,6 +106,8 @@ export interface IssueComment {
     authorId: string;
     authorName: string;
     parentId: string | null;
+    access: 'Internal' | 'External';
+    editedAt?: string;
     createdAt: string;
     updatedAt: string;
 }
@@ -80,6 +125,10 @@ export interface IssueActivity {
     field: string;
     oldValue: string | null;
     newValue: string | null;
+    verb?: string;
+    epoch: number;
+    oldIdentifier?: string;
+    newIdentifier?: string;
     actorId: string;
     actorName: string;
     createdAt: string;
@@ -88,6 +137,7 @@ export interface IssueActivity {
 export interface CreateCommentData {
     body: string;
     parentId?: string;
+    access?: 'Internal' | 'External';
 }
 
 export interface CreateReactionData {
@@ -117,7 +167,11 @@ export interface IssueType {
     name: string;
     description?: string;
     color?: string;
+    icon?: string;
     isDefault: boolean;
+    isEpic: boolean;
+    level: number;
+    logoProps?: string;
     workspaceId: string;
     createdAt: string;
 }
@@ -126,7 +180,11 @@ export interface CreateIssueTypeData {
     name: string;
     description?: string;
     color?: string;
+    icon?: string;
     isDefault?: boolean;
+    isEpic?: boolean;
+    level?: number;
+    logoProps?: string;
 }
 
 export interface IssueSubscriber {
@@ -149,7 +207,19 @@ export interface CreateIssueLinkData {
     title: string;
 }
 
-export type IssueRelationType = 'DuplicateOf' | 'BlockedBy' | 'Blocking' | 'IsEpicOf';
+export type IssueRelationType =
+    | 'DuplicateOf'
+    | 'BlockedBy'
+    | 'Blocking'
+    | 'IsEpicOf'
+    | 'Duplicate'
+    | 'RelatesTo'
+    | 'StartBefore'
+    | 'StartAfter'
+    | 'FinishBefore'
+    | 'FinishAfter'
+    | 'ImplementedBy'
+    | 'Implements';
 
 export interface IssueRelation {
     id: string;
@@ -158,9 +228,48 @@ export interface IssueRelation {
     relatedIssueTitle: string;
     relatedIssueSequenceId: number;
     relationType: IssueRelationType;
+    createdAt: string;
 }
 
 export interface CreateIssueRelationData {
     relatedIssueId: string;
     relationType: IssueRelationType;
+}
+
+export interface IssueVersion {
+    id: string;
+    issueId: string;
+    ownedById: string;
+    ownedByName: string;
+    lastSavedAt: string;
+    descriptionJson?: string;
+}
+
+export interface IssueMention {
+    issueId: string;
+    mentionedUserId: string;
+    createdAt: string;
+}
+
+export interface IssueTemplate {
+    id: string;
+    name: string;
+    description?: string;
+    workspaceId: string;
+    companyId?: string;
+    templateJson?: string;
+    createdAt: string;
+    updatedAt: string;
+}
+
+export interface CreateIssueTemplateData {
+    name: string;
+    description?: string;
+    companyId?: string;
+    templateJson?: string;
+}
+
+export interface SearchSimilarIssuesData {
+    title: string;
+    description?: string;
 }

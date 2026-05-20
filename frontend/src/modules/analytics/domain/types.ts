@@ -19,6 +19,28 @@ export interface AnalyticsOverview {
     recentActivity: unknown[];
 }
 
+// Backend records — mirror C# `StateBucket(string StateName, int Count)` etc.
+export interface StateBucket {
+    stateName: string;
+    count: number;
+}
+
+export interface PriorityBucket {
+    priority: string;
+    count: number;
+}
+
+export interface CreatedVsResolvedPoint {
+    date: string;
+    created: number;
+    resolved: number;
+}
+
+export interface CompanyActivityPoint {
+    date: string;
+    completed: number;
+}
+
 export interface AnalyticView {
     id: string;
     name: string;
