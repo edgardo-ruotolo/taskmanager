@@ -1,4 +1,4 @@
-using Hangfire;
+﻿using Hangfire;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using TaskManager.Api.Common.Auth;
@@ -42,6 +42,7 @@ public class ExporterController(AppDbContext db, IBackgroundJobClient background
         {
             "xlsx" => ExportFormat.Xlsx,
             "json" => ExportFormat.Json,
+            "pdf" => ExportFormat.Pdf,
             _ => ExportFormat.Csv
         };
 
@@ -77,6 +78,7 @@ public class ExporterController(AppDbContext db, IBackgroundJobClient background
         {
             ExportFormat.Xlsx => "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             ExportFormat.Json => "application/json",
+            ExportFormat.Pdf => "application/pdf",
             _ => "text/csv"
         };
 

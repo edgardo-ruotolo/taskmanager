@@ -1,4 +1,4 @@
-using System.Threading.RateLimiting;
+﻿using System.Threading.RateLimiting;
 using Asp.Versioning;
 using Microsoft.AspNetCore.Mvc;
 using FluentValidation;
@@ -59,6 +59,9 @@ using StackExchange.Redis;
 Log.Logger = new LoggerConfiguration()
     .WriteTo.Console()
     .CreateBootstrapLogger();
+
+// QuestPDF — Community License (free for revenue < USD 1M/year).
+QuestPDF.Settings.License = QuestPDF.Infrastructure.LicenseType.Community;
 
 var builder = WebApplication.CreateBuilder(args);
 

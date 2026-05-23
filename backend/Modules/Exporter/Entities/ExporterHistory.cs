@@ -1,10 +1,10 @@
-using TaskManager.Api.Common.Auditing;
+﻿using TaskManager.Api.Common.Auditing;
 using TaskManager.Api.Modules.Auth.Entities;
 using TaskManager.Api.Modules.Workspaces.Entities;
 
 namespace TaskManager.Api.Modules.Exporter.Entities;
 
-public enum ExportFormat { Csv, Xlsx, Json }
+public enum ExportFormat { Csv, Xlsx, Json, Pdf }
 public enum ExportStatus { Pending, Processing, Completed, Failed }
 
 public class ExporterHistory : AuditableEntity
