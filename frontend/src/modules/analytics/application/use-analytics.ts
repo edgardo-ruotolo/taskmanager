@@ -84,11 +84,12 @@ export const useDeleteAnalyticView = (workspaceSlug: string) => {
 };
 
 // Export hooks
-export const useExports = (workspaceSlug: string) =>
+export const useExports = (workspaceSlug: string, refetchInterval: number | false = false) =>
     useQuery({
         queryKey: ['exports', workspaceSlug],
         queryFn: () => analyticsRepository.getExports(workspaceSlug),
         enabled: !!workspaceSlug,
+        refetchInterval,
     });
 
 export const useCreateExport = (workspaceSlug: string) => {
