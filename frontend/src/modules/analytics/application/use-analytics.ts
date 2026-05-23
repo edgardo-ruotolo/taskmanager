@@ -1,7 +1,12 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+﻿import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import type { CreateAnalyticViewData } from '../domain/types';
+import type { CreateAnalyticViewData, ReportRequestPayload } from '../domain/types';
 import { analyticsRepository } from '../infrastructure/analytics-repository';
+import {
+    type AnalyticsFiltersState,
+    filtersToQueryKey,
+    filtersToQueryString,
+} from './filters-store';
 
 export const useAnalyticsOverview = (workspaceSlug: string) =>
     useQuery({
@@ -96,5 +101,94 @@ export const useCreateExport = (workspaceSlug: string) => {
             toast.success('Exportación iniciada. Recibirás el archivo cuando esté listo.');
         },
         onError: (error: unknown) => { const e = error as { response?: { data?: { message?: string } } }; toast.error(e?.response?.data?.message ?? 'Error al iniciar la exportación'); },
+    });
+};
+
+// ── Admin analytics (filtered) ───────────────────────────────────────────
+
+export const useGantt = (workspaceSlug: string, filters: AnalyticsFiltersState) =>
+    useQuery({
+        queryKey: ['analytics', workspaceSlug, 'gantt', filtersToQueryKey(filters)] as const,
+        queryFn: () => analyticsRepository.getGantt(workspaceSlug, filtersToQueryString(filters)),
+        enabled: !!workspaceSlug,
+        staleTime: 30_000,
+    });
+
+export const useBurndown = (workspaceSlug: string, filters: AnalyticsFiltersState) =>
+    useQuery({
+        queryKey: ['analytics', workspaceSlug, 'burndown', filtersToQueryKey(filters)] as const,
+        queryFn: () => analyticsRepository.getBurndown(workspaceSlug, filtersToQueryString(filters)),
+        enabled: !!workspaceSlug,
+        staleTime: 30_000,
+    });
+
+export const useDrilldown = (
+    workspaceSlug: string,
+    filters: AnalyticsFiltersState,
+    page: number,
+    pageSize: number,
+    sortBy?: string,
+    sortDesc?: boolean,
+) =>
+    useQuery({
+        queryKey: [
+            'analytics',
+            workspaceSlug,
+            'drilldown',
+            filtersToQueryKey(filters),
+            page,
+            pageSize,
+            sortBy ?? '',
+            sortDesc ?? true,
+        ] as const,
+        queryFn: () =>
+            analyticsRepository.getDrilldown(
+                workspaceSlug,
+                filtersToQueryString(filters),
+                page,
+                pageSize,
+                sortBy,
+                sortDesc,
+            ),
+        enabled: !!workspaceSlug,
+        staleTime: 15_000,
+    });
+
+export const useUsersRanking = (workspaceSlug: string, filters: AnalyticsFiltersState) =>
+    useQuery({
+        queryKey: ['analytics', workspaceSlug, 'users-ranking', filtersToQueryKey(filters)] as const,
+        queryFn: () =>
+            analyticsRepository.getUsersRanking(workspaceSlug, filtersToQueryString(filters)),
+        enabled: !!workspaceSlug,
+        staleTime: 30_000,
+    });
+
+export const useClientsComparison = (workspaceSlug: string, filters: AnalyticsFiltersState) =>
+    useQuery({
+        queryKey: ['analytics', workspaceSlug, 'clients', filtersToQueryKey(filters)] as const,
+        queryFn: () =>
+            analyticsRepository.getClientsComparison(workspaceSlug, filtersToQueryString(filters)),
+        enabled: !!workspaceSlug,
+        staleTime: 30_000,
+    });
+
+export const useCreateReport = (workspaceSlug: string) => {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: ({
+            format,
+            payload,
+        }: {
+            format: 'pdf' | 'xlsx' | 'csv' | 'json';
+            payload: ReportRequestPayload;
+        }) => analyticsRepository.createReport(workspaceSlug, format, payload),
+        onSuccess: () => {
+            void qc.invalidateQueries({ queryKey: ['exports', workspaceSlug] });
+            toast.success('Reporte en cola. Lo encontrarás en el historial cuando esté listo.');
+        },
+        onError: (error: unknown) => {
+            const e = error as { response?: { data?: { message?: string } } };
+            toast.error(e?.response?.data?.message ?? 'Error al generar el reporte');
+        },
     });
 };

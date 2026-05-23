@@ -1,14 +1,21 @@
-import { apiClient } from '@/shared/lib/api-client';
+﻿import { apiClient } from '@/shared/lib/api-client';
+import type { PagedResult } from '@/shared/types/pagination';
 import type {
     AnalyticsOverview,
     AnalyticView,
+    BurndownPoint,
+    ClientComparisonDto,
     ProjectActivityPoint,
     CreateAnalyticViewData,
     CreatedVsResolvedPoint,
+    IssueGanttDto,
+    IssueRowDto,
     PriorityBucket,
     StateBucket,
     UpdateAnalyticViewData,
+    UserRankingDto,
     ExporterHistory,
+    ReportRequestPayload,
 } from '../domain/types';
 
 export const analyticsRepository = {
@@ -87,4 +94,66 @@ export const analyticsRepository = {
 
     getExportDownloadUrl: (workspaceSlug: string, exportId: string): string =>
         `/api/workspaces/${workspaceSlug}/exports/${exportId}/download`,
+
+    // ── Admin analytics (filtered) ───────────────────────────────────────
+
+    getGantt: (workspaceSlug: string, query: string): Promise<IssueGanttDto[]> =>
+        apiClient
+            .get<IssueGanttDto[]>(
+                `/api/workspaces/${workspaceSlug}/analytics/gantt${query ? `?${query}` : ''}`,
+            )
+            .then((r) => r.data),
+
+    getBurndown: (workspaceSlug: string, query: string): Promise<BurndownPoint[]> =>
+        apiClient
+            .get<BurndownPoint[]>(
+                `/api/workspaces/${workspaceSlug}/analytics/burndown${query ? `?${query}` : ''}`,
+            )
+            .then((r) => r.data),
+
+    getDrilldown: (
+        workspaceSlug: string,
+        query: string,
+        page: number,
+        pageSize: number,
+        sortBy?: string,
+        sortDesc?: boolean,
+    ): Promise<PagedResult<IssueRowDto>> => {
+        const params = new URLSearchParams(query);
+        params.set('page', String(page));
+        params.set('pageSize', String(pageSize));
+        if (sortBy) params.set('sortBy', sortBy);
+        if (typeof sortDesc === 'boolean') params.set('sortDesc', String(sortDesc));
+        return apiClient
+            .get<PagedResult<IssueRowDto>>(
+                `/api/workspaces/${workspaceSlug}/analytics/drilldown?${params.toString()}`,
+            )
+            .then((r) => r.data);
+    },
+
+    getUsersRanking: (workspaceSlug: string, query: string): Promise<UserRankingDto[]> =>
+        apiClient
+            .get<UserRankingDto[]>(
+                `/api/workspaces/${workspaceSlug}/analytics/users-ranking${query ? `?${query}` : ''}`,
+            )
+            .then((r) => r.data),
+
+    getClientsComparison: (workspaceSlug: string, query: string): Promise<ClientComparisonDto[]> =>
+        apiClient
+            .get<ClientComparisonDto[]>(
+                `/api/workspaces/${workspaceSlug}/analytics/clients${query ? `?${query}` : ''}`,
+            )
+            .then((r) => r.data),
+
+    createReport: (
+        workspaceSlug: string,
+        format: 'pdf' | 'xlsx' | 'csv' | 'json',
+        payload: ReportRequestPayload,
+    ): Promise<ExporterHistory> =>
+        apiClient
+            .post<ExporterHistory>(`/api/workspaces/${workspaceSlug}/exports`, {
+                format,
+                filters: JSON.stringify(payload),
+            })
+            .then((r) => r.data),
 };

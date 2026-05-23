@@ -61,6 +61,13 @@ const EstimatesPage = lazy(() => import('@/modules/estimates/presentation/pages/
 
 // Analytics pages
 const AnalyticsPage = lazy(() => import('@/modules/analytics/presentation/pages/AnalyticsPage').then(m => ({ default: m.AnalyticsPage })));
+const AnalyticsLayout = lazy(() => import('@/modules/analytics/presentation/components/AnalyticsLayout').then(m => ({ default: m.AnalyticsLayout })));
+const GanttPage = lazy(() => import('@/modules/analytics/presentation/pages/GanttPage').then(m => ({ default: m.GanttPage })));
+const BurndownPage = lazy(() => import('@/modules/analytics/presentation/pages/BurndownPage').then(m => ({ default: m.BurndownPage })));
+const DrilldownPage = lazy(() => import('@/modules/analytics/presentation/pages/DrilldownPage').then(m => ({ default: m.DrilldownPage })));
+const UsersRankingPage = lazy(() => import('@/modules/analytics/presentation/pages/UsersRankingPage').then(m => ({ default: m.UsersRankingPage })));
+const ClientsComparisonPage = lazy(() => import('@/modules/analytics/presentation/pages/ClientsComparisonPage').then(m => ({ default: m.ClientsComparisonPage })));
+const ReportsPage = lazy(() => import('@/modules/analytics/presentation/pages/ReportsPage').then(m => ({ default: m.ReportsPage })));
 
 // Intake pages
 const InboxPage = lazy(() => import('@/modules/intake/presentation/pages/InboxPage').then(m => ({ default: m.InboxPage })));
@@ -130,7 +137,15 @@ export const App = (): React.ReactElement => {
 
                     <Route path="projects/:projectId/importer" element={<ImporterPage />} />
                     <Route path="projects/:projectId/settings" element={<ProjectSettingsPage />} />
-                    <Route path="analytics" element={<AnalyticsPage />} />
+                    <Route path="analytics" element={<AnalyticsLayout />}>
+                        <Route index element={<AnalyticsPage />} />
+                        <Route path="gantt" element={<GanttPage />} />
+                        <Route path="burndown" element={<BurndownPage />} />
+                        <Route path="drilldown" element={<DrilldownPage />} />
+                        <Route path="users" element={<UsersRankingPage />} />
+                        <Route path="clients" element={<ClientsComparisonPage />} />
+                        <Route path="reports" element={<ReportsPage />} />
+                    </Route>
                     <Route path="activity" element={<WorkspaceActivityPage />} />
                     <Route path="notifications" element={<NotificationsPage />} />
                     <Route path="profile" element={<ProfilePage />} />

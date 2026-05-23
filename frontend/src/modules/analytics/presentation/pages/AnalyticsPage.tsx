@@ -1,4 +1,4 @@
-import type React from 'react';
+﻿import type React from 'react';
 import { useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import {
@@ -508,55 +508,67 @@ function HeatmapGrid({ points }: { points: ProjectActivityPoint[] }): React.Reac
 export const AnalyticsPage = (): React.ReactElement => {
     const { workspaceSlug = '', projectId } = useParams<{ workspaceSlug: string; projectId?: string }>();
     const { data: overview } = useAnalyticsOverview(workspaceSlug);
+    const { data: trend } = useCreatedVsResolved(workspaceSlug);
 
     const kpiItems: KpiCardProps[] = useMemo(() => {
         const total = overview?.totalIssues ?? 0;
         const open = overview?.openIssues ?? 0;
         const completed = overview?.completedIssues ?? 0;
         const overdue = overview?.overdueIssues ?? 0;
+
+        const slaPct = total > 0 ? Math.round(((total - overdue) / total) * 100) : 100;
+
+        const velocity = computeVelocity(trend ?? []);
+
         return [
             { label: 'Total · issues', value: total, delta: '', trend: 'flat' },
             { label: 'En curso', value: open, unit: 'issues', delta: '', trend: 'flat' },
             { label: 'Completados', value: completed, delta: '', trend: 'up' },
             { label: 'Vencidos', value: overdue, delta: '', trend: overdue > 0 ? 'down' : 'flat' },
+            {
+                label: 'SLA',
+                value: `${slaPct}%`,
+                delta: overdue > 0 ? `${overdue} vencidos` : 'sin vencidos',
+                trend: slaPct >= 90 ? 'up' : slaPct >= 70 ? 'flat' : 'down',
+            },
+            {
+                label: 'Velocidad',
+                value: velocity.toFixed(1),
+                unit: 'cierres/día',
+                delta: 'últimos 30 días',
+                trend: velocity > 0 ? 'up' : 'flat',
+            },
         ];
-    }, [overview]);
+    }, [overview, trend]);
 
     return (
-        <div className="h-full overflow-y-auto">
-            <div className="mx-auto max-w-5xl px-10 py-8 flex flex-col gap-7">
-                {/* Header */}
-                <div>
-                    <Eyebrow>Analytics · workspace en vivo</Eyebrow>
-                    <h1 className="mt-2 text-[56px] font-medium tracking-[-0.05em] leading-[0.95] text-[var(--neutral-1200)]">
-                        Velocidad,{' '}
-                        <span className="font-serif italic font-normal">composición</span>, salud.
-                    </h1>
-                    <p className="mt-2 text-[15px] text-[var(--neutral-600)] max-w-[640px]">
-                        Indicadores en tiempo real del workspace activo. Cambia de workspace en la barra lateral
-                        para ver datos distintos.
-                    </p>
-                </div>
+        <div className="mx-auto max-w-5xl px-10 py-8 flex flex-col gap-7">
+            {/* KPI grid */}
+            <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
+                {kpiItems.map((kpi) => (
+                    <KpiCard key={kpi.label} {...kpi} />
+                ))}
+            </div>
 
-                {/* KPI grid */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    {kpiItems.map((kpi) => (
-                        <KpiCard key={kpi.label} {...kpi} />
-                    ))}
-                </div>
+            {/* Chart row */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                <TrendChart workspaceSlug={workspaceSlug} />
+                <DonutChart workspaceSlug={workspaceSlug} />
+            </div>
 
-                {/* Chart row */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                    <TrendChart workspaceSlug={workspaceSlug} />
-                    <DonutChart workspaceSlug={workspaceSlug} />
-                </div>
-
-                {/* Priority + team activity */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                    <PriorityChart workspaceSlug={workspaceSlug} />
-                    <ProjectActivityHeatmap workspaceSlug={workspaceSlug} projectIdentifier={projectId} />
-                </div>
+            {/* Priority + team activity */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <PriorityChart workspaceSlug={workspaceSlug} />
+                <ProjectActivityHeatmap workspaceSlug={workspaceSlug} projectIdentifier={projectId} />
             </div>
         </div>
     );
 };
+
+function computeVelocity(points: CreatedVsResolvedPoint[]): number {
+    if (points.length === 0) return 0;
+    const last30 = points.slice(-30);
+    const total = last30.reduce((acc, p) => acc + p.resolved, 0);
+    const days = Math.max(1, last30.length);
+    return total / days;
+}
