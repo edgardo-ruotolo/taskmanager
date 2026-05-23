@@ -37,11 +37,11 @@ export const useCreatedVsResolved = (workspaceSlug: string) =>
         staleTime: 60_000,
     });
 
-export const useCompanyActivity = (workspaceSlug: string, companyIdentifier: string) =>
+export const useProjectActivity = (workspaceSlug: string, projectIdentifier: string) =>
     useQuery({
-        queryKey: ['analytics', workspaceSlug, 'company-activity', companyIdentifier] as const,
-        queryFn: () => analyticsRepository.getCompanyActivity(workspaceSlug, companyIdentifier),
-        enabled: !!workspaceSlug && !!companyIdentifier,
+        queryKey: ['analytics', workspaceSlug, 'project-activity', projectIdentifier] as const,
+        queryFn: () => analyticsRepository.getProjectActivity(workspaceSlug, projectIdentifier),
+        enabled: !!workspaceSlug && !!projectIdentifier,
         staleTime: 60_000,
     });
 

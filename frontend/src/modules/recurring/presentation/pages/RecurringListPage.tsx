@@ -1,25 +1,47 @@
-import { useState } from 'react';
+﻿import { useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { Plus, Repeat2, Search } from 'lucide-react';
+import { ChevronDown, ChevronLeft, ChevronRight, Plus, Repeat2, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
 import { Eyebrow } from '@/components/ui/eyebrow';
 import { cn } from '@/lib/utils';
+import { useDebounce } from '@/shared/hooks/use-debounce';
+import { useIsWorkspaceAdmin } from '@/modules/workspaces/application/use-current-workspace-role';
 import { useRecurringTemplates } from '../../application/use-recurring';
 import { RecurringListItem } from '../components/RecurringListItem';
 import { CreateRecurringDialog } from '../components/CreateRecurringDialog';
+import type {
+    RecurringFrequency,
+    RecurringListParams,
+    RecurringStatusFilter,
+    RecurringTemplate,
+} from '../../domain/types';
 
-type TabFilter = 'all' | 'active' | 'Daily' | 'Weekly' | 'Monthly' | 'Yearly' | 'paused';
+type TabFilter = 'all' | 'active' | RecurringFrequency | 'paused';
 
-const TABS: { value: TabFilter; label: string }[] = [
+interface TabDef {
+    value: TabFilter;
+    label: string;
+}
+
+const TABS: readonly TabDef[] = [
     { value: 'all', label: 'Todas' },
     { value: 'active', label: 'Activas' },
     { value: 'Daily', label: 'Diarias' },
     { value: 'Weekly', label: 'Semanales' },
     { value: 'Monthly', label: 'Mensuales' },
+    { value: 'Quarterly', label: 'Trimestrales' },
     { value: 'Yearly', label: 'Anuales' },
     { value: 'paused', label: 'Pausadas' },
+];
+
+const GROUP_ORDER: readonly { frequency: RecurringFrequency; label: string }[] = [
+    { frequency: 'Daily', label: 'Diarias' },
+    { frequency: 'Weekly', label: 'Semanales' },
+    { frequency: 'Monthly', label: 'Mensuales' },
+    { frequency: 'Quarterly', label: 'Trimestrales' },
+    { frequency: 'Yearly', label: 'Anuales' },
 ];
 
 interface StatCardProps {
@@ -38,9 +60,7 @@ function StatCard({ label, value, sub, accent }: StatCardProps): React.ReactElem
                 aria-hidden="true"
             />
             <Eyebrow>{label}</Eyebrow>
-            <div
-                className="text-[32px] font-medium tracking-[-0.04em] leading-none mt-1.5 tabular-nums text-[var(--neutral-1200)]"
-            >
+            <div className="text-[32px] font-medium tracking-[-0.04em] leading-none mt-1.5 tabular-nums text-[var(--neutral-1200)]">
                 {value}
             </div>
             <div className="font-mono text-[10.5px] text-[var(--neutral-600)] mt-1.5 tracking-[0.05em]">
@@ -50,51 +70,128 @@ function StatCard({ label, value, sub, accent }: StatCardProps): React.ReactElem
     );
 }
 
+interface GroupedSectionProps {
+    label: string;
+    items: RecurringTemplate[];
+    workspaceSlug: string;
+    isAdmin: boolean;
+}
+
+function GroupedSection({ label, items, workspaceSlug, isAdmin }: GroupedSectionProps): React.ReactElement | null {
+    if (items.length === 0) return null;
+    return (
+        <details open className="group">
+            <summary className="flex items-center gap-2 px-2 py-2 cursor-pointer select-none list-none text-[var(--neutral-1200)]">
+                <ChevronDown
+                    className="h-3.5 w-3.5 text-[var(--neutral-600)] transition-transform group-open:rotate-0 -rotate-90"
+                    aria-hidden="true"
+                />
+                <span className="text-[13px] font-medium">{label}</span>
+                <span className="font-mono text-[10.5px] text-[var(--neutral-600)]">{items.length}</span>
+            </summary>
+            <div className="space-y-2 mt-2 mb-3">
+                {items.map((template) => (
+                    <RecurringListItem
+                        key={template.id}
+                        template={template}
+                        workspaceSlug={workspaceSlug}
+                        isAdmin={isAdmin}
+                    />
+                ))}
+            </div>
+        </details>
+    );
+}
+
+function deriveListParams(tab: TabFilter, page: number, pageSize: number, search: string): RecurringListParams {
+    const params: RecurringListParams = { page, pageSize };
+    if (search.trim().length > 0) params.search = search.trim();
+
+    if (tab === 'all') return params;
+    if (tab === 'active') {
+        params.status = 'active' satisfies RecurringStatusFilter;
+        return params;
+    }
+    if (tab === 'paused') {
+        params.status = 'paused' satisfies RecurringStatusFilter;
+        return params;
+    }
+    params.frequency = tab;
+    return params;
+}
+
 export function RecurringListPage(): React.ReactElement {
     const { workspaceSlug = '' } = useParams<{ workspaceSlug: string }>();
+    const isAdmin = useIsWorkspaceAdmin(workspaceSlug);
     const [query, setQuery] = useState('');
     const [tabFilter, setTabFilter] = useState<TabFilter>('all');
     const [createOpen, setCreateOpen] = useState(false);
+    const [page, setPage] = useState(1);
+    const pageSize = 20;
 
-    const { data: templates = [], isLoading } = useRecurringTemplates(workspaceSlug);
+    const debouncedQuery = useDebounce(query, 300);
+
+    const params = useMemo(
+        () => deriveListParams(tabFilter, page, pageSize, debouncedQuery),
+        [tabFilter, page, debouncedQuery],
+    );
+
+    const { data, isLoading } = useRecurringTemplates(workspaceSlug, params);
+
+    const templates = data?.items ?? [];
+    const totalCount = data?.totalCount ?? 0;
+    const totalPages = data?.totalPages ?? 1;
 
     const activeCount = templates.filter((t) => t.isActive && !t.isPaused).length;
     const pausedCount = templates.filter((t) => t.isPaused).length;
 
-    const nextTriggerItem = [...templates]
-        .filter((t) => t.isActive && !t.isPaused && Boolean(t.nextRunAt))
-        .sort((a, b) => {
-            if (!a.nextRunAt || !b.nextRunAt) return 0;
-            return new Date(a.nextRunAt).getTime() - new Date(b.nextRunAt).getTime();
-        })[0];
+    const nextTriggerItem = useMemo(() => {
+        return [...templates]
+            .filter((t) => t.isActive && !t.isPaused && Boolean(t.nextRunAt))
+            .sort((a, b) => {
+                if (!a.nextRunAt || !b.nextRunAt) return 0;
+                return new Date(a.nextRunAt).getTime() - new Date(b.nextRunAt).getTime();
+            })[0];
+    }, [templates]);
 
     const nextTriggerLabel = nextTriggerItem?.nextRunAt
-        ? new Date(nextTriggerItem.nextRunAt).toLocaleDateString('es-ES', {
+        ? new Date(nextTriggerItem.nextRunAt).toLocaleDateString('es-AR', {
               day: '2-digit',
               month: 'short',
           })
         : '—';
 
-    const filtered = templates.filter((t) => {
-        const matchesQuery = t.name.toLowerCase().includes(query.toLowerCase());
-        let matchesTab = true;
-        if (tabFilter === 'active') matchesTab = t.isActive && !t.isPaused;
-        else if (tabFilter === 'paused') matchesTab = t.isPaused;
-        else if (tabFilter === 'Daily' || tabFilter === 'Weekly' || tabFilter === 'Monthly' || tabFilter === 'Yearly') {
-            matchesTab = t.frequency === tabFilter;
-        }
-        return matchesQuery && matchesTab;
-    });
-
     const tabCounts: Record<TabFilter, number> = {
-        all: templates.length,
+        all: totalCount,
         active: activeCount,
         Daily: templates.filter((t) => t.frequency === 'Daily').length,
         Weekly: templates.filter((t) => t.frequency === 'Weekly').length,
         Monthly: templates.filter((t) => t.frequency === 'Monthly').length,
+        Quarterly: templates.filter((t) => t.frequency === 'Quarterly').length,
         Yearly: templates.filter((t) => t.frequency === 'Yearly').length,
         paused: pausedCount,
     };
+
+    const handleTabChange = (next: TabFilter): void => {
+        setTabFilter(next);
+        setPage(1);
+    };
+
+    const handleSearchChange = (value: string): void => {
+        setQuery(value);
+        setPage(1);
+    };
+
+    const groups = useMemo(() => {
+        return GROUP_ORDER.map((g) => ({
+            ...g,
+            items: templates.filter((t) => t.frequency === g.frequency && !t.isPaused),
+        }));
+    }, [templates]);
+
+    const pausedItems = useMemo(() => templates.filter((t) => t.isPaused), [templates]);
+
+    const showGrouped = tabFilter === 'all';
 
     return (
         <>
@@ -109,24 +206,27 @@ export function RecurringListPage(): React.ReactElement {
                     <div className="flex items-start justify-between mb-7">
                         <div>
                             <Eyebrow>
-                                Tareas que se repiten · {isLoading ? '…' : `${templates.length} plantillas activas`}
+                                Tareas que se repiten · {isLoading ? '…' : `${totalCount} plantillas`}
                             </Eyebrow>
                             <h1 className="mt-2 text-[56px] font-medium tracking-[-0.05em] leading-[0.95] text-[var(--neutral-1200)]">
                                 Recurrentes.
                             </h1>
                             <p className="mt-2 text-[14.5px] text-[var(--neutral-600)] max-w-[600px] leading-[1.55]">
-                                Plantillas que generan issues automáticamente según un calendario. Perfecto para cierres mensuales, conciliaciones, declaraciones y reportes regulatorios.
+                                Plantillas que generan issues automáticamente según un calendario. Perfecto para
+                                cierres mensuales, conciliaciones, declaraciones y reportes regulatorios.
                             </p>
                         </div>
-                        <div className="shrink-0 mt-2">
-                            <Button
-                                className="gap-2 bg-[var(--neutral-1200)] hover:bg-[var(--neutral-1000)] text-[#f0eadf]"
-                                onClick={() => setCreateOpen(true)}
-                            >
-                                <Plus size={14} />
-                                Nueva recurrente
-                            </Button>
-                        </div>
+                        {isAdmin && (
+                            <div className="shrink-0 mt-2">
+                                <Button
+                                    className="gap-2 bg-[var(--neutral-1200)] hover:bg-[var(--neutral-1000)] text-[#f0eadf]"
+                                    onClick={() => setCreateOpen(true)}
+                                >
+                                    <Plus size={14} />
+                                    Nueva recurrente
+                                </Button>
+                            </div>
+                        )}
                     </div>
 
                     {/* Stat cards */}
@@ -144,9 +244,11 @@ export function RecurringListPage(): React.ReactElement {
                                 sub="no generan hasta reactivar"
                                 accent="var(--amber-700)"
                             />
+                            {/* TODO(stats): reemplazar por "Issues generados (90d)" cuando exista endpoint
+                                agregado. Por ahora mantenemos "Total plantillas" como proxy informativo. */}
                             <StatCard
                                 label="Total plantillas"
-                                value={templates.length}
+                                value={totalCount}
                                 sub="en este workspace"
                                 accent="var(--brand-700)"
                             />
@@ -165,7 +267,7 @@ export function RecurringListPage(): React.ReactElement {
                             <button
                                 key={tab.value}
                                 type="button"
-                                onClick={() => setTabFilter(tab.value)}
+                                onClick={() => handleTabChange(tab.value)}
                                 className={cn(
                                     'inline-flex items-center gap-2 px-[14px] py-[10px] border-b-2 text-[13px] font-medium transition-colors mb-[-1px] tracking-[-0.005em]',
                                     tabFilter === tab.value
@@ -174,9 +276,7 @@ export function RecurringListPage(): React.ReactElement {
                                 )}
                             >
                                 {tab.label}
-                                <span className="font-mono text-[10px] opacity-60">
-                                    {tabCounts[tab.value]}
-                                </span>
+                                <span className="font-mono text-[10px] opacity-60">{tabCounts[tab.value]}</span>
                             </button>
                         ))}
                     </div>
@@ -186,7 +286,7 @@ export function RecurringListPage(): React.ReactElement {
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[var(--neutral-600)]" />
                         <Input
                             value={query}
-                            onChange={(e) => setQuery(e.target.value)}
+                            onChange={(e) => handleSearchChange(e.target.value)}
                             placeholder="Buscar plantillas recurrentes…"
                             className="pl-9 text-sm bg-white border-[var(--neutral-400)]"
                         />
@@ -212,7 +312,7 @@ export function RecurringListPage(): React.ReactElement {
                     )}
 
                     {/* Empty */}
-                    {!isLoading && filtered.length === 0 && (
+                    {!isLoading && templates.length === 0 && (
                         <div className="flex flex-col items-center justify-center py-24 text-center">
                             <div className="w-14 h-14 rounded-lg bg-[var(--neutral-200)] flex items-center justify-center mb-4">
                                 <Repeat2 size={24} className="text-[var(--neutral-600)]" />
@@ -225,7 +325,7 @@ export function RecurringListPage(): React.ReactElement {
                                     ? 'Probá con otro filtro o búsqueda'
                                     : 'Creá tu primera plantilla para automatizar trabajo repetitivo'}
                             </p>
-                            {!query && tabFilter === 'all' && (
+                            {!query && tabFilter === 'all' && isAdmin && (
                                 <Button
                                     className="gap-2 bg-[var(--neutral-1200)] hover:bg-[var(--neutral-1000)] text-[#f0eadf]"
                                     onClick={() => setCreateOpen(true)}
@@ -237,16 +337,72 @@ export function RecurringListPage(): React.ReactElement {
                         </div>
                     )}
 
-                    {/* List */}
-                    {!isLoading && filtered.length > 0 && (
+                    {/* List: grouped (tab=all) o flat */}
+                    {!isLoading && templates.length > 0 && showGrouped && (
+                        <div className="space-y-1">
+                            {groups.map((g) => (
+                                <GroupedSection
+                                    key={g.frequency}
+                                    label={g.label}
+                                    items={g.items}
+                                    workspaceSlug={workspaceSlug}
+                                    isAdmin={isAdmin}
+                                />
+                            ))}
+                            {pausedItems.length > 0 && (
+                                <GroupedSection
+                                    label="Pausadas"
+                                    items={pausedItems}
+                                    workspaceSlug={workspaceSlug}
+                                    isAdmin={isAdmin}
+                                />
+                            )}
+                        </div>
+                    )}
+
+                    {!isLoading && templates.length > 0 && !showGrouped && (
                         <div className="space-y-2">
-                            {filtered.map((template) => (
+                            {templates.map((template) => (
                                 <RecurringListItem
                                     key={template.id}
                                     template={template}
                                     workspaceSlug={workspaceSlug}
+                                    isAdmin={isAdmin}
                                 />
                             ))}
+                        </div>
+                    )}
+
+                    {/* Pagination */}
+                    {!isLoading && totalPages > 1 && (
+                        <div className="mt-6 flex items-center justify-between">
+                            <span className="font-mono text-[11px] text-[var(--neutral-600)] tracking-[0.05em]">
+                                Página {page} de {totalPages} · {totalCount} resultados
+                            </span>
+                            <div className="flex items-center gap-2">
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                                    disabled={page <= 1}
+                                    className="gap-1 border-[var(--neutral-400)]"
+                                >
+                                    <ChevronLeft className="h-3.5 w-3.5" />
+                                    Anterior
+                                </Button>
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                                    disabled={page >= totalPages}
+                                    className="gap-1 border-[var(--neutral-400)]"
+                                >
+                                    Siguiente
+                                    <ChevronRight className="h-3.5 w-3.5" />
+                                </Button>
+                            </div>
                         </div>
                     )}
                 </div>

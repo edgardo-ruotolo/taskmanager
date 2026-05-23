@@ -208,7 +208,7 @@ export const LoginPage = (): React.ReactElement => {
                                     autoFocus
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
-                                    placeholder="marina.ruiz@empresa.com"
+                                    placeholder="marina.ruiz@proyecto.com"
                                     className="mt-1.5 font-mono border-subtle text-primary placeholder:text-tertiary focus-visible:ring-0"
                                     style={{ background: '#fff' }}
                                 />

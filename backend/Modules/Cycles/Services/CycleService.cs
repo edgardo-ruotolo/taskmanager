@@ -10,7 +10,7 @@ namespace TaskManager.Api.Modules.Cycles.Services;
 
 public class CycleService(AppDbContext db) : ICycleService
 {
-    public async Task<PagedResult<CycleDto>> GetAllAsync(string workspaceSlug, Guid companyId, int page, int pageSize, CancellationToken ct = default)
+    public async Task<PagedResult<CycleDto>> GetAllAsync(string workspaceSlug, Guid projectId, int page, int pageSize, CancellationToken ct = default)
     {
         var workspace = await db.Workspaces.AsNoTracking()
             .FirstOrDefaultAsync(w => w.Slug == workspaceSlug, ct)
@@ -19,7 +19,7 @@ public class CycleService(AppDbContext db) : ICycleService
         var query = db.Cycles
             .AsNoTracking()
             .Include(c => c.CycleIssues)
-            .Where(c => c.CompanyId == companyId && c.Company.WorkspaceId == workspace.Id);
+            .Where(c => c.ProjectId == projectId && c.Project.WorkspaceId == workspace.Id);
 
         var total = await query.CountAsync(ct);
         var items = await query
@@ -37,7 +37,7 @@ public class CycleService(AppDbContext db) : ICycleService
         };
     }
 
-    public async Task<CycleDto> GetByIdAsync(string workspaceSlug, Guid companyId, Guid cycleId, CancellationToken ct = default)
+    public async Task<CycleDto> GetByIdAsync(string workspaceSlug, Guid projectId, Guid cycleId, CancellationToken ct = default)
     {
         var workspace = await db.Workspaces.AsNoTracking()
             .FirstOrDefaultAsync(w => w.Slug == workspaceSlug, ct)
@@ -46,19 +46,19 @@ public class CycleService(AppDbContext db) : ICycleService
         var cycle = await db.Cycles
             .AsNoTracking()
             .Include(c => c.CycleIssues)
-            .FirstOrDefaultAsync(c => c.Id == cycleId && c.CompanyId == companyId && c.Company.WorkspaceId == workspace.Id, ct)
+            .FirstOrDefaultAsync(c => c.Id == cycleId && c.ProjectId == projectId && c.Project.WorkspaceId == workspace.Id, ct)
             ?? throw new NotFoundException("Cycle not found.");
 
         return MapToDto(cycle);
     }
 
-    public async Task<CycleDto> CreateAsync(string workspaceSlug, Guid companyId, Guid userId, CreateCycleDto dto, CancellationToken ct = default)
+    public async Task<CycleDto> CreateAsync(string workspaceSlug, Guid projectId, Guid userId, CreateCycleDto dto, CancellationToken ct = default)
     {
         var workspace = await db.Workspaces.FirstOrDefaultAsync(w => w.Slug == workspaceSlug, ct)
             ?? throw new NotFoundException($"Workspace '{workspaceSlug}' not found.");
 
-        var company = await db.Companies.FirstOrDefaultAsync(c => c.Id == companyId && c.WorkspaceId == workspace.Id, ct)
-            ?? throw new NotFoundException("Company not found.");
+        var project = await db.Projects.FirstOrDefaultAsync(c => c.Id == projectId && c.WorkspaceId == workspace.Id, ct)
+            ?? throw new NotFoundException("Project not found.");
 
         var cycle = new Cycle
         {
@@ -66,7 +66,7 @@ public class CycleService(AppDbContext db) : ICycleService
             Description = dto.Description,
             StartDate = dto.StartDate,
             EndDate = dto.EndDate,
-            CompanyId = company.Id,
+            ProjectId = project.Id,
             OwnerId = userId
         };
 
@@ -76,14 +76,14 @@ public class CycleService(AppDbContext db) : ICycleService
         return MapToDto(cycle);
     }
 
-    public async Task<CycleDto> UpdateAsync(string workspaceSlug, Guid companyId, Guid cycleId, UpdateCycleDto dto, CancellationToken ct = default)
+    public async Task<CycleDto> UpdateAsync(string workspaceSlug, Guid projectId, Guid cycleId, UpdateCycleDto dto, CancellationToken ct = default)
     {
         var workspace = await db.Workspaces.FirstOrDefaultAsync(w => w.Slug == workspaceSlug, ct)
             ?? throw new NotFoundException($"Workspace '{workspaceSlug}' not found.");
 
         var cycle = await db.Cycles
             .Include(c => c.CycleIssues)
-            .FirstOrDefaultAsync(c => c.Id == cycleId && c.CompanyId == companyId && c.Company.WorkspaceId == workspace.Id, ct)
+            .FirstOrDefaultAsync(c => c.Id == cycleId && c.ProjectId == projectId && c.Project.WorkspaceId == workspace.Id, ct)
             ?? throw new NotFoundException("Cycle not found.");
 
         if (dto.Name is not null) cycle.Name = dto.Name;
@@ -96,13 +96,13 @@ public class CycleService(AppDbContext db) : ICycleService
         return MapToDto(cycle);
     }
 
-    public async Task DeleteAsync(string workspaceSlug, Guid companyId, Guid cycleId, CancellationToken ct = default)
+    public async Task DeleteAsync(string workspaceSlug, Guid projectId, Guid cycleId, CancellationToken ct = default)
     {
         var workspace = await db.Workspaces.FirstOrDefaultAsync(w => w.Slug == workspaceSlug, ct)
             ?? throw new NotFoundException($"Workspace '{workspaceSlug}' not found.");
 
         var cycle = await db.Cycles
-            .FirstOrDefaultAsync(c => c.Id == cycleId && c.CompanyId == companyId && c.Company.WorkspaceId == workspace.Id, ct)
+            .FirstOrDefaultAsync(c => c.Id == cycleId && c.ProjectId == projectId && c.Project.WorkspaceId == workspace.Id, ct)
             ?? throw new NotFoundException("Cycle not found.");
 
         cycle.IsDeleted = true;
@@ -110,13 +110,13 @@ public class CycleService(AppDbContext db) : ICycleService
         await db.SaveChangesAsync(ct);
     }
 
-    public async Task AddIssueAsync(string workspaceSlug, Guid companyId, Guid cycleId, Guid issueId, Guid userId, CancellationToken ct = default)
+    public async Task AddIssueAsync(string workspaceSlug, Guid projectId, Guid cycleId, Guid issueId, Guid userId, CancellationToken ct = default)
     {
         var workspace = await db.Workspaces.FirstOrDefaultAsync(w => w.Slug == workspaceSlug, ct)
             ?? throw new NotFoundException($"Workspace '{workspaceSlug}' not found.");
 
         var cycle = await db.Cycles
-            .FirstOrDefaultAsync(c => c.Id == cycleId && c.CompanyId == companyId && c.Company.WorkspaceId == workspace.Id, ct)
+            .FirstOrDefaultAsync(c => c.Id == cycleId && c.ProjectId == projectId && c.Project.WorkspaceId == workspace.Id, ct)
             ?? throw new NotFoundException("Cycle not found.");
 
         var issue = await db.Issues.FindAsync([issueId], ct)
@@ -138,13 +138,13 @@ public class CycleService(AppDbContext db) : ICycleService
         await db.SaveChangesAsync(ct);
     }
 
-    public async Task RemoveIssueAsync(string workspaceSlug, Guid companyId, Guid cycleId, Guid issueId, CancellationToken ct = default)
+    public async Task RemoveIssueAsync(string workspaceSlug, Guid projectId, Guid cycleId, Guid issueId, CancellationToken ct = default)
     {
         var workspace = await db.Workspaces.FirstOrDefaultAsync(w => w.Slug == workspaceSlug, ct)
             ?? throw new NotFoundException($"Workspace '{workspaceSlug}' not found.");
 
         _ = await db.Cycles
-            .FirstOrDefaultAsync(c => c.Id == cycleId && c.CompanyId == companyId && c.Company.WorkspaceId == workspace.Id, ct)
+            .FirstOrDefaultAsync(c => c.Id == cycleId && c.ProjectId == projectId && c.Project.WorkspaceId == workspace.Id, ct)
             ?? throw new NotFoundException("Cycle not found.");
 
         var cycleIssue = await db.CycleIssues
@@ -156,7 +156,7 @@ public class CycleService(AppDbContext db) : ICycleService
         await db.SaveChangesAsync(ct);
     }
 
-    public async Task<List<CycleDto>> GetArchivedAsync(string workspaceSlug, Guid companyId, CancellationToken ct = default)
+    public async Task<List<CycleDto>> GetArchivedAsync(string workspaceSlug, Guid projectId, CancellationToken ct = default)
     {
         var workspace = await db.Workspaces.AsNoTracking()
             .FirstOrDefaultAsync(w => w.Slug == workspaceSlug, ct)
@@ -166,20 +166,20 @@ public class CycleService(AppDbContext db) : ICycleService
             .AsNoTracking()
             .IgnoreQueryFilters()
             .Include(c => c.CycleIssues)
-            .Where(c => c.IsArchived && !c.IsDeleted && c.CompanyId == companyId && c.Company.WorkspaceId == workspace.Id)
+            .Where(c => c.IsArchived && !c.IsDeleted && c.ProjectId == projectId && c.Project.WorkspaceId == workspace.Id)
             .OrderByDescending(c => c.ArchivedAt)
             .Select(c => MapToDto(c))
             .ToListAsync(ct);
     }
 
-    public async Task ArchiveAsync(string workspaceSlug, Guid companyId, Guid cycleId, CancellationToken ct = default)
+    public async Task ArchiveAsync(string workspaceSlug, Guid projectId, Guid cycleId, CancellationToken ct = default)
     {
         var workspace = await db.Workspaces.FirstOrDefaultAsync(w => w.Slug == workspaceSlug, ct)
             ?? throw new NotFoundException($"Workspace '{workspaceSlug}' not found.");
 
         var cycle = await db.Cycles
             .IgnoreQueryFilters()
-            .FirstOrDefaultAsync(c => c.Id == cycleId && c.CompanyId == companyId && c.Company.WorkspaceId == workspace.Id && !c.IsDeleted, ct)
+            .FirstOrDefaultAsync(c => c.Id == cycleId && c.ProjectId == projectId && c.Project.WorkspaceId == workspace.Id && !c.IsDeleted, ct)
             ?? throw new NotFoundException("Cycle not found.");
 
         cycle.IsArchived = true;
@@ -187,14 +187,14 @@ public class CycleService(AppDbContext db) : ICycleService
         await db.SaveChangesAsync(ct);
     }
 
-    public async Task UnarchiveAsync(string workspaceSlug, Guid companyId, Guid cycleId, CancellationToken ct = default)
+    public async Task UnarchiveAsync(string workspaceSlug, Guid projectId, Guid cycleId, CancellationToken ct = default)
     {
         var workspace = await db.Workspaces.FirstOrDefaultAsync(w => w.Slug == workspaceSlug, ct)
             ?? throw new NotFoundException($"Workspace '{workspaceSlug}' not found.");
 
         var cycle = await db.Cycles
             .IgnoreQueryFilters()
-            .FirstOrDefaultAsync(c => c.Id == cycleId && c.CompanyId == companyId && c.Company.WorkspaceId == workspace.Id && !c.IsDeleted, ct)
+            .FirstOrDefaultAsync(c => c.Id == cycleId && c.ProjectId == projectId && c.Project.WorkspaceId == workspace.Id && !c.IsDeleted, ct)
             ?? throw new NotFoundException("Cycle not found.");
 
         cycle.IsArchived = false;
@@ -202,17 +202,17 @@ public class CycleService(AppDbContext db) : ICycleService
         await db.SaveChangesAsync(ct);
     }
 
-    public async Task TransferIssuesAsync(string workspaceSlug, Guid companyId, Guid sourceCycleId, Guid targetCycleId, CancellationToken ct = default)
+    public async Task TransferIssuesAsync(string workspaceSlug, Guid projectId, Guid sourceCycleId, Guid targetCycleId, CancellationToken ct = default)
     {
         var workspace = await db.Workspaces.FirstOrDefaultAsync(w => w.Slug == workspaceSlug, ct)
             ?? throw new NotFoundException($"Workspace '{workspaceSlug}' not found.");
 
         _ = await db.Cycles
-            .FirstOrDefaultAsync(c => c.Id == sourceCycleId && c.CompanyId == companyId && c.Company.WorkspaceId == workspace.Id, ct)
+            .FirstOrDefaultAsync(c => c.Id == sourceCycleId && c.ProjectId == projectId && c.Project.WorkspaceId == workspace.Id, ct)
             ?? throw new NotFoundException("Source cycle not found.");
 
         _ = await db.Cycles
-            .FirstOrDefaultAsync(c => c.Id == targetCycleId && c.CompanyId == companyId && c.Company.WorkspaceId == workspace.Id, ct)
+            .FirstOrDefaultAsync(c => c.Id == targetCycleId && c.ProjectId == projectId && c.Project.WorkspaceId == workspace.Id, ct)
             ?? throw new NotFoundException("Target cycle not found.");
 
         var incompleteCategories = new[] { StateCategory.Backlog, StateCategory.Unstarted, StateCategory.Started };
@@ -247,14 +247,14 @@ public class CycleService(AppDbContext db) : ICycleService
         await db.SaveChangesAsync(ct);
     }
 
-    public async Task<CycleProgressDto> GetProgressAsync(string workspaceSlug, Guid companyId, Guid cycleId, CancellationToken ct = default)
+    public async Task<CycleProgressDto> GetProgressAsync(string workspaceSlug, Guid projectId, Guid cycleId, CancellationToken ct = default)
     {
         var workspace = await db.Workspaces.AsNoTracking()
             .FirstOrDefaultAsync(w => w.Slug == workspaceSlug, ct)
             ?? throw new NotFoundException($"Workspace '{workspaceSlug}' not found.");
 
         _ = await db.Cycles.AsNoTracking()
-            .FirstOrDefaultAsync(c => c.Id == cycleId && c.CompanyId == companyId && c.Company.WorkspaceId == workspace.Id, ct)
+            .FirstOrDefaultAsync(c => c.Id == cycleId && c.ProjectId == projectId && c.Project.WorkspaceId == workspace.Id, ct)
             ?? throw new NotFoundException("Cycle not found.");
 
         var issues = await db.CycleIssues
@@ -278,14 +278,14 @@ public class CycleService(AppDbContext db) : ICycleService
         };
     }
 
-    public async Task<CycleAnalyticsDto> GetAnalyticsAsync(string workspaceSlug, Guid companyId, Guid cycleId, CancellationToken ct = default)
+    public async Task<CycleAnalyticsDto> GetAnalyticsAsync(string workspaceSlug, Guid projectId, Guid cycleId, CancellationToken ct = default)
     {
         var workspace = await db.Workspaces.AsNoTracking()
             .FirstOrDefaultAsync(w => w.Slug == workspaceSlug, ct)
             ?? throw new NotFoundException($"Workspace '{workspaceSlug}' not found.");
 
         _ = await db.Cycles.AsNoTracking()
-            .FirstOrDefaultAsync(c => c.Id == cycleId && c.CompanyId == companyId && c.Company.WorkspaceId == workspace.Id, ct)
+            .FirstOrDefaultAsync(c => c.Id == cycleId && c.ProjectId == projectId && c.Project.WorkspaceId == workspace.Id, ct)
             ?? throw new NotFoundException("Cycle not found.");
 
         var issues = await db.CycleIssues
@@ -319,7 +319,7 @@ public class CycleService(AppDbContext db) : ICycleService
         Status = cycle.Status,
         StartDate = cycle.StartDate,
         EndDate = cycle.EndDate,
-        CompanyId = cycle.CompanyId,
+        ProjectId = cycle.ProjectId,
         OwnerId = cycle.OwnerId,
         IssueCount = cycle.CycleIssues.Count,
         IsArchived = cycle.IsArchived,

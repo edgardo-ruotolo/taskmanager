@@ -1,13 +1,13 @@
 using TaskManager.Api.Common.Auditing;
-using TaskManager.Api.Modules.Companies.Entities;
+using TaskManager.Api.Modules.Projects.Entities;
 using TaskManager.Api.Modules.Workspaces.Entities;
 
 namespace TaskManager.Api.Modules.Space.Entities;
 
 public class DeployBoard : AuditableEntity
 {
-    public Guid CompanyId { get; set; }
-    public Company Company { get; set; } = null!;
+    public Guid ProjectId { get; set; }
+    public Project Project { get; set; } = null!;
     public Guid WorkspaceId { get; set; }
     public Workspace Workspace { get; set; } = null!;
     public string Token { get; set; } = Guid.NewGuid().ToString("N");

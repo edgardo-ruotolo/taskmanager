@@ -2,7 +2,7 @@ import { apiClient } from '@/shared/lib/api-client';
 import type {
     AnalyticsOverview,
     AnalyticView,
-    CompanyActivityPoint,
+    ProjectActivityPoint,
     CreateAnalyticViewData,
     CreatedVsResolvedPoint,
     PriorityBucket,
@@ -32,13 +32,13 @@ export const analyticsRepository = {
             .get<CreatedVsResolvedPoint[]>(`/api/workspaces/${workspaceSlug}/analytics/created-vs-resolved`)
             .then((r) => r.data),
 
-    getCompanyActivity: (
+    getProjectActivity: (
         workspaceSlug: string,
-        companyIdentifier: string,
-    ): Promise<CompanyActivityPoint[]> =>
+        projectIdentifier: string,
+    ): Promise<ProjectActivityPoint[]> =>
         apiClient
-            .get<CompanyActivityPoint[]>(
-                `/api/workspaces/${workspaceSlug}/analytics/companies/${companyIdentifier}/activity`,
+            .get<ProjectActivityPoint[]>(
+                `/api/workspaces/${workspaceSlug}/analytics/projects/${projectIdentifier}/activity`,
             )
             .then((r) => r.data),
 

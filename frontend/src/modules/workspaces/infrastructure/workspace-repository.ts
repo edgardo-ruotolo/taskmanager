@@ -5,8 +5,10 @@ import type {
     CreateWorkspaceData,
     UpdateWorkspaceData,
     WorkspaceMember,
-    WorkspaceInvitation,
-    CreateInvitationData,
+    WorkspaceRole,
+    WorkspaceUserSearchResult,
+    AddMemberData,
+    CreateUserAndAddMemberData,
 } from '../domain/types';
 import type { WorkspaceTheme, UpdateWorkspaceThemeData } from '../domain/theme-types';
 
@@ -25,18 +27,27 @@ export const workspaceRepository = {
         apiClient.get<WorkspaceMember[]>(`/api/workspaces/${slug}/members`).then((r) => r.data),
     removeMember: (slug: string, userId: string): Promise<void> =>
         apiClient.delete(`/api/workspaces/${slug}/members/${userId}`).then(() => undefined),
-    updateMemberRole: (slug: string, userId: string, role: string): Promise<WorkspaceMember> =>
+    updateMemberRole: (slug: string, userId: string, role: WorkspaceRole): Promise<WorkspaceMember> =>
         apiClient
             .patch<WorkspaceMember>(`/api/workspaces/${slug}/members/${userId}/role`, { role })
             .then((r) => r.data),
-    getInvitations: (slug: string): Promise<WorkspaceInvitation[]> =>
-        apiClient.get<WorkspaceInvitation[]>(`/api/workspaces/${slug}/invitations`).then((r) => r.data),
-    invite: (slug: string, data: CreateInvitationData): Promise<WorkspaceInvitation> =>
-        apiClient.post<WorkspaceInvitation>(`/api/workspaces/${slug}/invitations`, data).then((r) => r.data),
-    revokeInvitation: (slug: string, id: string): Promise<void> =>
-        apiClient.delete(`/api/workspaces/${slug}/invitations/${id}`).then(() => undefined),
-    acceptInvitation: (slug: string, token: string): Promise<void> =>
-        apiClient.post(`/api/workspaces/${slug}/invitations/${token}/accept`).then(() => undefined),
+    searchUsers: (slug: string, query: string, limit = 10): Promise<WorkspaceUserSearchResult[]> =>
+        apiClient
+            .get<WorkspaceUserSearchResult[]>(`/api/workspaces/${slug}/users/search`, {
+                params: { q: query, limit },
+            })
+            .then((r) => r.data),
+    addMember: (slug: string, data: AddMemberData): Promise<WorkspaceMember> =>
+        apiClient
+            .post<WorkspaceMember>(`/api/workspaces/${slug}/members`, data)
+            .then((r) => r.data),
+    createUserAndAddMember: (
+        slug: string,
+        data: CreateUserAndAddMemberData,
+    ): Promise<WorkspaceMember> =>
+        apiClient
+            .post<WorkspaceMember>(`/api/workspaces/${slug}/members/create-user`, data)
+            .then((r) => r.data),
     getTheme: (workspaceSlug: string): Promise<WorkspaceTheme> =>
         apiClient.get<WorkspaceTheme>(`/api/workspaces/${workspaceSlug}/theme`).then((r) => r.data),
     updateTheme: (workspaceSlug: string, data: UpdateWorkspaceThemeData): Promise<WorkspaceTheme> =>

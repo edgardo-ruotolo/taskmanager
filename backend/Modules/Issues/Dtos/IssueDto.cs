@@ -11,7 +11,7 @@ public class IssueDto
     public string? DescriptionHtml { get; set; }
     public string? DescriptionJson { get; set; }
     public IssuePriority Priority { get; set; }
-    public Guid CompanyId { get; set; }
+    public Guid ProjectId { get; set; }
     public Guid StateId { get; set; }
     public string StateName { get; set; } = string.Empty;
     public string StateColor { get; set; } = string.Empty;

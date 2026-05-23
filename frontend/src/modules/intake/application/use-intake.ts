@@ -3,40 +3,40 @@ import { toast } from 'sonner';
 import { intakeRepository } from '../infrastructure/intake-repository';
 import type { CreateIntakeIssueData, IntakeStatus, ReviewIntakeIssueData } from '../domain/types';
 
-const qKey = (workspaceSlug: string, companyId: string, status?: IntakeStatus) =>
-    ['intake', workspaceSlug, companyId, status ?? 'all'] as const;
+const qKey = (workspaceSlug: string, projectId: string, status?: IntakeStatus) =>
+    ['intake', workspaceSlug, projectId, status ?? 'all'] as const;
 
-export const useIntake = (workspaceSlug: string, companyId: string, status?: IntakeStatus) =>
+export const useIntake = (workspaceSlug: string, projectId: string, status?: IntakeStatus) =>
     useQuery({
-        queryKey: qKey(workspaceSlug, companyId, status),
-        queryFn: () => intakeRepository.getAll(workspaceSlug, companyId, status),
-        enabled: !!workspaceSlug && !!companyId,
+        queryKey: qKey(workspaceSlug, projectId, status),
+        queryFn: () => intakeRepository.getAll(workspaceSlug, projectId, status),
+        enabled: !!workspaceSlug && !!projectId,
         // Intake is a triage queue — always show latest pending count.
         staleTime: 0,
         refetchOnWindowFocus: true,
     });
 
-export const useCreateIntake = (workspaceSlug: string, companyId: string) => {
+export const useCreateIntake = (workspaceSlug: string, projectId: string) => {
     const qc = useQueryClient();
     return useMutation({
         mutationFn: (data: CreateIntakeIssueData) =>
-            intakeRepository.create(workspaceSlug, companyId, data),
+            intakeRepository.create(workspaceSlug, projectId, data),
         onSuccess: () => {
-            void qc.invalidateQueries({ queryKey: ['intake', workspaceSlug, companyId] });
+            void qc.invalidateQueries({ queryKey: ['intake', workspaceSlug, projectId] });
             toast.success('Tarea creada en la bandeja');
         },
         onError: (error: unknown) => { const e = error as { response?: { data?: { message?: string } } }; toast.error(e?.response?.data?.message ?? 'Error al crear la solicitud'); },
     });
 };
 
-export const useReviewIntake = (workspaceSlug: string, companyId: string) => {
+export const useReviewIntake = (workspaceSlug: string, projectId: string) => {
     const qc = useQueryClient();
     return useMutation({
         mutationFn: ({ id, data }: { id: string; data: ReviewIntakeIssueData }) =>
-            intakeRepository.review(workspaceSlug, companyId, id, data),
+            intakeRepository.review(workspaceSlug, projectId, id, data),
         onSuccess: () => {
-            void qc.invalidateQueries({ queryKey: ['intake', workspaceSlug, companyId] });
-            void qc.invalidateQueries({ queryKey: ['issues', workspaceSlug, companyId] });
+            void qc.invalidateQueries({ queryKey: ['intake', workspaceSlug, projectId] });
+            void qc.invalidateQueries({ queryKey: ['issues', workspaceSlug, projectId] });
             void qc.invalidateQueries({ queryKey: ['workspace-activity', workspaceSlug] });
             void qc.invalidateQueries({ queryKey: ['notifications'] });
             toast.success('Estado actualizado');
@@ -45,12 +45,12 @@ export const useReviewIntake = (workspaceSlug: string, companyId: string) => {
     });
 };
 
-export const useDeleteIntake = (workspaceSlug: string, companyId: string) => {
+export const useDeleteIntake = (workspaceSlug: string, projectId: string) => {
     const qc = useQueryClient();
     return useMutation({
-        mutationFn: (id: string) => intakeRepository.delete(workspaceSlug, companyId, id),
+        mutationFn: (id: string) => intakeRepository.delete(workspaceSlug, projectId, id),
         onSuccess: () => {
-            void qc.invalidateQueries({ queryKey: ['intake', workspaceSlug, companyId] });
+            void qc.invalidateQueries({ queryKey: ['intake', workspaceSlug, projectId] });
             toast.success('Eliminado');
         },
         onError: (error: unknown) => { const e = error as { response?: { data?: { message?: string } } }; toast.error(e?.response?.data?.message ?? 'Error al eliminar'); },

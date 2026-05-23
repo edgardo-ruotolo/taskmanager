@@ -1,13 +1,10 @@
-import type React from 'react';
+﻿import type React from 'react';
 import { useEffect } from 'react';
 import { NavLink, useNavigate, useParams } from 'react-router-dom';
 import {
     Home,
     User,
-    Building2,
-    LayoutList,
     BarChart2,
-    RotateCcw,
     Plus,
     PanelLeftClose,
     PanelLeftOpen,
@@ -21,13 +18,14 @@ import {
     BoxSelect,
     Inbox,
     Archive,
+    HelpCircle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useResizablePanel } from '@/shared/hooks/useResizablePanel';
 import { useSidebarStore } from '@/modules/workspaces/application/sidebar-store';
 import { useAuthMe } from '@/modules/auth/application/use-auth-me';
 import { ThemeSwitcher } from '@/shared/components/ThemeSwitcher';
-import { useCompanies } from '@/modules/companies/application/use-companies';
+import { useProjects } from '@/modules/projects/application/use-projects';
 import { Eyebrow } from '@/components/ui/eyebrow';
 import { WorkspaceSwitcher } from '@/modules/workspaces/presentation/components/WorkspaceSwitcher';
 
@@ -128,46 +126,47 @@ function SidebarHeader({ collapsed, toggleCollapsed }: SidebarHeaderProps): Reac
     );
 }
 
-interface CompanySubNavItem {
+interface ProjectSubNavItem {
     to: string;
     icon: React.ElementType;
     label: string;
 }
 
-function getCompanySubNav(slug: string, companyId: string): CompanySubNavItem[] {
+function getProjectSubNav(slug: string, projectId: string): ProjectSubNavItem[] {
     return [
-        { to: `/${slug}/companies/${companyId}/issues`, icon: AlertCircle, label: 'Tareas' },
-        { to: `/${slug}/companies/${companyId}/cycles`, icon: GitBranch, label: 'Ciclos' },
-        { to: `/${slug}/companies/${companyId}/modules`, icon: BoxSelect, label: 'Módulos' },
-        { to: `/${slug}/companies/${companyId}/estimates`, icon: BarChart2, label: 'Estimaciones' },
-        { to: `/${slug}/companies/${companyId}/inbox`, icon: Inbox, label: 'Bandeja' },
-        { to: `/${slug}/companies/${companyId}/archives`, icon: Archive, label: 'Archivos' },
+        { to: `/${slug}/projects/${projectId}/issues`, icon: AlertCircle, label: 'Tareas' },
+        { to: `/${slug}/projects/${projectId}/cycles`, icon: GitBranch, label: 'Ciclos' },
+        { to: `/${slug}/projects/${projectId}/modules`, icon: BoxSelect, label: 'Módulos' },
+        { to: `/${slug}/projects/${projectId}/estimates`, icon: BarChart2, label: 'Estimaciones' },
+        { to: `/${slug}/projects/${projectId}/inbox`, icon: Inbox, label: 'Bandeja' },
+        { to: `/${slug}/projects/${projectId}/archives`, icon: Archive, label: 'Archivos' },
+        { to: `/${slug}/projects/${projectId}/settings`, icon: Settings, label: 'Configuración' },
     ];
 }
 
-interface ExpandableCompanyItemProps {
+interface ExpandableProjectItemProps {
     slug: string;
-    company: { id: string; name: string; identifier: string };
+    project: { id: string; name: string; identifier: string };
     isExpanded: boolean;
-    onToggle: (companyId: string) => void;
+    onToggle: (projectId: string) => void;
 }
 
-function ExpandableCompanyItem({
+function ExpandableProjectItem({
     slug,
-    company,
+    project,
     isExpanded,
     onToggle,
-}: ExpandableCompanyItemProps): React.ReactElement {
-    const subNav = getCompanySubNav(slug, company.id);
+}: ExpandableProjectItemProps): React.ReactElement {
+    const subNav = getProjectSubNav(slug, project.id);
     return (
         <div className="flex flex-col">
             <div className="flex items-stretch gap-0.5">
                 <button
                     type="button"
-                    onClick={() => onToggle(company.id)}
+                    onClick={() => onToggle(project.id)}
                     className="flex size-6 shrink-0 items-center justify-center rounded-[5px] hover:bg-[var(--neutral-100)] transition-colors duration-150"
                     style={{ color: 'var(--neutral-700)' }}
-                    aria-label={isExpanded ? `Colapsar ${company.name}` : `Expandir ${company.name}`}
+                    aria-label={isExpanded ? `Colapsar ${project.name}` : `Expandir ${project.name}`}
                     aria-expanded={isExpanded}
                 >
                     {isExpanded ? (
@@ -177,7 +176,7 @@ function ExpandableCompanyItem({
                     )}
                 </button>
                 <NavLink
-                    to={`/${slug}/companies/${company.id}/issues`}
+                    to={`/${slug}/projects/${project.id}/issues`}
                     className={({ isActive }) =>
                         cn(
                             'flex flex-1 min-w-0 items-center gap-2 px-2 py-[6px] rounded-[5px] text-[13px] transition-colors duration-150 border-l-2',
@@ -194,13 +193,13 @@ function ExpandableCompanyItem({
                         className="flex size-5 items-center justify-center rounded-sm text-[10px] font-bold shrink-0"
                         style={{ background: 'var(--neutral-300)', color: 'var(--neutral-900)' }}
                     >
-                        {company.identifier.slice(0, 2).toUpperCase()}
+                        {project.identifier.slice(0, 2).toUpperCase()}
                     </span>
-                    <span className="truncate">{company.name}</span>
+                    <span className="truncate">{project.name}</span>
                 </NavLink>
             </div>
             {isExpanded && (
-                <div className="flex flex-col gap-0.5 mt-0.5 pl-[22px]">
+                <div className="flex flex-col gap-0.5 mt-0.5 pl-[42px]">
                     {subNav.map((item) => (
                         <NavLink
                             key={item.to}
@@ -229,9 +228,9 @@ function ExpandableCompanyItem({
 }
 
 export function PrimarySidebar(): React.ReactElement {
-    const { workspaceSlug, companyId: activeCompanyId } = useParams<{
+    const { workspaceSlug, projectId: activeProjectId } = useParams<{
         workspaceSlug: string;
-        companyId?: string;
+        projectId?: string;
     }>();
     const navigate = useNavigate();
     const {
@@ -239,20 +238,20 @@ export function PrimarySidebar(): React.ReactElement {
         setPrimaryWidth,
         collapsed,
         toggleCollapsed,
-        expandedCompanies,
-        toggleCompanyExpanded,
-        expandCompany,
+        expandedProjects,
+        toggleProjectExpanded,
+        expandProject,
     } = useSidebarStore();
     const { data: user } = useAuthMe();
     const isAdmin = user?.isSuperAdmin === true || user?.roles?.includes('SuperAdmin') === true;
     const slug = workspaceSlug ?? '';
-    const { data: companies } = useCompanies(slug);
+    const { data: projects } = useProjects(slug);
 
     useEffect(() => {
-        if (activeCompanyId) {
-            expandCompany(activeCompanyId);
+        if (activeProjectId) {
+            expandProject(activeProjectId);
         }
-    }, [activeCompanyId, expandCompany]);
+    }, [activeProjectId, expandProject]);
 
     const { width, isResizing, dragHandleProps } = useResizablePanel({
         defaultWidth: primaryWidth || 232,
@@ -277,11 +276,9 @@ export function PrimarySidebar(): React.ReactElement {
     const staticNavItems: NavItemDef[] = [
         { to: `/${slug}/home`, icon: Home, label: 'Inicio' },
         { to: `/${slug}/activity`, icon: User, label: 'Tu trabajo' },
-        { to: `/${slug}/recurring`, icon: RotateCcw, label: 'Recurrentes' },
-        { to: `/${slug}/settings/views`, icon: LayoutList, label: 'Vistas' },
         { to: `/${slug}/analytics`, icon: BarChart2, label: 'Análisis' },
-        { to: `/${slug}/companies`, icon: Building2, label: 'Empresas' },
         { to: `/${slug}/settings`, icon: Settings, label: 'Configuración' },
+        { to: `/${slug}/ayuda`, icon: HelpCircle, label: 'Ayuda' },
     ];
 
     return (
@@ -323,7 +320,7 @@ export function PrimarySidebar(): React.ReactElement {
                 {collapsed ? (
                     <button
                         type="button"
-                        onClick={() => void navigate(`/${slug}/companies`)}
+                        onClick={() => void navigate(`/${slug}/projects`)}
                         title="Nuevo elemento"
                         className="flex items-center justify-center w-full h-9 rounded-[5px] hover:bg-[var(--neutral-100)] transition-colors duration-150"
                         style={{ color: 'var(--neutral-700)' }}
@@ -334,7 +331,7 @@ export function PrimarySidebar(): React.ReactElement {
                 ) : (
                     <button
                         type="button"
-                        onClick={() => void navigate(`/${slug}/companies`)}
+                        onClick={() => void navigate(`/${slug}/projects`)}
                         className="flex items-center gap-1.5 w-full px-2 py-1.5 rounded-[5px] text-[13px] hover:bg-[var(--neutral-100)] transition-colors duration-150 border"
                         style={{ color: 'var(--neutral-700)', borderColor: 'var(--neutral-400)' }}
                     >
@@ -358,14 +355,14 @@ export function PrimarySidebar(): React.ReactElement {
                     )}
                 </div>
 
-                {/* Companies list */}
+                {/* Projects list */}
                 {collapsed ? (
                     <div className="flex flex-col gap-0.5">
-                        {(companies?.items ?? []).map((company) => (
+                        {(projects?.items ?? []).map((project) => (
                             <NavLink
-                                key={company.id}
-                                to={`/${slug}/companies/${company.id}/issues`}
-                                title={company.name}
+                                key={project.id}
+                                to={`/${slug}/projects/${project.id}/issues`}
+                                title={project.name}
                                 className={({ isActive }) =>
                                     cn(
                                         'flex items-center justify-center w-full h-9 rounded-[5px] transition-colors duration-150',
@@ -382,7 +379,7 @@ export function PrimarySidebar(): React.ReactElement {
                                     className="flex size-5 items-center justify-center rounded-sm text-[10px] font-bold shrink-0"
                                     style={{ background: 'var(--neutral-300)', color: 'var(--neutral-900)' }}
                                 >
-                                    {company.identifier.slice(0, 2).toUpperCase()}
+                                    {project.identifier.slice(0, 2).toUpperCase()}
                                 </span>
                             </NavLink>
                         ))}
@@ -390,25 +387,25 @@ export function PrimarySidebar(): React.ReactElement {
                 ) : (
                     <div className="flex flex-col gap-0.5">
                         <div className="flex items-center justify-between px-2 py-1.5">
-                            <Eyebrow>Empresas</Eyebrow>
+                            <Eyebrow>Proyectos</Eyebrow>
                         </div>
-                        {(companies?.items ?? []).map((company) => (
-                            <ExpandableCompanyItem
-                                key={company.id}
+                        {(projects?.items ?? []).map((project) => (
+                            <ExpandableProjectItem
+                                key={project.id}
                                 slug={slug}
-                                company={company}
-                                isExpanded={expandedCompanies[company.id] === true}
-                                onToggle={toggleCompanyExpanded}
+                                project={project}
+                                isExpanded={expandedProjects[project.id] === true}
+                                onToggle={toggleProjectExpanded}
                             />
                         ))}
                         <button
                             type="button"
-                            onClick={() => void navigate(`/${slug}/companies`)}
+                            onClick={() => void navigate(`/${slug}/projects`)}
                             className="flex items-center gap-2 w-full px-2.5 py-[6px] rounded-[5px] text-[13px] font-normal hover:bg-[var(--neutral-100)] transition-colors duration-150"
                             style={{ color: 'var(--neutral-700)' }}
                         >
                             <Plus size={14} className="shrink-0" aria-hidden="true" />
-                            <span>Agregar empresa</span>
+                            <span>Agregar proyecto</span>
                         </button>
                     </div>
                 )}

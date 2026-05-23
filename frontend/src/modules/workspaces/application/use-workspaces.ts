@@ -18,14 +18,22 @@ export const useWorkspaces = () =>
 export const workspaceMembersKey = (slug: string) =>
     ['workspace-members', slug] as const;
 
-export const workspaceInvitationsKey = (slug: string) =>
-    ['workspace-invitations', slug] as const;
+export const workspaceUsersSearchKey = (slug: string, query: string) =>
+    ['workspace-users-search', slug, query] as const;
 
 export const useWorkspaceMembers = (slug: string) =>
     useQuery({
         queryKey: workspaceMembersKey(slug),
         queryFn: () => workspaceRepository.getMembers(slug),
         enabled: !!slug,
+    });
+
+export const useSearchWorkspaceUsers = (slug: string, query: string, enabled = true) =>
+    useQuery({
+        queryKey: workspaceUsersSearchKey(slug, query),
+        queryFn: () => workspaceRepository.searchUsers(slug, query),
+        enabled: enabled && !!slug,
+        staleTime: 30_000,
     });
 
 export const useCreateWorkspace = <TFormValues extends FieldValues = FieldValues>(

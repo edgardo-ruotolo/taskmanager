@@ -31,7 +31,7 @@ const mockRecurringTemplate = {
   createdById: 'user-1',
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString(),
-  companyIds: [],
+  projectIds: [],
   assigneeIds: [],
   labelIds: [],
 }
@@ -61,9 +61,9 @@ const mockWorkspace = {
   updatedAt: new Date().toISOString(),
 }
 
-const mockCompany = {
-  id: 'company-1',
-  name: 'Test Company',
+const mockProject = {
+  id: 'project-1',
+  name: 'Test Project',
   identifier: 'TEST',
   description: null,
   logoUrl: null,
@@ -81,7 +81,7 @@ const mockIssue = {
   descriptionHtml: null,
   descriptionJson: null,
   priority: 0,
-  companyId: 'company-1',
+  projectId: 'project-1',
   stateId: 'state-1',
   stateName: 'Todo',
   stateColor: '#64748b',
@@ -109,7 +109,7 @@ const mockCycle = {
   endDate: null,
   status: 'Draft',
   issueCount: 0,
-  companyId: 'company-1',
+  projectId: 'project-1',
   ownerId: 'user-1',
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString(),
@@ -127,43 +127,43 @@ export const handlers = [
   ),
   http.get(`${BASE_URL}/api/workspaces/:slug`, () => HttpResponse.json(mockWorkspace)),
 
-  // Companies
-  http.get(`${BASE_URL}/api/workspaces/:slug/companies`, () =>
-    HttpResponse.json({ items: [mockCompany], totalCount: 1, page: 1, pageSize: 20 }),
+  // Projects
+  http.get(`${BASE_URL}/api/workspaces/:slug/projects`, () =>
+    HttpResponse.json({ items: [mockProject], totalCount: 1, page: 1, pageSize: 20 }),
   ),
-  http.post(`${BASE_URL}/api/workspaces/:slug/companies`, () =>
-    HttpResponse.json(mockCompany, { status: 201 }),
+  http.post(`${BASE_URL}/api/workspaces/:slug/projects`, () =>
+    HttpResponse.json(mockProject, { status: 201 }),
   ),
-  http.patch(`${BASE_URL}/api/workspaces/:slug/companies/:id`, () => HttpResponse.json(mockCompany)),
-  http.delete(`${BASE_URL}/api/workspaces/:slug/companies/:id`, () =>
+  http.patch(`${BASE_URL}/api/workspaces/:slug/projects/:id`, () => HttpResponse.json(mockProject)),
+  http.delete(`${BASE_URL}/api/workspaces/:slug/projects/:id`, () =>
     new HttpResponse(null, { status: 204 }),
   ),
 
   // Issues
-  http.get(`${BASE_URL}/api/workspaces/:slug/companies/:companyId/issues`, () =>
+  http.get(`${BASE_URL}/api/workspaces/:slug/projects/:projectId/issues`, () =>
     HttpResponse.json({ items: [mockIssue], totalCount: 1, page: 1, pageSize: 20 }),
   ),
-  http.post(`${BASE_URL}/api/workspaces/:slug/companies/:companyId/issues`, () =>
+  http.post(`${BASE_URL}/api/workspaces/:slug/projects/:projectId/issues`, () =>
     HttpResponse.json(mockIssue, { status: 201 }),
   ),
-  http.get(`${BASE_URL}/api/workspaces/:slug/companies/:companyId/issues/:id`, () =>
+  http.get(`${BASE_URL}/api/workspaces/:slug/projects/:projectId/issues/:id`, () =>
     HttpResponse.json(mockIssue),
   ),
-  http.patch(`${BASE_URL}/api/workspaces/:slug/companies/:companyId/issues/:id`, () =>
+  http.patch(`${BASE_URL}/api/workspaces/:slug/projects/:projectId/issues/:id`, () =>
     HttpResponse.json(mockIssue),
   ),
-  http.delete(`${BASE_URL}/api/workspaces/:slug/companies/:companyId/issues/:id`, () =>
+  http.delete(`${BASE_URL}/api/workspaces/:slug/projects/:projectId/issues/:id`, () =>
     new HttpResponse(null, { status: 204 }),
   ),
 
   // Cycles
-  http.get(`${BASE_URL}/api/workspaces/:slug/companies/:companyId/cycles`, () =>
+  http.get(`${BASE_URL}/api/workspaces/:slug/projects/:projectId/cycles`, () =>
     HttpResponse.json({ items: [mockCycle], totalCount: 1, page: 1, pageSize: 20 }),
   ),
-  http.post(`${BASE_URL}/api/workspaces/:slug/companies/:companyId/cycles`, () =>
+  http.post(`${BASE_URL}/api/workspaces/:slug/projects/:projectId/cycles`, () =>
     HttpResponse.json(mockCycle, { status: 201 }),
   ),
-  http.delete(`${BASE_URL}/api/workspaces/:slug/companies/:companyId/cycles/:id`, () =>
+  http.delete(`${BASE_URL}/api/workspaces/:slug/projects/:projectId/cycles/:id`, () =>
     new HttpResponse(null, { status: 204 }),
   ),
 
@@ -212,34 +212,34 @@ export const handlers = [
       descriptionHtml: '',
       priority: 'none',
       stateGroup: 'unstarted',
-      companyIds: [],
+      projectIds: [],
       assigneeIds: [],
       labelIds: [],
     })
   }),
 
   // Archives — issues
-  http.get(`${BASE_URL}/api/workspaces/:slug/companies/:companyId/issues/archived`, () =>
+  http.get(`${BASE_URL}/api/workspaces/:slug/projects/:projectId/issues/archived`, () =>
     HttpResponse.json([])),
-  http.post(`${BASE_URL}/api/workspaces/:slug/companies/:companyId/issues/:id/archive`, () =>
+  http.post(`${BASE_URL}/api/workspaces/:slug/projects/:projectId/issues/:id/archive`, () =>
     new HttpResponse(null, { status: 204 })),
-  http.post(`${BASE_URL}/api/workspaces/:slug/companies/:companyId/issues/:id/unarchive`, () =>
+  http.post(`${BASE_URL}/api/workspaces/:slug/projects/:projectId/issues/:id/unarchive`, () =>
     new HttpResponse(null, { status: 204 })),
 
   // Archives — cycles
-  http.get(`${BASE_URL}/api/workspaces/:slug/companies/:companyId/cycles/archived`, () =>
+  http.get(`${BASE_URL}/api/workspaces/:slug/projects/:projectId/cycles/archived`, () =>
     HttpResponse.json([])),
-  http.post(`${BASE_URL}/api/workspaces/:slug/companies/:companyId/cycles/:id/archive`, () =>
+  http.post(`${BASE_URL}/api/workspaces/:slug/projects/:projectId/cycles/:id/archive`, () =>
     new HttpResponse(null, { status: 204 })),
-  http.post(`${BASE_URL}/api/workspaces/:slug/companies/:companyId/cycles/:id/unarchive`, () =>
+  http.post(`${BASE_URL}/api/workspaces/:slug/projects/:projectId/cycles/:id/unarchive`, () =>
     new HttpResponse(null, { status: 204 })),
 
   // Archives — modules
-  http.get(`${BASE_URL}/api/workspaces/:slug/companies/:companyId/modules/archived`, () =>
+  http.get(`${BASE_URL}/api/workspaces/:slug/projects/:projectId/modules/archived`, () =>
     HttpResponse.json([])),
-  http.post(`${BASE_URL}/api/workspaces/:slug/companies/:companyId/modules/:id/archive`, () =>
+  http.post(`${BASE_URL}/api/workspaces/:slug/projects/:projectId/modules/:id/archive`, () =>
     new HttpResponse(null, { status: 204 })),
-  http.post(`${BASE_URL}/api/workspaces/:slug/companies/:companyId/modules/:id/unarchive`, () =>
+  http.post(`${BASE_URL}/api/workspaces/:slug/projects/:projectId/modules/:id/unarchive`, () =>
     new HttpResponse(null, { status: 204 })),
 
   // Drafts
@@ -249,7 +249,7 @@ export const handlers = [
       {
         id: 'draft-1',
         title: 'Test draft',
-        companyId: 'company-1',
+        projectId: 'project-1',
         priority: 0,
         description: null,
         stateId: null,
@@ -357,7 +357,7 @@ export const handlers = [
     })),
 
   // Cycle analytics
-  http.get(`${BASE_URL}/api/workspaces/:slug/companies/:companyId/cycles/:id/progress`, () =>
+  http.get(`${BASE_URL}/api/workspaces/:slug/projects/:projectId/cycles/:id/progress`, () =>
     HttpResponse.json({
       totalIssues: 0,
       completedIssues: 0,
@@ -365,7 +365,7 @@ export const handlers = [
       pendingIssues: 0,
       completionPercentage: 0,
     })),
-  http.get(`${BASE_URL}/api/workspaces/:slug/companies/:companyId/cycles/:id/analytics`, () =>
+  http.get(`${BASE_URL}/api/workspaces/:slug/projects/:projectId/cycles/:id/analytics`, () =>
     HttpResponse.json({
       totalIssues: 0,
       completedIssues: 0,
@@ -373,15 +373,15 @@ export const handlers = [
       issuesByPriority: {},
       issuesByState: {},
     })),
-  http.post(`${BASE_URL}/api/workspaces/:slug/companies/:companyId/cycles/:id/transfer-issues`, () =>
+  http.post(`${BASE_URL}/api/workspaces/:slug/projects/:projectId/cycles/:id/transfer-issues`, () =>
     new HttpResponse(null, { status: 204 })),
 
   // Bulk operations
-  http.post(`${BASE_URL}/api/workspaces/:slug/companies/:companyId/issues/bulk-archive`, () =>
+  http.post(`${BASE_URL}/api/workspaces/:slug/projects/:projectId/issues/bulk-archive`, () =>
     new HttpResponse(null, { status: 204 })),
-  http.post(`${BASE_URL}/api/workspaces/:slug/companies/:companyId/issues/bulk-delete`, () =>
+  http.post(`${BASE_URL}/api/workspaces/:slug/projects/:projectId/issues/bulk-delete`, () =>
     new HttpResponse(null, { status: 204 })),
-  http.post(`${BASE_URL}/api/workspaces/:slug/companies/:companyId/issues/bulk-update`, () =>
+  http.post(`${BASE_URL}/api/workspaces/:slug/projects/:projectId/issues/bulk-update`, () =>
     new HttpResponse(null, { status: 204 })),
 
   // Analytic Views

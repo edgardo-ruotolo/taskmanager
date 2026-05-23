@@ -1,4 +1,4 @@
-import { lazy, Suspense } from 'react';
+﻿import { lazy, Suspense } from 'react';
 import type React from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { AuthGuard } from '@/modules/auth/presentation/components/AuthGuard';
@@ -24,11 +24,11 @@ const WorkspaceHomePage = lazy(() => import('@/modules/workspaces/presentation/p
 const WorkspaceActivityPage = lazy(() => import('@/modules/workspaces/presentation/pages/WorkspaceActivityPage').then(m => ({ default: m.WorkspaceActivityPage })));
 const WorkspaceSettingsPage = lazy(() => import('@/modules/workspaces/presentation/pages/WorkspaceSettingsPage').then(m => ({ default: m.WorkspaceSettingsPage })));
 
-// Company pages
-const CompaniesPage = lazy(() => import('@/modules/companies/presentation/pages/CompaniesPage').then(m => ({ default: m.CompaniesPage })));
+// Project pages
+const ProjectsPage = lazy(() => import('@/modules/projects/presentation/pages/ProjectsPage').then(m => ({ default: m.ProjectsPage })));
 const SettingsLayout = lazy(() => import('@/modules/workspaces/presentation/layouts/SettingsLayout').then(m => ({ default: m.SettingsLayout })));
-const WorkspaceCompaniesSettingsTab = lazy(() => import('@/modules/workspaces/presentation/pages/WorkspaceCompaniesSettingsTab').then(m => ({ default: m.WorkspaceCompaniesSettingsTab })));
-const WorkspaceCompanyDetailSettingsTab = lazy(() => import('@/modules/workspaces/presentation/pages/WorkspaceCompanyDetailSettingsTab').then(m => ({ default: m.WorkspaceCompanyDetailSettingsTab })));
+const ProjectSettingsPage = lazy(() => import('@/modules/projects/presentation/pages/ProjectSettingsPage').then(m => ({ default: m.ProjectSettingsPage })));
+const WorkspaceProjectsSettingsTab = lazy(() => import('@/modules/workspaces/presentation/pages/WorkspaceProjectsSettingsTab').then(m => ({ default: m.WorkspaceProjectsSettingsTab })));
 // Issues pages
 const IssuesPage = lazy(() => import('@/modules/issues/presentation/pages/IssuesPage').then(m => ({ default: m.IssuesPage })));
 const IssueDetailPage = lazy(() => import('@/modules/issues/presentation/pages/IssueDetailPage').then(m => ({ default: m.IssueDetailPage })));
@@ -44,8 +44,8 @@ const CyclesPage = lazy(() => import('@/modules/cycles/presentation/pages/Cycles
 const CycleDetailPage = lazy(() => import('@/modules/cycles/presentation/pages/CycleDetailPage').then(m => ({ default: m.CycleDetailPage })));
 
 // Modules pages
-const ModulesPage = lazy(() => import('@/modules/project-modules/presentation/pages/ModulesPage').then(m => ({ default: m.ModulesPage })));
-const ModuleDetailPage = lazy(() => import('@/modules/project-modules/presentation/pages/ModuleDetailPage').then(m => ({ default: m.ModuleDetailPage })));
+const ModulesPage = lazy(() => import('@/modules/modules/presentation/pages/ModulesPage').then(m => ({ default: m.ModulesPage })));
+const ModuleDetailPage = lazy(() => import('@/modules/modules/presentation/pages/ModuleDetailPage').then(m => ({ default: m.ModuleDetailPage })));
 
 // Archives pages
 const ArchivesPage = lazy(() => import('@/modules/archives/presentation/pages/ArchivesPage').then(m => ({ default: m.ArchivesPage })));
@@ -69,6 +69,9 @@ const InboxPage = lazy(() => import('@/modules/intake/presentation/pages/InboxPa
 const RecurringListPage = lazy(() => import('@/modules/recurring/presentation/pages/RecurringListPage').then(m => ({ default: m.RecurringListPage })));
 const RecurringDetailPage = lazy(() => import('@/modules/recurring/presentation/pages/RecurringDetailPage').then(m => ({ default: m.RecurringDetailPage })));
 
+// Help pages
+const HelpPage = lazy(() => import('@/modules/help/presentation/pages/HelpPage').then(m => ({ default: m.HelpPage })));
+
 // Search page
 const SearchPage = lazy(() => import('@/modules/search/presentation/pages/SearchPage').then(m => ({ default: m.SearchPage })));
 
@@ -90,9 +93,9 @@ const GodModeGeneralPage = lazy(() => import('@/modules/admin/presentation/pages
 const GodModeEmailPage = lazy(() => import('@/modules/admin/presentation/pages/GodModeEmailPage').then(m => ({ default: m.GodModeEmailPage })));
 const GodModeAuthPage = lazy(() => import('@/modules/admin/presentation/pages/GodModeAuthPage').then(m => ({ default: m.GodModeAuthPage })));
 const GodModeWorkspacesPage = lazy(() => import('@/modules/admin/presentation/pages/GodModeWorkspacesPage').then(m => ({ default: m.GodModeWorkspacesPage })));
+const GodModeUsersPage = lazy(() => import('@/modules/admin/presentation/pages/GodModeUsersPage').then(m => ({ default: m.GodModeUsersPage })));
 const GodModeAiPage = lazy(() => import('@/modules/admin/presentation/pages/GodModeAiPage').then(m => ({ default: m.GodModeAiPage })));
 const GodModeStoragePage = lazy(() => import('@/modules/admin/presentation/pages/GodModeStoragePage').then(m => ({ default: m.GodModeStoragePage })));
-const GodModeCompaniesPage = lazy(() => import('@/modules/admin/presentation/pages/GodModeCompaniesPage').then(m => ({ default: m.GodModeCompaniesPage })));
 const GodModeStatesPage = lazy(() => import('@/modules/admin/presentation/pages/GodModeStatesPage').then(m => ({ default: m.GodModeStatesPage })));
 
 export const App = (): React.ReactElement => {
@@ -113,19 +116,20 @@ export const App = (): React.ReactElement => {
                 <Route path="/:workspaceSlug" element={<WorkspaceLayout />}>
                     <Route index element={<Navigate to="home" replace />} />
                     <Route path="home" element={<WorkspaceHomePage />} />
-                    <Route path="companies" element={<CompaniesPage />} />
-                    <Route path="companies/:companyId/issues" element={<IssuesPage />} />
-                    <Route path="companies/:companyId/issues/:issueId" element={<IssueDetailPage />} />
-                    <Route path="companies/:companyId/cycles" element={<CyclesPage />} />
-                    <Route path="companies/:companyId/cycles/:cycleId" element={<CycleDetailPage />} />
-                    <Route path="companies/:companyId/modules" element={<ModulesPage />} />
-                    <Route path="companies/:companyId/modules/:moduleId" element={<ModuleDetailPage />} />
-                    <Route path="companies/:companyId/archives" element={<ArchivesPage />} />
-                    <Route path="companies/:companyId/estimates" element={<EstimatesPage />} />
-                    <Route path="companies/:companyId/inbox" element={<InboxPage />} />
-                    <Route path="companies/:companyId/deploy-boards" element={<DeployBoardsPage />} />
+                    <Route path="projects" element={<ProjectsPage />} />
+                    <Route path="projects/:projectId/issues" element={<IssuesPage />} />
+                    <Route path="projects/:projectId/issues/:issueId" element={<IssueDetailPage />} />
+                    <Route path="projects/:projectId/cycles" element={<CyclesPage />} />
+                    <Route path="projects/:projectId/cycles/:cycleId" element={<CycleDetailPage />} />
+                    <Route path="projects/:projectId/modules" element={<ModulesPage />} />
+                    <Route path="projects/:projectId/modules/:moduleId" element={<ModuleDetailPage />} />
+                    <Route path="projects/:projectId/archives" element={<ArchivesPage />} />
+                    <Route path="projects/:projectId/estimates" element={<EstimatesPage />} />
+                    <Route path="projects/:projectId/inbox" element={<InboxPage />} />
+                    <Route path="projects/:projectId/deploy-boards" element={<DeployBoardsPage />} />
 
-                    <Route path="companies/:companyId/importer" element={<ImporterPage />} />
+                    <Route path="projects/:projectId/importer" element={<ImporterPage />} />
+                    <Route path="projects/:projectId/settings" element={<ProjectSettingsPage />} />
                     <Route path="analytics" element={<AnalyticsPage />} />
                     <Route path="activity" element={<WorkspaceActivityPage />} />
                     <Route path="notifications" element={<NotificationsPage />} />
@@ -136,18 +140,19 @@ export const App = (): React.ReactElement => {
                         <Route path="members" element={<WorkspaceSettingsPage />} />
                         <Route path="theme" element={<WorkspaceSettingsPage />} />
                         <Route path="teams" element={<TeamsPage />} />
-                        <Route path="companies" element={<WorkspaceCompaniesSettingsTab />} />
-                        <Route path="companies/:companyId" element={<WorkspaceCompanyDetailSettingsTab />} />
+                        <Route path="projects" element={<WorkspaceProjectsSettingsTab />} />
                         <Route path="states" element={<StatesPage />} />
                         <Route path="labels" element={<LabelsPage />} />
                         <Route path="issue-types" element={<IssueTypesPage />} />
                         <Route path="views" element={<IssueViewsPage />} />
                         <Route path="views/:viewId" element={<IssueViewDetailPage />} />
+                        <Route path="recurring" element={<RecurringListPage />} />
+                        <Route path="recurring/:recurringId" element={<RecurringDetailPage />} />
                     </Route>
-                    <Route path="recurring" element={<RecurringListPage />} />
-                    <Route path="recurring/:recurringId" element={<RecurringDetailPage />} />
                     <Route path="search" element={<SearchPage />} />
                     <Route path="drafts" element={<DraftsPage />} />
+                    <Route path="ayuda" element={<HelpPage />} />
+                    <Route path="ayuda/:helpSlug" element={<HelpPage />} />
                 </Route>
             </Route>
             <Route path="/onboarding" element={<OnboardingPage />} />
@@ -163,9 +168,8 @@ export const App = (): React.ReactElement => {
                 <Route path="general" element={<GodModeGeneralPage />} />
                 <Route path="email" element={<GodModeEmailPage />} />
                 <Route path="authentication" element={<GodModeAuthPage />} />
+                <Route path="users" element={<GodModeUsersPage />} />
                 <Route path="workspaces" element={<GodModeWorkspacesPage />} />
-                <Route path="users" element={<GodModeWorkspacesPage />} />
-                <Route path="companies" element={<GodModeCompaniesPage />} />
                 <Route path="states" element={<GodModeStatesPage />} />
                 <Route path="ai" element={<GodModeAiPage />} />
                 <Route path="storage" element={<GodModeStoragePage />} />

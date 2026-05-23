@@ -8,46 +8,46 @@ const publicApi = axios.create({
 });
 
 export const spaceRepository = {
-    getBoards: (workspaceSlug: string, companyId: string): Promise<DeployBoard[]> =>
+    getBoards: (workspaceSlug: string, projectId: string): Promise<DeployBoard[]> =>
         apiClient
             .get<DeployBoard[]>(
-                `/api/workspaces/${workspaceSlug}/companies/${companyId}/deploy-boards`,
+                `/api/workspaces/${workspaceSlug}/projects/${projectId}/deploy-boards`,
             )
             .then((r) => r.data),
 
     createBoard: (
         workspaceSlug: string,
-        companyId: string,
+        projectId: string,
         data: CreateDeployBoardData,
     ): Promise<DeployBoard> =>
         apiClient
             .post<DeployBoard>(
-                `/api/workspaces/${workspaceSlug}/companies/${companyId}/deploy-boards`,
+                `/api/workspaces/${workspaceSlug}/projects/${projectId}/deploy-boards`,
                 data,
             )
             .then((r) => r.data),
 
     updateBoard: (
         workspaceSlug: string,
-        companyId: string,
+        projectId: string,
         boardId: string,
         data: Partial<CreateDeployBoardData>,
     ): Promise<DeployBoard> =>
         apiClient
             .patch<DeployBoard>(
-                `/api/workspaces/${workspaceSlug}/companies/${companyId}/deploy-boards/${boardId}`,
+                `/api/workspaces/${workspaceSlug}/projects/${projectId}/deploy-boards/${boardId}`,
                 data,
             )
             .then((r) => r.data),
 
     deleteBoard: (
         workspaceSlug: string,
-        companyId: string,
+        projectId: string,
         boardId: string,
     ): Promise<void> =>
         apiClient
             .delete(
-                `/api/workspaces/${workspaceSlug}/companies/${companyId}/deploy-boards/${boardId}`,
+                `/api/workspaces/${workspaceSlug}/projects/${projectId}/deploy-boards/${boardId}`,
             )
             .then(() => undefined),
 

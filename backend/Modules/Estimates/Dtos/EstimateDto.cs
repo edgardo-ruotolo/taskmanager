@@ -8,7 +8,7 @@ public class EstimateDto
     public string Name { get; set; } = string.Empty;
     public string? Description { get; set; }
     public EstimateType Type { get; set; }
-    public Guid CompanyId { get; set; }
+    public Guid ProjectId { get; set; }
     public DateTime CreatedAt { get; set; }
     public List<EstimatePointDto> Points { get; set; } = [];
 }

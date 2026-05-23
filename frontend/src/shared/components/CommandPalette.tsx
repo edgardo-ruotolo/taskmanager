@@ -67,7 +67,7 @@ export const CommandPalette = (): React.ReactElement => {
     }, [open]);
 
     const navItems: NavItem[] = [
-        { label: 'Ir a Empresas', icon: <Building2 size={16} />, path: `/${slug}/companies` },
+        { label: 'Ir a Proyectos', icon: <Building2 size={16} />, path: `/${slug}/projects` },
         { label: 'Analíticas', icon: <BarChart2 size={16} />, path: `/${slug}/analytics` },
         { label: 'Notificaciones', icon: <Bell size={16} />, path: `/${slug}/notifications` },
         { label: 'Configuración', icon: <Settings size={16} />, path: `/${slug}/settings` },
@@ -113,7 +113,7 @@ export const CommandPalette = (): React.ReactElement => {
                                 {searchResults.issues.map((issue) => (
                                     <CommandItem
                                         key={issue.id}
-                                        onSelect={() => handleSelect(`/${slug}/companies/${issue.companyId}/issues/${issue.id}`)}
+                                        onSelect={() => handleSelect(`/${slug}/projects/${issue.projectId}/issues/${issue.id}`)}
                                         className="flex items-center gap-3 group"
                                     >
                                         <div className="w-5 flex justify-center">
@@ -135,7 +135,7 @@ export const CommandPalette = (): React.ReactElement => {
                                 {searchResults.cycles.map((cycle) => (
                                     <CommandItem
                                         key={cycle.id}
-                                        onSelect={() => handleSelect(`/${slug}/companies/${cycle.companyId}/cycles`)}
+                                        onSelect={() => handleSelect(`/${slug}/projects/${cycle.projectId}/cycles`)}
                                         className="flex items-center gap-3 group"
                                     >
                                         <div className="w-5 flex justify-center text-[var(--brand-700)]">
@@ -157,7 +157,7 @@ export const CommandPalette = (): React.ReactElement => {
                                 {searchResults.modules.map((mod) => (
                                     <CommandItem
                                         key={mod.id}
-                                        onSelect={() => handleSelect(`/${slug}/companies/${mod.companyId}/modules`)}
+                                        onSelect={() => handleSelect(`/${slug}/projects/${mod.projectId}/modules`)}
                                         className="flex items-center gap-3 group"
                                     >
                                         <div className="w-5 flex justify-center text-[var(--neutral-600)]">
@@ -191,7 +191,7 @@ export const CommandPalette = (): React.ReactElement => {
                         </CommandGroup>
                         <CommandSeparator className="my-1" />
                         <CommandGroup heading="Acciones">
-                            <CommandItem onSelect={() => handleSelect(`/${slug}/companies`)} className="flex items-center gap-3">
+                            <CommandItem onSelect={() => handleSelect(`/${slug}/projects`)} className="flex items-center gap-3">
                                 <div className="w-5 flex justify-center text-[var(--neutral-600)]"><Plus size={14} /></div>
                                 <span className="text-[13.5px] tracking-[-0.01em]">Crear nuevo issue</span>
                                 <kbd className="ml-auto font-mono text-[10px] text-[var(--neutral-600)] opacity-40">C</kbd>

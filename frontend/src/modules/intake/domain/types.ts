@@ -2,7 +2,7 @@ export type IntakeStatus = 'Pending' | 'Accepted' | 'Declined' | 'Duplicate' | '
 
 export interface IntakeIssue {
     id: string;
-    companyId: string;
+    projectId: string;
     title: string;
     description: string | null;
     status: IntakeStatus;

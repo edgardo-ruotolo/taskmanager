@@ -39,8 +39,8 @@ import { StatePip } from '@/components/ui/state-pip';
 import { PriorityDot } from '@/components/ui/priority-dot';
 import { cn } from '@/lib/utils';
 import { useIssues, useCreateIssue, useUpdateIssue } from '../../application/use-issues';
-import { useCompanyStates } from '@/modules/states/application/use-states';
-import { useCompany, useCompanyMembers } from '@/modules/companies/application/use-companies';
+import { useProjectStates } from '@/modules/states/application/use-states';
+import { useProject, useProjectMembers } from '@/modules/projects/application/use-projects';
 import { useAuthMe } from '@/modules/auth/application/use-auth-me';
 import { ApprovalRequiredDialog } from '../components/ApprovalRequiredDialog';
 import type { Issue } from '../../domain/types';
@@ -125,7 +125,7 @@ function LoadingSkeleton(): React.ReactElement {
 }
 
 /* ── Empty state ── */
-function EmptyState({ workspaceSlug, companyId }: { workspaceSlug: string; companyId: string }): React.ReactElement {
+function EmptyState({ workspaceSlug, projectId }: { workspaceSlug: string; projectId: string }): React.ReactElement {
     return (
         <div className="flex flex-col items-center justify-center py-24 text-center animate-fade-in">
             <div className="w-14 h-14 rounded-2xl bg-white border border-[var(--neutral-400)] flex items-center justify-center mb-4">
@@ -137,11 +137,11 @@ function EmptyState({ workspaceSlug, companyId }: { workspaceSlug: string; compa
             </p>
             <CreateIssueDialog
                 workspaceSlug={workspaceSlug}
-                companyId={companyId}
+                projectId={projectId}
                 trigger={
                     <Button variant="default" className="gap-2">
                         <Plus size={16} />
-                        Crear primer issue
+                        Crear primera tarea
                     </Button>
                 }
             />
@@ -152,15 +152,15 @@ function EmptyState({ workspaceSlug, companyId }: { workspaceSlug: string; compa
 /* ── Quick-add inline row ── */
 interface QuickAddRowProps {
     workspaceSlug: string;
-    companyId: string;
+    projectId: string;
     defaultStateId: string;
 }
 
-function QuickAddRow({ workspaceSlug, companyId, defaultStateId }: QuickAddRowProps): React.ReactElement {
+function QuickAddRow({ workspaceSlug, projectId, defaultStateId }: QuickAddRowProps): React.ReactElement {
     const [active, setActive] = useState(false);
     const [title, setTitle] = useState('');
     const inputRef = useRef<HTMLInputElement>(null);
-    const { mutate: createIssue, isPending } = useCreateIssue(workspaceSlug, companyId);
+    const { mutate: createIssue, isPending } = useCreateIssue(workspaceSlug, projectId);
 
     useEffect(() => {
         if (active && inputRef.current) inputRef.current.focus();
@@ -213,13 +213,13 @@ function QuickAddRow({ workspaceSlug, companyId, defaultStateId }: QuickAddRowPr
 /* ── Sortable list item wrapper ── */
 interface SortableIssueRowProps {
     issue: Issue;
-    companyIdentifier?: string;
+    projectIdentifier?: string;
     workspaceSlug?: string;
-    companyId?: string;
+    projectId?: string;
     onClick: () => void;
 }
 
-function SortableIssueRow({ issue, companyIdentifier, workspaceSlug, companyId, onClick }: SortableIssueRowProps): React.ReactElement {
+function SortableIssueRow({ issue, projectIdentifier, workspaceSlug, projectId, onClick }: SortableIssueRowProps): React.ReactElement {
     const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: issue.id });
 
     const style: React.CSSProperties = {
@@ -242,9 +242,9 @@ function SortableIssueRow({ issue, companyIdentifier, workspaceSlug, companyId, 
             <div className="flex-1 pl-5">
                 <IssueRow
                     issue={issue}
-                    companyIdentifier={companyIdentifier}
+                    projectIdentifier={projectIdentifier}
                     workspaceSlug={workspaceSlug}
-                    companyId={companyId}
+                    projectId={projectId}
                     onClick={onClick}
                 />
             </div>
@@ -298,9 +298,9 @@ interface ListGroupSectionProps {
     label: string;
     color?: string;
     issues: Issue[];
-    companyIdentifier?: string;
+    projectIdentifier?: string;
     workspaceSlug: string;
-    companyId: string;
+    projectId: string;
     defaultStateId: string;
     onIssueClick: (issue: Issue) => void;
     showQuickAdd?: boolean;
@@ -317,9 +317,9 @@ function ListGroupSection({
     label,
     color,
     issues,
-    companyIdentifier,
+    projectIdentifier,
     workspaceSlug,
-    companyId,
+    projectId,
     defaultStateId,
     onIssueClick,
     showQuickAdd = false,
@@ -374,9 +374,9 @@ function ListGroupSection({
                         {issues.length > VIRTUALIZATION_THRESHOLD ? (
                             <VirtualizedIssueList
                                 issues={issues}
-                                companyIdentifier={companyIdentifier}
+                                projectIdentifier={projectIdentifier}
                                 workspaceSlug={workspaceSlug}
-                                companyId={companyId}
+                                projectId={projectId}
                                 onIssueClick={onIssueClick}
                             />
                         ) : (
@@ -384,9 +384,9 @@ function ListGroupSection({
                                 <SortableIssueRow
                                     key={issue.id}
                                     issue={issue}
-                                    companyIdentifier={companyIdentifier}
+                                    projectIdentifier={projectIdentifier}
                                     workspaceSlug={workspaceSlug}
-                                    companyId={companyId}
+                                    projectId={projectId}
                                     onClick={() => onIssueClick(issue)}
                                 />
                             ))
@@ -395,7 +395,7 @@ function ListGroupSection({
                     {showQuickAdd && defaultStateId && (
                         <QuickAddRow
                             workspaceSlug={workspaceSlug}
-                            companyId={companyId}
+                            projectId={projectId}
                             defaultStateId={defaultStateId}
                         />
                     )}
@@ -407,17 +407,17 @@ function ListGroupSection({
 
 interface VirtualizedIssueListProps {
     issues: Issue[];
-    companyIdentifier?: string;
+    projectIdentifier?: string;
     workspaceSlug: string;
-    companyId: string;
+    projectId: string;
     onIssueClick: (issue: Issue) => void;
 }
 
 function VirtualizedIssueList({
     issues,
-    companyIdentifier,
+    projectIdentifier,
     workspaceSlug,
-    companyId,
+    projectId,
     onIssueClick,
 }: VirtualizedIssueListProps): React.ReactElement {
     const parentRef = useRef<HTMLDivElement | null>(null);
@@ -448,9 +448,9 @@ function VirtualizedIssueList({
                         >
                             <SortableIssueRow
                                 issue={issue}
-                                companyIdentifier={companyIdentifier}
+                                projectIdentifier={projectIdentifier}
                                 workspaceSlug={workspaceSlug}
-                                companyId={companyId}
+                                projectId={projectId}
                                 onClick={() => onIssueClick(issue)}
                             />
                         </div>
@@ -494,9 +494,9 @@ function buildGroups(groupBy: GroupByOption, issues: Issue[], states: State[]): 
 interface ListViewProps {
     issues: Issue[];
     states: State[];
-    companyIdentifier?: string;
+    projectIdentifier?: string;
     workspaceSlug: string;
-    companyId: string;
+    projectId: string;
     defaultStateId: string;
     groupBy: GroupByOption;
     onIssueClick: (issue: Issue) => void;
@@ -505,9 +505,9 @@ interface ListViewProps {
 function ListView({
     issues,
     states,
-    companyIdentifier,
+    projectIdentifier,
     workspaceSlug,
-    companyId,
+    projectId,
     defaultStateId,
     groupBy,
     onIssueClick,
@@ -575,7 +575,7 @@ function ListView({
             <div className="animate-fade-in pb-12 bg-canvas border-x border-b border-[var(--neutral-300)] rounded-md overflow-hidden">
                 <IssueListHeader />
                 {groups.map((group, idx) => {
-                    const fullKey = `${companyId}:${group.key}`;
+                    const fullKey = `${projectId}:${group.key}`;
                     const isExpanded = expandedGroups[fullKey] !== false;
                     const stateGroupLabel = groupBy === 'state' ? stateGroupByStateId.get(group.key) : undefined;
                     return (
@@ -584,9 +584,9 @@ function ListView({
                             label={group.label}
                             color={group.color}
                             issues={group.issues}
-                            companyIdentifier={companyIdentifier}
+                            projectIdentifier={projectIdentifier}
                             workspaceSlug={workspaceSlug}
-                            companyId={companyId}
+                            projectId={projectId}
                             defaultStateId={defaultStateId}
                             onIssueClick={onIssueClick}
                             showQuickAdd={idx === 0}
@@ -604,7 +604,7 @@ function ListView({
                     <div className="bg-white border border-[var(--neutral-400)] rounded-md shadow-[var(--shadow-overlay-200)] opacity-95 pointer-events-none overflow-hidden">
                         <IssueRow
                             issue={activeIssue}
-                            companyIdentifier={companyIdentifier}
+                            projectIdentifier={projectIdentifier}
                             onClick={() => undefined}
                         />
                     </div>
@@ -617,14 +617,14 @@ function ListView({
 /* ── Kanban draggable card ── */
 interface KanbanCardProps {
     issue: Issue;
-    companyIdentifier?: string;
+    projectIdentifier?: string;
     workspaceSlug?: string;
-    companyId?: string;
+    projectId?: string;
     onClick: () => void;
     isDragOverlay?: boolean;
 }
 
-function KanbanCard({ issue, companyIdentifier, workspaceSlug = '', companyId = '', onClick, isDragOverlay = false }: KanbanCardProps): React.ReactElement {
+function KanbanCard({ issue, projectIdentifier, workspaceSlug = '', projectId = '', onClick, isDragOverlay = false }: KanbanCardProps): React.ReactElement {
     const [editingIssue, setEditingIssue] = useState<Issue | null>(null);
     const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: issue.id });
 
@@ -654,7 +654,7 @@ function KanbanCard({ issue, companyIdentifier, workspaceSlug = '', companyId = 
                 <div className="flex items-center gap-2 mb-2">
                     <StatePip state={toStatePipState(issue.stateGroup)} size={13} />
                     <span className="text-[10px] font-mono text-[var(--neutral-600)] tracking-tight">
-                        {companyIdentifier ?? 'ISS'}-{issue.sequenceId}
+                        {projectIdentifier ?? 'ISS'}-{issue.sequenceId}
                     </span>
                     {issue.requiresAdminApproval && (
                         <Lock size={11} className="text-amber-500 ml-auto shrink-0" />
@@ -670,12 +670,12 @@ function KanbanCard({ issue, companyIdentifier, workspaceSlug = '', companyId = 
                     )}
                 </div>
 
-                {!isDragOverlay && workspaceSlug && companyId && (
+                {!isDragOverlay && workspaceSlug && projectId && (
                     <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
                         <IssueActionsMenu
                             issue={issue}
                             workspaceSlug={workspaceSlug}
-                            companyId={companyId}
+                            projectId={projectId}
                             onEdit={() => setEditingIssue(issue)}
                         />
                     </div>
@@ -688,7 +688,7 @@ function KanbanCard({ issue, companyIdentifier, workspaceSlug = '', companyId = 
                     open={!!editingIssue}
                     onOpenChange={(open) => { if (!open) setEditingIssue(null); }}
                     workspaceSlug={workspaceSlug}
-                    companyId={companyId}
+                    projectId={projectId}
                     trigger={<span />}
                 />
             )}
@@ -700,13 +700,13 @@ function KanbanCard({ issue, companyIdentifier, workspaceSlug = '', companyId = 
 interface KanbanColumnProps {
     state: State;
     issues: Issue[];
-    companyIdentifier?: string;
+    projectIdentifier?: string;
     workspaceSlug: string;
-    companyId: string;
+    projectId: string;
     onIssueClick: (issue: Issue) => void;
 }
 
-function KanbanColumn({ state, issues, companyIdentifier, workspaceSlug, companyId, onIssueClick }: KanbanColumnProps): React.ReactElement {
+function KanbanColumn({ state, issues, projectIdentifier, workspaceSlug, projectId, onIssueClick }: KanbanColumnProps): React.ReactElement {
     const { setNodeRef, isOver } = useDroppable({ id: state.id });
 
     return (
@@ -738,9 +738,9 @@ function KanbanColumn({ state, issues, companyIdentifier, workspaceSlug, company
                             <KanbanCard
                                 key={issue.id}
                                 issue={issue}
-                                companyIdentifier={companyIdentifier}
+                                projectIdentifier={projectIdentifier}
                                 workspaceSlug={workspaceSlug}
-                                companyId={companyId}
+                                projectId={projectId}
                                 onClick={() => onIssueClick(issue)}
                             />
                         ))}
@@ -755,27 +755,27 @@ function KanbanColumn({ state, issues, companyIdentifier, workspaceSlug, company
 interface KanbanViewProps {
     issues: Issue[];
     states: State[];
-    companyIdentifier?: string;
+    projectIdentifier?: string;
     onIssueClick: (issue: Issue) => void;
     workspaceSlug: string;
-    companyId: string;
+    projectId: string;
 }
 
-function KanbanView({ issues, states, companyIdentifier, onIssueClick, workspaceSlug, companyId }: KanbanViewProps): React.ReactElement {
+function KanbanView({ issues, states, projectIdentifier, onIssueClick, workspaceSlug, projectId }: KanbanViewProps): React.ReactElement {
     const [activeIssueId, setActiveIssueId] = useState<string | null>(null);
     const [localIssues, setLocalIssues] = useState<Issue[]>(issues);
-    const { mutate: updateIssue } = useUpdateIssue(workspaceSlug, companyId);
+    const { mutate: updateIssue } = useUpdateIssue(workspaceSlug, projectId);
     const { data: currentUser } = useAuthMe();
-    const { data: companyMembers } = useCompanyMembers(workspaceSlug, companyId);
+    const { data: projectMembers } = useProjectMembers(workspaceSlug, projectId);
     const [approvalDialog, setApprovalDialog] = useState<{
         issueId: string;
         targetStateId: string;
         targetStateName: string;
     } | null>(null);
 
-    const canApproveInCompany = (() => {
+    const canApproveInProject = (() => {
         if (currentUser?.isSuperAdmin) return true;
-        const me = companyMembers?.find((m) => m.userId === currentUser?.id);
+        const me = projectMembers?.find((m) => m.userId === currentUser?.id);
         return me?.role === 'Admin' || me?.role === 'Lead';
     })();
 
@@ -877,9 +877,9 @@ function KanbanView({ issues, states, companyIdentifier, onIssueClick, workspace
                         key={state.id}
                         state={state}
                         issues={localIssues.filter((i) => i.stateId === state.id)}
-                        companyIdentifier={companyIdentifier}
+                        projectIdentifier={projectIdentifier}
                         workspaceSlug={workspaceSlug}
-                        companyId={companyId}
+                        projectId={projectId}
                         onIssueClick={onIssueClick}
                     />
                 ))}
@@ -888,7 +888,7 @@ function KanbanView({ issues, states, companyIdentifier, onIssueClick, workspace
                 {activeIssue ? (
                     <KanbanCard
                         issue={activeIssue}
-                        companyIdentifier={companyIdentifier}
+                        projectIdentifier={projectIdentifier}
                         onClick={() => undefined}
                         isDragOverlay
                     />
@@ -901,11 +901,11 @@ function KanbanView({ issues, states, companyIdentifier, onIssueClick, workspace
                         if (!open) setApprovalDialog(null);
                     }}
                     workspaceSlug={workspaceSlug}
-                    companyId={companyId}
+                    projectId={projectId}
                     issueId={approvalDialog.issueId}
                     targetStateId={approvalDialog.targetStateId}
                     targetStateName={approvalDialog.targetStateName}
-                    canApprove={canApproveInCompany}
+                    canApprove={canApproveInProject}
                 />
             ) : null}
         </DndContext>
@@ -1033,10 +1033,10 @@ function applyOrderBy(issues: Issue[], orderBy: DisplayOptions['orderBy']): Issu
 }
 
 /* ── Main page ── */
-function useIssuesPageData(workspaceSlug: string, companyId: string) {
-    const { data, isLoading: issuesLoading } = useIssues(workspaceSlug, companyId);
-    const { data: states, isLoading: statesLoading } = useCompanyStates(workspaceSlug, companyId);
-    const { data: company } = useCompany(workspaceSlug, companyId);
+function useIssuesPageData(workspaceSlug: string, projectId: string) {
+    const { data, isLoading: issuesLoading } = useIssues(workspaceSlug, projectId);
+    const { data: states, isLoading: statesLoading } = useProjectStates(workspaceSlug, projectId);
+    const { data: project } = useProject(workspaceSlug, projectId);
     const isLoading = issuesLoading || statesLoading;
     const allIssues = data?.items ?? [];
     const sortedStates = [...(states ?? [])].sort((a, b) => a.sequence - b.sequence);
@@ -1045,16 +1045,16 @@ function useIssuesPageData(workspaceSlug: string, companyId: string) {
         allIssues,
         sortedStates,
         defaultStateId: sortedStates[0]?.id ?? '',
-        companyIdentifier: company?.identifier,
+        projectIdentifier: project?.identifier,
     };
 }
 
 export const IssuesPage = (): React.ReactElement => {
-    const { workspaceSlug = '', companyId = '' } = useParams<{ workspaceSlug: string; companyId: string }>();
+    const { workspaceSlug = '', projectId = '' } = useParams<{ workspaceSlug: string; projectId: string }>();
     const navigate = useNavigate();
 
-    const { isLoading, allIssues, sortedStates, defaultStateId, companyIdentifier } =
-        useIssuesPageData(workspaceSlug, companyId);
+    const { isLoading, allIssues, sortedStates, defaultStateId, projectIdentifier } =
+        useIssuesPageData(workspaceSlug, projectId);
 
     const [searchParams, setSearchParams] = useSearchParams();
     const [viewMode, setViewMode] = useState<ViewMode>('list');
@@ -1089,7 +1089,7 @@ export const IssuesPage = (): React.ReactElement => {
     const peekIssue = peekIndex >= 0 ? issues[peekIndex] : null;
 
     const goToIssue = (issueId: string): void => {
-        void navigate(`/${workspaceSlug}/companies/${companyId}/issues/${issueId}`);
+        void navigate(`/${workspaceSlug}/projects/${projectId}/issues/${issueId}`);
     };
 
     const hasIssues = !isLoading && allIssues.length > 0;
@@ -1118,7 +1118,7 @@ export const IssuesPage = (): React.ReactElement => {
                 style={{ background: 'var(--neutral-100)' }}
             >
                 <span className="text-[22px] font-medium tracking-[-0.03em] text-[var(--neutral-1200)]">
-                    Issues
+                    Tareas
                     {hasIssues && (
                         <span className="text-[var(--neutral-600)] font-normal"> · {issues.length}</span>
                     )}
@@ -1161,7 +1161,7 @@ export const IssuesPage = (): React.ReactElement => {
                 </div>
                 <CreateIssueDialog
                     workspaceSlug={workspaceSlug}
-                    companyId={companyId}
+                    projectId={projectId}
                     trigger={
                         <Button
                             variant="default"
@@ -1169,7 +1169,7 @@ export const IssuesPage = (): React.ReactElement => {
                             className="gap-1.5 h-8 bg-[var(--neutral-1200)] hover:bg-[var(--neutral-1000)] text-[#f0eadf]"
                         >
                             <Plus size={14} />
-                            Issue
+                            Tarea
                         </Button>
                     }
                 />
@@ -1184,7 +1184,7 @@ export const IssuesPage = (): React.ReactElement => {
                     <IssueFilters
                         filters={filters}
                         workspaceSlug={workspaceSlug}
-                        companyId={companyId}
+                        projectId={projectId}
                         onChange={setFilters}
                     />
                 </div>
@@ -1197,16 +1197,16 @@ export const IssuesPage = (): React.ReactElement => {
                 {isLoading && <LoadingSkeleton />}
 
                 {!isLoading && allIssues.length === 0 && (
-                    <EmptyState workspaceSlug={workspaceSlug} companyId={companyId} />
+                    <EmptyState workspaceSlug={workspaceSlug} projectId={projectId} />
                 )}
 
                 {hasIssues && viewMode === 'list' && (
                     <ListView
                         issues={issues}
                         states={sortedStates}
-                        companyIdentifier={companyIdentifier}
+                        projectIdentifier={projectIdentifier}
                         workspaceSlug={workspaceSlug}
-                        companyId={companyId}
+                        projectId={projectId}
                         defaultStateId={defaultStateId}
                         groupBy={displayOptions.groupBy}
                         onIssueClick={(issue) => setPeekIssueId(issue.id)}
@@ -1217,10 +1217,10 @@ export const IssuesPage = (): React.ReactElement => {
                     <KanbanView
                         issues={issues}
                         states={sortedStates}
-                        companyIdentifier={companyIdentifier}
+                        projectIdentifier={projectIdentifier}
                         onIssueClick={(issue) => setPeekIssueId(issue.id)}
                         workspaceSlug={workspaceSlug}
-                        companyId={companyId}
+                        projectId={projectId}
                     />
                 )}
 

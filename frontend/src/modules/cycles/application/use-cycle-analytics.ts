@@ -18,38 +18,38 @@ interface CycleAnalytics {
     issuesByState: Record<string, number>;
 }
 
-const base = (slug: string, companyId: string): string =>
-    `/api/workspaces/${slug}/companies/${companyId}/cycles`;
+const base = (slug: string, projectId: string): string =>
+    `/api/workspaces/${slug}/projects/${projectId}/cycles`;
 
-export const useCycleProgress = (workspaceSlug: string, companyId: string, cycleId: string) =>
+export const useCycleProgress = (workspaceSlug: string, projectId: string, cycleId: string) =>
     useQuery({
-        queryKey: ['cycles', workspaceSlug, companyId, cycleId, 'progress'] as const,
+        queryKey: ['cycles', workspaceSlug, projectId, cycleId, 'progress'] as const,
         queryFn: () =>
             apiClient
-                .get<CycleProgress>(`${base(workspaceSlug, companyId)}/${cycleId}/progress`)
+                .get<CycleProgress>(`${base(workspaceSlug, projectId)}/${cycleId}/progress`)
                 .then((r) => r.data),
-        enabled: !!workspaceSlug && !!companyId && !!cycleId,
+        enabled: !!workspaceSlug && !!projectId && !!cycleId,
     });
 
-export const useCycleAnalytics = (workspaceSlug: string, companyId: string, cycleId: string) =>
+export const useCycleAnalytics = (workspaceSlug: string, projectId: string, cycleId: string) =>
     useQuery({
-        queryKey: ['cycles', workspaceSlug, companyId, cycleId, 'analytics'] as const,
+        queryKey: ['cycles', workspaceSlug, projectId, cycleId, 'analytics'] as const,
         queryFn: () =>
             apiClient
-                .get<CycleAnalytics>(`${base(workspaceSlug, companyId)}/${cycleId}/analytics`)
+                .get<CycleAnalytics>(`${base(workspaceSlug, projectId)}/${cycleId}/analytics`)
                 .then((r) => r.data),
-        enabled: !!workspaceSlug && !!companyId && !!cycleId,
+        enabled: !!workspaceSlug && !!projectId && !!cycleId,
     });
 
-export const useTransferCycleIssues = (workspaceSlug: string, companyId: string) => {
+export const useTransferCycleIssues = (workspaceSlug: string, projectId: string) => {
     const qc = useQueryClient();
     return useMutation({
         mutationFn: ({ cycleId, targetCycleId }: { cycleId: string; targetCycleId: string }) =>
             apiClient
-                .post(`${base(workspaceSlug, companyId)}/${cycleId}/transfer-issues`, { targetCycleId })
+                .post(`${base(workspaceSlug, projectId)}/${cycleId}/transfer-issues`, { targetCycleId })
                 .then(() => undefined),
         onSuccess: () => {
-            void qc.invalidateQueries({ queryKey: ['cycles', workspaceSlug, companyId] });
+            void qc.invalidateQueries({ queryKey: ['cycles', workspaceSlug, projectId] });
             toast.success('Issues transferidos');
         },
         onError: (error: unknown) => { const e = error as { response?: { data?: { message?: string } } }; toast.error(e?.response?.data?.message ?? 'Error al transferir issues'); },

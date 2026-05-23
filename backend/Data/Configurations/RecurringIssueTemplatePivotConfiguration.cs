@@ -4,20 +4,20 @@ using TaskManager.Api.Modules.Recurring.Entities;
 
 namespace TaskManager.Api.Data.Configurations;
 
-public class RecurringIssueTemplateCompanyConfiguration : IEntityTypeConfiguration<RecurringIssueTemplateCompany>
+public class RecurringIssueTemplateProjectConfiguration : IEntityTypeConfiguration<RecurringIssueTemplateProject>
 {
-    public void Configure(EntityTypeBuilder<RecurringIssueTemplateCompany> builder)
+    public void Configure(EntityTypeBuilder<RecurringIssueTemplateProject> builder)
     {
-        builder.HasKey(x => new { x.TemplateId, x.CompanyId });
+        builder.HasKey(x => new { x.TemplateId, x.ProjectId });
 
         builder.HasOne(x => x.Template)
-            .WithMany(t => t.Companies)
+            .WithMany(t => t.Projects)
             .HasForeignKey(x => x.TemplateId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        builder.HasOne(x => x.Company)
+        builder.HasOne(x => x.Project)
             .WithMany()
-            .HasForeignKey(x => x.CompanyId)
+            .HasForeignKey(x => x.ProjectId)
             .OnDelete(DeleteBehavior.Cascade);
     }
 }

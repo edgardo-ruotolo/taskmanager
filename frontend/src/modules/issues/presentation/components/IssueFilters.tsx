@@ -11,7 +11,7 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { useCompanyStates } from '@/modules/states/application/use-states';
+import { useProjectStates } from '@/modules/states/application/use-states';
 import { useLabels } from '@/modules/labels/application/use-labels';
 import { useWorkspaceMembers } from '@/modules/workspaces/application/use-workspaces';
 import { cn } from '@/lib/utils';
@@ -49,7 +49,7 @@ export interface IssueFilter {
 interface IssueFiltersProps {
     filters: IssueFilter;
     workspaceSlug: string;
-    companyId: string;
+    projectId: string;
     onChange: (f: IssueFilter) => void;
 }
 
@@ -236,8 +236,8 @@ function buildChips(
     ];
 }
 
-export const IssueFilters = ({ filters, workspaceSlug, companyId, onChange }: IssueFiltersProps): React.ReactElement => {
-    const { data: states = [] } = useCompanyStates(workspaceSlug, companyId);
+export const IssueFilters = ({ filters, workspaceSlug, projectId, onChange }: IssueFiltersProps): React.ReactElement => {
+    const { data: states = [] } = useProjectStates(workspaceSlug, projectId);
     const { data: labels = [] } = useLabels(workspaceSlug);
     const { data: members = [] } = useWorkspaceMembers(workspaceSlug);
 

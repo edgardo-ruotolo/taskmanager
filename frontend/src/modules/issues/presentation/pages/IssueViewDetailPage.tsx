@@ -200,8 +200,8 @@ function IssueViewBody({ view, onIssueClick }: IssueViewBodyProps): React.ReactE
             </div>
             <h3 className="text-base font-semibold text-secondary mb-1">Vista guardada</h3>
             <p className="text-sm text-placeholder max-w-sm">
-                Las vistas filtran issues por empresa. Para ver los issues con estos filtros, navega a
-                la sección de issues de una empresa y aplica los filtros manualmente.
+                Las vistas filtran issues por proyecto. Para ver los issues con estos filtros, navega a
+                la sección de issues de una proyecto y aplica los filtros manualmente.
             </p>
             {view?.filtersJson && (
                 <pre className="mt-4 text-xs text-placeholder bg-surface-2 border border-subtle rounded-lg px-4 py-3 text-left max-w-sm overflow-x-auto">

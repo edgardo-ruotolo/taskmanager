@@ -1,8 +1,8 @@
 using AutoMapper;
 using TaskManager.Api.Modules.Auth.Dtos;
 using TaskManager.Api.Modules.Auth.Entities;
-using TaskManager.Api.Modules.Companies.Dtos;
-using TaskManager.Api.Modules.Companies.Entities;
+using TaskManager.Api.Modules.Projects.Dtos;
+using TaskManager.Api.Modules.Projects.Entities;
 using TaskManager.Api.Modules.Intake.Dtos;
 using TaskManager.Api.Modules.Intake.Entities;
 using TaskManager.Api.Modules.Recurring.Dtos;
@@ -17,8 +17,8 @@ using TaskManager.Api.Modules.Labels.Dtos;
 using TaskManager.Api.Modules.Labels.Entities;
 using TaskManager.Api.Modules.Notifications.Dtos;
 using TaskManager.Api.Modules.Notifications.Entities;
-using TaskManager.Api.Modules.ProjectModules.Dtos;
-using TaskManager.Api.Modules.ProjectModules.Entities;
+using TaskManager.Api.Modules.Modules.Dtos;
+using TaskManager.Api.Modules.Modules.Entities;
 using TaskManager.Api.Modules.States.Dtos;
 using TaskManager.Api.Modules.States.Entities;
 using TaskManager.Api.Modules.Estimates.Dtos;
@@ -47,15 +47,16 @@ public class MappingProfile : Profile
             .ForMember(d => d.Email, o => o.MapFrom(s => s.User.Email ?? ""))
             .ForMember(d => d.DisplayName, o => o.MapFrom(s => s.User.DisplayName))
             .ForMember(d => d.AvatarUrl, o => o.MapFrom(s => s.User.AvatarUrl));
-        CreateMap<WorkspaceInvitation, WorkspaceInvitationDto>();
-        CreateMap<Company, CompanyDto>();
-        CreateMap<CreateCompanyDto, Company>();
-        CreateMap<CompanyMember, CompanyMemberDto>()
+        CreateMap<Project, ProjectDto>()
+            .ForMember(d => d.StateGroupName, o => o.MapFrom(s => s.StateGroup != null ? s.StateGroup.Name : string.Empty))
+            .ForMember(d => d.TeamName, o => o.MapFrom(s => s.Team != null ? s.Team.Name : null));
+        CreateMap<CreateProjectDto, Project>();
+        CreateMap<ProjectMember, ProjectMemberDto>()
             .ForMember(d => d.UserId, o => o.MapFrom(s => s.UserId))
             .ForMember(d => d.Email, o => o.MapFrom(s => s.User.Email ?? ""))
             .ForMember(d => d.DisplayName, o => o.MapFrom(s => s.User.DisplayName))
             .ForMember(d => d.AvatarUrl, o => o.MapFrom(s => s.User.AvatarUrl));
-        CreateMap<CompanyInvitation, CompanyInvitationDto>();
+        CreateMap<ProjectInvitation, ProjectInvitationDto>();
         CreateMap<State, StateDto>();
         CreateMap<CreateStateDto, State>();
         CreateMap<StateGroup, StateGroupDto>();
@@ -63,9 +64,9 @@ public class MappingProfile : Profile
         CreateMap<Cycle, CycleDto>()
             .ForMember(d => d.IssueCount, o => o.MapFrom(s => s.CycleIssues.Count));
         CreateMap<CreateCycleDto, Cycle>();
-        CreateMap<ProjectModule, ProjectModuleDto>()
+        CreateMap<Module, ModuleDto>()
             .ForMember(d => d.IssueCount, o => o.MapFrom(s => s.ModuleIssues.Count));
-        CreateMap<CreateProjectModuleDto, ProjectModule>();
+        CreateMap<CreateModuleDto, Module>();
         CreateMap<Label, LabelDto>();
         CreateMap<CreateLabelDto, Label>();
         CreateMap<IssueComment, IssueCommentDto>()

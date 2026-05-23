@@ -18,7 +18,7 @@ public class DraftService(AppDbContext db, IConfiguration configuration) : IDraf
 
         return await db.DraftIssues
             .Include(d => d.State)
-            .Where(d => d.OwnedById == userId && d.Company.WorkspaceId == workspace.Id)
+            .Where(d => d.OwnedById == userId && d.Project.WorkspaceId == workspace.Id)
             .OrderByDescending(d => d.CreatedAt)
             .Select(d => MapToDto(d))
             .ToListAsync(ct);
@@ -39,15 +39,15 @@ public class DraftService(AppDbContext db, IConfiguration configuration) : IDraf
         var workspace = await db.Workspaces.FirstOrDefaultAsync(w => w.Slug == workspaceSlug, ct)
             ?? throw new NotFoundException($"Workspace '{workspaceSlug}' not found.");
 
-        var company = await db.Companies.FirstOrDefaultAsync(c => c.Id == dto.CompanyId && c.WorkspaceId == workspace.Id, ct)
-            ?? throw new NotFoundException("Company not found.");
+        var project = await db.Projects.FirstOrDefaultAsync(c => c.Id == dto.ProjectId && c.WorkspaceId == workspace.Id, ct)
+            ?? throw new NotFoundException("Project not found.");
 
         var draft = new DraftIssue
         {
             Title = dto.Title,
             Description = dto.Description,
             Priority = dto.Priority,
-            CompanyId = company.Id,
+            ProjectId = project.Id,
             StateId = dto.StateId,
             OwnedById = userId,
             AssigneeId = dto.AssigneeId,
@@ -119,15 +119,15 @@ public class DraftService(AppDbContext db, IConfiguration configuration) : IDraf
         await conn.OpenAsync(ct);
         await using var tx = await conn.BeginTransactionAsync(ct);
 
-        var lockKey = BitConverter.ToInt64(draft.CompanyId.ToByteArray(), 0);
+        var lockKey = BitConverter.ToInt64(draft.ProjectId.ToByteArray(), 0);
         await using (var lockCmd = new NpgsqlCommand($"SELECT pg_advisory_xact_lock({lockKey})", conn, tx))
             await lockCmd.ExecuteNonQueryAsync(ct);
 
         await using (var seqCmd = new NpgsqlCommand(
-            "SELECT COALESCE(MAX(\"SequenceId\"), 0) + 1 FROM \"Issues\" WHERE \"CompanyId\" = @companyId",
+            "SELECT COALESCE(MAX(\"SequenceId\"), 0) + 1 FROM \"Issues\" WHERE \"ProjectId\" = @projectId",
             conn, tx))
         {
-            seqCmd.Parameters.AddWithValue("companyId", draft.CompanyId);
+            seqCmd.Parameters.AddWithValue("projectId", draft.ProjectId);
             sequenceId = Convert.ToInt32(await seqCmd.ExecuteScalarAsync(ct));
         }
 
@@ -141,7 +141,7 @@ public class DraftService(AppDbContext db, IConfiguration configuration) : IDraf
             Priority = draft.Priority,
             StateId = state.Id,
             State = state,
-            CompanyId = draft.CompanyId,
+            ProjectId = draft.ProjectId,
             CreatedById = userId,
             SequenceId = sequenceId,
             AssigneeId = draft.AssigneeId,
@@ -162,7 +162,7 @@ public class DraftService(AppDbContext db, IConfiguration configuration) : IDraf
             Title = issue.Title,
             Description = issue.Description,
             Priority = issue.Priority,
-            CompanyId = issue.CompanyId,
+            ProjectId = issue.ProjectId,
             StateId = issue.StateId,
             StateName = state.Name,
             StateColor = state.Color,
@@ -184,7 +184,7 @@ public class DraftService(AppDbContext db, IConfiguration configuration) : IDraf
         Title = draft.Title,
         Description = draft.Description,
         Priority = draft.Priority,
-        CompanyId = draft.CompanyId,
+        ProjectId = draft.ProjectId,
         StateId = draft.StateId,
         StateName = draft.State?.Name,
         OwnedById = draft.OwnedById,

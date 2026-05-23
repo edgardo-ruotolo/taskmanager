@@ -27,13 +27,13 @@ public class AnalyticsController(IAnalyticsService analyticsService, ICurrentUse
     public async Task<IActionResult> GetCreatedVsResolved(string workspaceSlug, CancellationToken ct)
         => Ok(await analyticsService.GetCreatedVsResolvedAsync(workspaceSlug, ct));
 
-    [HttpGet("companies/{companyIdentifier}/overview")]
-    public async Task<IActionResult> GetCompanyOverview(string workspaceSlug, string companyIdentifier, CancellationToken ct)
-        => Ok(await analyticsService.GetCompanyOverviewAsync(workspaceSlug, companyIdentifier, ct));
+    [HttpGet("projects/{projectIdentifier}/overview")]
+    public async Task<IActionResult> GetProjectOverview(string workspaceSlug, string projectIdentifier, CancellationToken ct)
+        => Ok(await analyticsService.GetProjectOverviewAsync(workspaceSlug, projectIdentifier, ct));
 
-    [HttpGet("companies/{companyIdentifier}/activity")]
-    public async Task<IActionResult> GetCompanyActivity(string workspaceSlug, string companyIdentifier, CancellationToken ct)
-        => Ok(await analyticsService.GetCompanyActivityAsync(workspaceSlug, companyIdentifier, ct));
+    [HttpGet("projects/{projectIdentifier}/activity")]
+    public async Task<IActionResult> GetProjectActivity(string workspaceSlug, string projectIdentifier, CancellationToken ct)
+        => Ok(await analyticsService.GetProjectActivityAsync(workspaceSlug, projectIdentifier, ct));
 
     [HttpGet("views")]
     public async Task<ActionResult<IReadOnlyList<AnalyticViewDto>>> GetViews(string workspaceSlug, CancellationToken ct)

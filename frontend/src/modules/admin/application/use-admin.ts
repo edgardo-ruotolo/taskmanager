@@ -5,15 +5,16 @@ import type {
     UpdateInstanceConfigData,
     CreateAdminUserData,
     UpdateAdminUserData,
-    AdminAddCompanyMemberData,
-    UpdateAdminCompanyData,
+    AdminAddWorkspaceMemberData,
+    CreateAdminWorkspaceData,
+    UpdateAdminWorkspaceData,
 } from '../domain/types';
-import { STATES_KEY, STATE_GROUPS_KEY } from '@/modules/states/application/use-states';
 
 export const adminConfigKey = ['admin', 'config'] as const;
 export const adminUsersKey = (page: number) => ['admin', 'users', page] as const;
-export const adminCompaniesKey = (page: number) => ['admin', 'companies', page] as const;
-export const adminCompanyMembersKey = (companyId: string) => ['admin', 'company-members', companyId] as const;
+export const adminWorkspacesKey = (page: number) => ['admin', 'workspaces', page] as const;
+export const adminWorkspaceMembersKey = (workspaceId: string) =>
+    ['admin', 'workspaces', workspaceId, 'members'] as const;
 export const adminStateGroupsKey = ['admin', 'state-groups'] as const;
 
 export const useInstanceConfig = () =>
@@ -60,7 +61,7 @@ export const useUpdateAdminUser = () => {
         onSuccess: () => {
             void queryClient.invalidateQueries({ queryKey: ['admin', 'users'] });
             void queryClient.invalidateQueries({ queryKey: ['workspace-members'] });
-            void queryClient.invalidateQueries({ queryKey: ['admin', 'company-members'] });
+            void queryClient.invalidateQueries({ queryKey: ['admin', 'project-members'] });
             void queryClient.invalidateQueries({ queryKey: ['notifications'] });
             toast.success('Usuario actualizado');
         },
@@ -75,7 +76,7 @@ export const useDeleteAdminUser = () => {
         onSuccess: () => {
             void queryClient.invalidateQueries({ queryKey: ['admin', 'users'] });
             void queryClient.invalidateQueries({ queryKey: ['workspace-members'] });
-            void queryClient.invalidateQueries({ queryKey: ['admin', 'company-members'] });
+            void queryClient.invalidateQueries({ queryKey: ['admin', 'project-members'] });
             void queryClient.invalidateQueries({ queryKey: ['notifications'] });
             void queryClient.invalidateQueries({ queryKey: ['issue-subscribers'] });
             void queryClient.invalidateQueries({ queryKey: ['comments'] });
@@ -86,70 +87,102 @@ export const useDeleteAdminUser = () => {
     });
 };
 
-export const useAdminCompanies = (page = 1) =>
+// ─── Admin Workspaces ─────────────────────────────────────────────────────────
+
+export const useAdminWorkspaces = (page = 1) =>
     useQuery({
-        queryKey: adminCompaniesKey(page),
-        queryFn: () => adminRepository.getCompanies(page),
+        queryKey: adminWorkspacesKey(page),
+        queryFn: () => adminRepository.getWorkspaces(page),
     });
 
-export const useAdminCompanyMembers = (companyId: string | null) =>
-    useQuery({
-        queryKey: adminCompanyMembersKey(companyId ?? ''),
-        queryFn: () => {
-            if (companyId === null) return Promise.resolve([]);
-            return adminRepository.getCompanyMembers(companyId);
-        },
-        enabled: companyId !== null,
-    });
-
-export const useAddCompanyMember = (companyId: string) => {
+export const useCreateAdminWorkspace = () => {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: (data: AdminAddCompanyMemberData) =>
-            adminRepository.addCompanyMember(companyId, data),
+        mutationFn: (data: CreateAdminWorkspaceData) => adminRepository.createWorkspace(data),
         onSuccess: () => {
-            void queryClient.invalidateQueries({ queryKey: adminCompanyMembersKey(companyId) });
+            void queryClient.invalidateQueries({ queryKey: ['admin', 'workspaces'] });
+            void queryClient.invalidateQueries({ queryKey: ['workspaces'] });
+            toast.success('Workspace creado');
+        },
+        onError: (error: unknown) => {
+            const e = error as { response?: { data?: { message?: string; error?: string } } };
+            toast.error(e?.response?.data?.message ?? e?.response?.data?.error ?? 'Error al crear workspace');
+        },
+    });
+};
+
+export const useUpdateAdminWorkspace = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ id, data }: { id: string; data: UpdateAdminWorkspaceData }) =>
+            adminRepository.updateWorkspace(id, data),
+        onSuccess: () => {
+            void queryClient.invalidateQueries({ queryKey: ['admin', 'workspaces'] });
+            void queryClient.invalidateQueries({ queryKey: ['workspaces'] });
+            toast.success('Workspace actualizado');
+        },
+        onError: (error: unknown) => {
+            const e = error as { response?: { data?: { message?: string; error?: string } } };
+            toast.error(e?.response?.data?.message ?? e?.response?.data?.error ?? 'Error al actualizar workspace');
+        },
+    });
+};
+
+export const useDeleteAdminWorkspace = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (id: string) => adminRepository.deleteWorkspace(id),
+        onSuccess: () => {
+            void queryClient.invalidateQueries({ queryKey: ['admin', 'workspaces'] });
+            void queryClient.invalidateQueries({ queryKey: ['workspaces'] });
+            toast.success('Workspace eliminado');
+        },
+        onError: (error: unknown) => {
+            const e = error as { response?: { data?: { message?: string; error?: string } } };
+            toast.error(e?.response?.data?.message ?? e?.response?.data?.error ?? 'Error al eliminar workspace');
+        },
+    });
+};
+
+export const useAdminWorkspaceMembers = (workspaceId: string | null) =>
+    useQuery({
+        queryKey: adminWorkspaceMembersKey(workspaceId ?? ''),
+        queryFn: () => {
+            if (workspaceId === null) return Promise.resolve([]);
+            return adminRepository.getWorkspaceMembers(workspaceId);
+        },
+        enabled: workspaceId !== null,
+    });
+
+export const useAddWorkspaceMember = (workspaceId: string) => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (data: AdminAddWorkspaceMemberData) =>
+            adminRepository.addWorkspaceMember(workspaceId, data),
+        onSuccess: () => {
+            void queryClient.invalidateQueries({ queryKey: adminWorkspaceMembersKey(workspaceId) });
             void queryClient.invalidateQueries({ queryKey: ['workspace-members'] });
-            void queryClient.invalidateQueries({ queryKey: ['issues'] });
-            void queryClient.invalidateQueries({ queryKey: ['notifications'] });
             toast.success('Miembro agregado');
         },
-        onError: (error: unknown) => { const e = error as { response?: { data?: { message?: string } } }; toast.error(e?.response?.data?.message ?? 'Error al agregar miembro'); },
+        onError: (error: unknown) => {
+            const e = error as { response?: { data?: { message?: string; error?: string } } };
+            toast.error(e?.response?.data?.message ?? e?.response?.data?.error ?? 'Error al agregar miembro');
+        },
     });
 };
 
-export const useRemoveCompanyMember = (companyId: string) => {
+export const useRemoveWorkspaceMember = (workspaceId: string) => {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: (userId: string) => adminRepository.removeCompanyMember(companyId, userId),
+        mutationFn: (userId: string) => adminRepository.removeWorkspaceMember(workspaceId, userId),
         onSuccess: () => {
-            void queryClient.invalidateQueries({ queryKey: adminCompanyMembersKey(companyId) });
+            void queryClient.invalidateQueries({ queryKey: adminWorkspaceMembersKey(workspaceId) });
             void queryClient.invalidateQueries({ queryKey: ['workspace-members'] });
-            void queryClient.invalidateQueries({ queryKey: ['issues'] });
-            void queryClient.invalidateQueries({ queryKey: ['notifications'] });
             toast.success('Miembro removido');
         },
-        onError: (error: unknown) => { const e = error as { response?: { data?: { message?: string } } }; toast.error(e?.response?.data?.message ?? 'Error al remover miembro'); },
-    });
-};
-
-export const useUpdateAdminCompany = () => {
-    const queryClient = useQueryClient();
-    return useMutation({
-        mutationFn: ({ id, data }: { id: string; data: UpdateAdminCompanyData }) =>
-            adminRepository.updateCompany(id, data),
-        onSuccess: () => {
-            void queryClient.invalidateQueries({ queryKey: ['admin', 'companies'] });
-            void queryClient.invalidateQueries({ queryKey: ['companies'] });
-            void queryClient.invalidateQueries({ queryKey: ['company'] });
-            void queryClient.invalidateQueries({ queryKey: STATES_KEY });
-            void queryClient.invalidateQueries({ queryKey: STATE_GROUPS_KEY });
-            void queryClient.invalidateQueries({ queryKey: ['workspace-members'] });
-            void queryClient.invalidateQueries({ queryKey: ['issues'] });
-            void queryClient.invalidateQueries({ queryKey: ['cycle-issues'] });
-            void queryClient.invalidateQueries({ queryKey: ['module-issues'] });
-            toast.success('Empresa actualizada');
+        onError: (error: unknown) => {
+            const e = error as { response?: { data?: { message?: string; error?: string } } };
+            toast.error(e?.response?.data?.message ?? e?.response?.data?.error ?? 'Error al remover miembro');
         },
-        onError: (error: unknown) => { const e = error as { response?: { data?: { message?: string } } }; toast.error(e?.response?.data?.message ?? 'Error al actualizar empresa'); },
     });
 };

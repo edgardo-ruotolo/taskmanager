@@ -4,8 +4,8 @@ import type { CreateStateData, UpdateStateData, CreateStateGroupData, UpdateStat
 
 export const STATES_KEY = ['states'] as const;
 export const STATE_GROUPS_KEY = ['state-groups'] as const;
-export const companyStatesKey = (workspaceSlug: string, companyId: string) =>
-    [...STATES_KEY, 'company', workspaceSlug, companyId] as const;
+export const projectStatesKey = (workspaceSlug: string, projectId: string) =>
+    [...STATES_KEY, 'project', workspaceSlug, projectId] as const;
 
 export const useStates = (stateGroupId?: string) =>
     useQuery({
@@ -13,11 +13,11 @@ export const useStates = (stateGroupId?: string) =>
         queryFn: () => stateRepository.getAll(stateGroupId),
     });
 
-export const useCompanyStates = (workspaceSlug: string, companyId: string) =>
+export const useProjectStates = (workspaceSlug: string, projectId: string) =>
     useQuery({
-        queryKey: [...STATES_KEY, 'company', workspaceSlug, companyId],
-        queryFn: () => stateRepository.getCompanyStates(workspaceSlug, companyId),
-        enabled: !!workspaceSlug && !!companyId,
+        queryKey: [...STATES_KEY, 'project', workspaceSlug, projectId],
+        queryFn: () => stateRepository.getProjectStates(workspaceSlug, projectId),
+        enabled: !!workspaceSlug && !!projectId,
     });
 
 export const useStateGroups = () =>

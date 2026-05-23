@@ -1,5 +1,5 @@
 using TaskManager.Api.Common.Auditing;
-using TaskManager.Api.Modules.Companies.Entities;
+using TaskManager.Api.Modules.Projects.Entities;
 
 namespace TaskManager.Api.Modules.Intake.Entities;
 
@@ -7,8 +7,8 @@ public enum IntakeStatus { Pending = 0, Accepted = 1, Declined = 2, Duplicate = 
 
 public class IntakeIssue : AuditableEntity
 {
-    public Guid CompanyId { get; set; }
-    public Company Company { get; set; } = null!;
+    public Guid ProjectId { get; set; }
+    public Project Project { get; set; } = null!;
     public string Title { get; set; } = string.Empty;
     public string? Description { get; set; }
     public IntakeStatus Status { get; set; } = IntakeStatus.Pending;

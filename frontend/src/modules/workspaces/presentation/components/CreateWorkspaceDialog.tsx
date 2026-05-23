@@ -68,7 +68,7 @@ export const CreateWorkspaceDialog = ({ trigger }: CreateWorkspaceDialogProps): 
                 <DialogHeader>
                     <DialogTitle className="text-primary">Nuevo espacio de trabajo</DialogTitle>
                     <DialogDescription className="sr-only">
-                        Define el nombre y el slug del workspace que agrupará tus empresas y tareas.
+                        Define el nombre y el slug del workspace que agrupará tus proyectos y tareas.
                     </DialogDescription>
                 </DialogHeader>
                 <Form {...form}>

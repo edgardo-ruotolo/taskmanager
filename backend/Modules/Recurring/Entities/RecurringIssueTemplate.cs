@@ -1,5 +1,6 @@
 using TaskManager.Api.Common.Auditing;
 using TaskManager.Api.Modules.Auth.Entities;
+using TaskManager.Api.Modules.Issues.Entities;
 using TaskManager.Api.Modules.Workspaces.Entities;
 
 namespace TaskManager.Api.Modules.Recurring.Entities;
@@ -31,9 +32,11 @@ public class RecurringIssueTemplate : AuditableEntity
     public int StartDateOffsetDays { get; set; } = 0;
     public int TargetDateOffsetDays { get; set; } = 7;
     public BlockPolicy BlockPolicy { get; set; } = BlockPolicy.SkipAndNotify;
+    public Guid? IssueTypeId { get; set; }
+    public IssueType? IssueType { get; set; }
     public Guid CreatedById { get; set; }
     public User CreatedBy { get; set; } = null!;
-    public ICollection<RecurringIssueTemplateCompany> Companies { get; set; } = [];
+    public ICollection<RecurringIssueTemplateProject> Projects { get; set; } = [];
     public ICollection<RecurringIssueTemplateAssignee> Assignees { get; set; } = [];
     public ICollection<RecurringIssueTemplateLabel> Labels { get; set; } = [];
     public ICollection<RecurringIssueRun> Runs { get; set; } = [];

@@ -30,5 +30,10 @@ public class RecurringIssueTemplateConfiguration : IEntityTypeConfiguration<Recu
             .WithMany()
             .HasForeignKey(t => t.CreatedById)
             .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne(t => t.IssueType)
+            .WithMany()
+            .HasForeignKey(t => t.IssueTypeId)
+            .OnDelete(DeleteBehavior.SetNull);
     }
 }

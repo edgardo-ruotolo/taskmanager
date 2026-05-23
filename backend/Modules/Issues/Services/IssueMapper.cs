@@ -14,7 +14,7 @@ internal static class IssueMapper
         DescriptionHtml = issue.DescriptionHtml,
         DescriptionJson = issue.DescriptionJson,
         Priority = issue.Priority,
-        CompanyId = issue.CompanyId,
+        ProjectId = issue.ProjectId,
         StateId = issue.StateId,
         StateName = issue.State?.Name ?? string.Empty,
         StateColor = issue.State?.Color ?? string.Empty,

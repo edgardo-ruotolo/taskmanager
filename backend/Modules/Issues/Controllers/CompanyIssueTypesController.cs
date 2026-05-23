@@ -10,21 +10,21 @@ using TaskManager.Api.Modules.Issues.Entities;
 namespace TaskManager.Api.Modules.Issues.Controllers;
 
 [ApiController]
-[Route("api/workspaces/{workspaceSlug}/companies/{companyId:guid}/issue-types")]
+[Route("api/workspaces/{workspaceSlug}/projects/{projectId:guid}/issue-types")]
 [Authorize]
-[ServiceFilter(typeof(RequireCompanyMemberAttribute))]
-public class CompanyIssueTypesController(AppDbContext db) : ControllerBase
+[ServiceFilter(typeof(RequireProjectMemberAttribute))]
+public class ProjectIssueTypesController(AppDbContext db) : ControllerBase
 {
     [HttpGet]
     public async Task<ActionResult<List<IssueTypeDto>>> GetAll(
-        string workspaceSlug, Guid companyId, CancellationToken ct)
+        string workspaceSlug, Guid projectId, CancellationToken ct)
     {
         var workspace = await db.Workspaces.FirstOrDefaultAsync(w => w.Slug == workspaceSlug, ct)
             ?? throw new NotFoundException($"Workspace '{workspaceSlug}' not found.");
 
-        var types = await db.CompanyIssueTypes
+        var types = await db.ProjectIssueTypes
             .Include(cit => cit.IssueType)
-            .Where(cit => cit.CompanyId == companyId && cit.Company.WorkspaceId == workspace.Id)
+            .Where(cit => cit.ProjectId == projectId && cit.Project.WorkspaceId == workspace.Id)
             .Select(cit => new IssueTypeDto
             {
                 Id = cit.IssueType.Id,
@@ -42,21 +42,21 @@ public class CompanyIssueTypesController(AppDbContext db) : ControllerBase
 
     [HttpPost]
     public async Task<IActionResult> Associate(
-        string workspaceSlug, Guid companyId, [FromBody] AssociateIssueTypeDto dto, CancellationToken ct)
+        string workspaceSlug, Guid projectId, [FromBody] AssociateIssueTypeDto dto, CancellationToken ct)
     {
         var workspace = await db.Workspaces.FirstOrDefaultAsync(w => w.Slug == workspaceSlug, ct)
             ?? throw new NotFoundException($"Workspace '{workspaceSlug}' not found.");
 
-        _ = await db.Companies.FirstOrDefaultAsync(c => c.Id == companyId && c.WorkspaceId == workspace.Id, ct)
-            ?? throw new NotFoundException("Company not found.");
+        _ = await db.Projects.FirstOrDefaultAsync(c => c.Id == projectId && c.WorkspaceId == workspace.Id, ct)
+            ?? throw new NotFoundException("Project not found.");
 
         var issueType = await db.IssueTypes.FirstOrDefaultAsync(t => t.Id == dto.IssueTypeId && t.WorkspaceId == workspace.Id, ct)
             ?? throw new NotFoundException("IssueType not found.");
 
-        var exists = await db.CompanyIssueTypes.AnyAsync(cit => cit.CompanyId == companyId && cit.IssueTypeId == dto.IssueTypeId, ct);
+        var exists = await db.ProjectIssueTypes.AnyAsync(cit => cit.ProjectId == projectId && cit.IssueTypeId == dto.IssueTypeId, ct);
         if (!exists)
         {
-            db.CompanyIssueTypes.Add(new CompanyIssueType { CompanyId = companyId, IssueTypeId = dto.IssueTypeId });
+            db.ProjectIssueTypes.Add(new ProjectIssueType { ProjectId = projectId, IssueTypeId = dto.IssueTypeId });
             await db.SaveChangesAsync(ct);
         }
 
@@ -65,13 +65,13 @@ public class CompanyIssueTypesController(AppDbContext db) : ControllerBase
 
     [HttpDelete("{issueTypeId:guid}")]
     public async Task<IActionResult> Dissociate(
-        string workspaceSlug, Guid companyId, Guid issueTypeId, CancellationToken ct)
+        string workspaceSlug, Guid projectId, Guid issueTypeId, CancellationToken ct)
     {
-        var entry = await db.CompanyIssueTypes
-            .FirstOrDefaultAsync(cit => cit.CompanyId == companyId && cit.IssueTypeId == issueTypeId, ct)
+        var entry = await db.ProjectIssueTypes
+            .FirstOrDefaultAsync(cit => cit.ProjectId == projectId && cit.IssueTypeId == issueTypeId, ct)
             ?? throw new NotFoundException("Association not found.");
 
-        db.CompanyIssueTypes.Remove(entry);
+        db.ProjectIssueTypes.Remove(entry);
         await db.SaveChangesAsync(ct);
         return NoContent();
     }

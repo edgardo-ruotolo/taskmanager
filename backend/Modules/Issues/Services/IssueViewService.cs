@@ -9,7 +9,7 @@ namespace TaskManager.Api.Modules.Issues.Services;
 
 public class IssueViewService(AppDbContext db, IMapper mapper) : IIssueViewService
 {
-    public async Task<IEnumerable<IssueViewDto>> GetAllAsync(string workspaceSlug, Guid? companyId, Guid userId, CancellationToken ct = default)
+    public async Task<IEnumerable<IssueViewDto>> GetAllAsync(string workspaceSlug, Guid? projectId, Guid userId, CancellationToken ct = default)
     {
         var workspace = await db.Workspaces.FirstOrDefaultAsync(w => w.Slug == workspaceSlug, ct)
             ?? throw new NotFoundException($"Workspace '{workspaceSlug}' not found.");
@@ -18,8 +18,8 @@ public class IssueViewService(AppDbContext db, IMapper mapper) : IIssueViewServi
             .Where(v => v.WorkspaceId == workspace.Id &&
                         (v.IsPublic || v.OwnerId == userId));
 
-        if (companyId.HasValue)
-            query = query.Where(v => v.CompanyId == companyId.Value);
+        if (projectId.HasValue)
+            query = query.Where(v => v.ProjectId == projectId.Value);
 
         var views = await query.OrderBy(v => v.Name).ToListAsync(ct);
         return mapper.Map<IEnumerable<IssueViewDto>>(views);
@@ -46,7 +46,7 @@ public class IssueViewService(AppDbContext db, IMapper mapper) : IIssueViewServi
             Name = dto.Name,
             Description = dto.Description,
             WorkspaceId = workspace.Id,
-            CompanyId = dto.CompanyId,
+            ProjectId = dto.ProjectId,
             OwnerId = userId,
             IsPublic = dto.IsPublic,
             FiltersJson = dto.FiltersJson,

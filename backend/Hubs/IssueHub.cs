@@ -17,16 +17,16 @@ public class IssueHub(AppDbContext db) : Hub
         var issue = await db.Issues
             .AsNoTracking()
             .Where(i => i.Id == parsedIssueId)
-            .Select(i => new { i.CompanyId, i.AssigneeId })
+            .Select(i => new { i.ProjectId, i.AssigneeId })
             .FirstOrDefaultAsync();
 
         if (issue is null) return;
 
-        // Allow if user is the direct assignee or a member of the company that owns the issue.
+        // Allow if user is the direct assignee or a member of the project that owns the issue.
         var hasAccess = issue.AssigneeId == userId
-            || await db.CompanyMembers
+            || await db.ProjectMembers
                 .AsNoTracking()
-                .AnyAsync(m => m.CompanyId == issue.CompanyId && m.UserId == userId);
+                .AnyAsync(m => m.ProjectId == issue.ProjectId && m.UserId == userId);
 
         if (!hasAccess) return;
 
@@ -39,25 +39,25 @@ public class IssueHub(AppDbContext db) : Hub
         await Groups.RemoveFromGroupAsync(Context.ConnectionId, $"issue:{parsedIssueId}");
     }
 
-    public async Task JoinCompanyGroup(string companyId)
+    public async Task JoinProjectGroup(string projectId)
     {
-        if (!Guid.TryParse(companyId, out var parsedCompanyId)) return;
+        if (!Guid.TryParse(projectId, out var parsedProjectId)) return;
         var userId = GetUserId();
         if (userId is null) return;
 
-        var isMember = await db.CompanyMembers
+        var isMember = await db.ProjectMembers
             .AsNoTracking()
-            .AnyAsync(m => m.CompanyId == parsedCompanyId && m.UserId == userId);
+            .AnyAsync(m => m.ProjectId == parsedProjectId && m.UserId == userId);
 
         if (!isMember) return;
 
-        await Groups.AddToGroupAsync(Context.ConnectionId, $"company:{parsedCompanyId}");
+        await Groups.AddToGroupAsync(Context.ConnectionId, $"project:{parsedProjectId}");
     }
 
-    public async Task LeaveCompanyGroup(string companyId)
+    public async Task LeaveProjectGroup(string projectId)
     {
-        if (!Guid.TryParse(companyId, out var parsedCompanyId)) return;
-        await Groups.RemoveFromGroupAsync(Context.ConnectionId, $"company:{parsedCompanyId}");
+        if (!Guid.TryParse(projectId, out var parsedProjectId)) return;
+        await Groups.RemoveFromGroupAsync(Context.ConnectionId, $"project:{parsedProjectId}");
     }
 
     private Guid? GetUserId()

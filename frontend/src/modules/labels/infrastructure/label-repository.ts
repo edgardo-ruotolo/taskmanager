@@ -12,6 +12,15 @@ export const labelRepository = {
             .post<Label>(`/api/workspaces/${workspaceSlug}/labels`, data)
             .then((r) => r.data),
 
+    update: (
+        workspaceSlug: string,
+        labelId: string,
+        data: CreateLabelData,
+    ): Promise<Label> =>
+        apiClient
+            .patch<Label>(`/api/workspaces/${workspaceSlug}/labels/${labelId}`, data)
+            .then((r) => r.data),
+
     delete: (workspaceSlug: string, labelId: string): Promise<void> =>
         apiClient
             .delete(`/api/workspaces/${workspaceSlug}/labels/${labelId}`)

@@ -3,7 +3,7 @@ namespace TaskManager.Api.Modules.Space.Dtos;
 public class DeployBoardDto
 {
     public Guid Id { get; set; }
-    public Guid CompanyId { get; set; }
+    public Guid ProjectId { get; set; }
     public Guid WorkspaceId { get; set; }
     public string Token { get; set; } = "";
     public string Title { get; set; } = "";

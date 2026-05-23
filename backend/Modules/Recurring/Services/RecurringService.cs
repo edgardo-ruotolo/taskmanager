@@ -1,7 +1,9 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using Npgsql;
 using TaskManager.Api.Common.Exceptions;
+using TaskManager.Api.Common.Pagination;
 using TaskManager.Api.Data;
+using TaskManager.Api.Modules.Auth.Entities;
 using TaskManager.Api.Modules.Recurring.Dtos;
 using TaskManager.Api.Modules.Recurring.Entities;
 using TaskManager.Api.Modules.Workspaces.Entities;
@@ -10,6 +12,9 @@ namespace TaskManager.Api.Modules.Recurring.Services;
 
 public class RecurringService(AppDbContext db, IConfiguration configuration) : IRecurringService
 {
+    private const int DefaultPageSize = 20;
+    private const int MaxPageSize = 100;
+
     public async Task<RecurringTemplateDto> CreateAsync(string workspaceSlug, Guid userId, CreateRecurringTemplateDto dto, CancellationToken ct = default)
     {
         var workspace = await db.Workspaces.FirstOrDefaultAsync(w => w.Slug == workspaceSlug, ct)
@@ -22,35 +27,23 @@ public class RecurringService(AppDbContext db, IConfiguration configuration) : I
         if (member.Role < WorkspaceRole.Admin)
             throw new ForbiddenException("Solo los administradores pueden crear tareas recurrentes.");
 
-        if (dto.CompanyIds.Count > 0)
+        if (dto.ProjectIds.Count > 0)
         {
-            var validCount = await db.Companies
-                .CountAsync(c => dto.CompanyIds.Contains(c.Id) && c.WorkspaceId == workspace.Id, ct);
-            if (validCount != dto.CompanyIds.Count)
+            var validCount = await db.Projects
+                .CountAsync(c => dto.ProjectIds.Contains(c.Id) && c.WorkspaceId == workspace.Id, ct);
+            if (validCount != dto.ProjectIds.Count)
                 throw new NotFoundException("Una o más empresas no existen en este workspace.");
         }
 
-        var connString = configuration.GetConnectionString("Postgres")!;
-        int sequenceId;
-
-        await using var conn = new NpgsqlConnection(connString);
-        await conn.OpenAsync(ct);
-        await using var tx = await conn.BeginTransactionAsync(ct);
-
-        var lockKey = BitConverter.ToInt64(workspace.Id.ToByteArray(), 0);
-        await using (var lockCmd = new NpgsqlCommand($"SELECT pg_advisory_xact_lock({lockKey})", conn, tx))
-            await lockCmd.ExecuteNonQueryAsync(ct);
-
-        await using (var seqCmd = new NpgsqlCommand(
-            "SELECT COALESCE(MAX(\"SequenceId\"), 0) + 1 FROM \"RecurringIssueTemplates\" WHERE \"WorkspaceId\" = @wid AND \"IsDeleted\" = false",
-            conn, tx))
+        if (dto.IssueTypeId.HasValue)
         {
-            seqCmd.Parameters.AddWithValue("wid", workspace.Id);
-            sequenceId = Convert.ToInt32(await seqCmd.ExecuteScalarAsync(ct));
+            var typeExists = await db.IssueTypes
+                .AnyAsync(t => t.Id == dto.IssueTypeId.Value && t.WorkspaceId == workspace.Id, ct);
+            if (!typeExists)
+                throw new NotFoundException("El tipo de tarea no existe en este workspace.");
         }
 
-        await tx.CommitAsync(ct);
-        await conn.CloseAsync();
+        var sequenceId = await GenerateSequenceIdAsync(workspace.Id, ct);
 
         var template = new RecurringIssueTemplate
         {
@@ -73,13 +66,14 @@ public class RecurringService(AppDbContext db, IConfiguration configuration) : I
             StartDateOffsetDays = dto.StartDateOffsetDays,
             TargetDateOffsetDays = dto.TargetDateOffsetDays,
             BlockPolicy = dto.BlockPolicy,
+            IssueTypeId = dto.IssueTypeId,
             CreatedById = userId
         };
 
         db.RecurringIssueTemplates.Add(template);
         await db.SaveChangesAsync(ct);
 
-        await SyncPivots(template.Id, dto.CompanyIds, dto.AssigneeIds, dto.LabelIds, ct);
+        await SyncPivots(template.Id, dto.ProjectIds, dto.AssigneeIds, dto.LabelIds, ct);
 
         template.NextRunAt = RecurringScheduleCalculator.ComputeNextRun(template);
         await db.SaveChangesAsync(ct);
@@ -87,7 +81,15 @@ public class RecurringService(AppDbContext db, IConfiguration configuration) : I
         return await LoadAndMapAsync(template.Id, ct);
     }
 
-    public async Task<List<RecurringTemplateDto>> ListAsync(string workspaceSlug, Guid userId, CancellationToken ct = default)
+    public async Task<PagedResult<RecurringTemplateDto>> ListAsync(
+        string workspaceSlug,
+        Guid userId,
+        int page,
+        int pageSize,
+        string? search,
+        RecurringFrequency? frequency,
+        string? status,
+        CancellationToken ct = default)
     {
         var workspace = await db.Workspaces.FirstOrDefaultAsync(w => w.Slug == workspaceSlug, ct)
             ?? throw new NotFoundException($"Workspace '{workspaceSlug}' not found.");
@@ -96,15 +98,54 @@ public class RecurringService(AppDbContext db, IConfiguration configuration) : I
             m => m.WorkspaceId == workspace.Id && m.UserId == userId && m.IsActive, ct);
         if (!isMember) throw new ForbiddenException("No eres miembro de este workspace.");
 
-        var templates = await db.RecurringIssueTemplates
+        var safePage = page < 1 ? 1 : page;
+        var safePageSize = pageSize < 1 ? DefaultPageSize : Math.Min(pageSize, MaxPageSize);
+
+        var query = db.RecurringIssueTemplates
             .Where(t => t.WorkspaceId == workspace.Id)
-            .Include(t => t.Companies)
-            .Include(t => t.Assignees)
-            .Include(t => t.Labels)
+            .AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var pattern = $"%{search.Trim()}%";
+            query = query.Where(t => EF.Functions.ILike(t.Name, pattern));
+        }
+
+        if (frequency.HasValue)
+            query = query.Where(t => t.Frequency == frequency.Value);
+
+        if (!string.IsNullOrWhiteSpace(status))
+        {
+            var normalized = status.Trim().ToLowerInvariant();
+            query = normalized switch
+            {
+                "active" => query.Where(t => t.IsActive && !t.IsPaused),
+                "paused" => query.Where(t => t.IsPaused),
+                "inactive" => query.Where(t => !t.IsActive),
+                _ => query
+            };
+        }
+
+        var totalCount = await query.CountAsync(ct);
+
+        var templates = await query
             .OrderByDescending(t => t.CreatedAt)
+            .Skip((safePage - 1) * safePageSize)
+            .Take(safePageSize)
+            .Include(t => t.Projects)
+                .ThenInclude(p => p.Project)
+            .Include(t => t.Assignees)
+                .ThenInclude(a => a.Assignee)
+            .Include(t => t.Labels)
             .ToListAsync(ct);
 
-        return templates.Select(MapToDto).ToList();
+        return new PagedResult<RecurringTemplateDto>
+        {
+            Items = templates.Select(MapToDto).ToList(),
+            TotalCount = totalCount,
+            Page = safePage,
+            PageSize = safePageSize
+        };
     }
 
     public async Task<RecurringTemplateDto> GetByIdAsync(string workspaceSlug, Guid templateId, Guid userId, CancellationToken ct = default)
@@ -136,6 +177,8 @@ public class RecurringService(AppDbContext db, IConfiguration configuration) : I
             ?? throw new NotFoundException("Tarea recurrente no encontrada.");
 
         if (dto.Name != null) template.Name = dto.Name;
+        // Semántica explícita: dto.DescriptionHtml == null significa "no tocar"; "" significa
+        // "vaciar la descripción" (válido). El frontend siempre envía el campo aunque esté vacío.
         if (dto.DescriptionHtml != null) template.DescriptionHtml = dto.DescriptionHtml;
         if (dto.Frequency != null) template.Frequency = dto.Frequency.Value;
         if (dto.Interval != null) template.Interval = dto.Interval.Value;
@@ -152,12 +195,20 @@ public class RecurringService(AppDbContext db, IConfiguration configuration) : I
         if (dto.StartDateOffsetDays != null) template.StartDateOffsetDays = dto.StartDateOffsetDays.Value;
         if (dto.TargetDateOffsetDays != null) template.TargetDateOffsetDays = dto.TargetDateOffsetDays.Value;
         if (dto.BlockPolicy != null) template.BlockPolicy = dto.BlockPolicy.Value;
+        if (dto.IssueTypeId.HasValue)
+        {
+            var typeExists = await db.IssueTypes
+                .AnyAsync(t => t.Id == dto.IssueTypeId.Value && t.WorkspaceId == workspace.Id, ct);
+            if (!typeExists)
+                throw new NotFoundException("El tipo de tarea no existe en este workspace.");
+            template.IssueTypeId = dto.IssueTypeId;
+        }
 
-        if (dto.CompanyIds != null || dto.AssigneeIds != null || dto.LabelIds != null)
+        if (dto.ProjectIds != null || dto.AssigneeIds != null || dto.LabelIds != null)
         {
             await SyncPivots(
                 template.Id,
-                dto.CompanyIds ?? [],
+                dto.ProjectIds ?? [],
                 dto.AssigneeIds ?? [],
                 dto.LabelIds ?? [],
                 ct);
@@ -209,9 +260,73 @@ public class RecurringService(AppDbContext db, IConfiguration configuration) : I
     public async Task<RecurringTemplateDto> SkipNextAsync(string workspaceSlug, Guid templateId, Guid userId, CancellationToken ct = default)
     {
         var template = await GetTemplateWithAdminCheckAsync(workspaceSlug, templateId, userId, ct);
-        template.SkipNextRun = true;
+        // Toggle: si ya estaba marcado para omitir, deshacer; si no, marcar.
+        template.SkipNextRun = !template.SkipNextRun;
         await db.SaveChangesAsync(ct);
         return await LoadAndMapAsync(template.Id, ct);
+    }
+
+    public async Task<RecurringTemplateDto> DuplicateAsync(string workspaceSlug, Guid templateId, Guid userId, CancellationToken ct = default)
+    {
+        var workspace = await db.Workspaces.FirstOrDefaultAsync(w => w.Slug == workspaceSlug, ct)
+            ?? throw new NotFoundException($"Workspace '{workspaceSlug}' not found.");
+
+        var member = await db.WorkspaceMembers.FirstOrDefaultAsync(
+            m => m.WorkspaceId == workspace.Id && m.UserId == userId && m.IsActive, ct)
+            ?? throw new ForbiddenException("No eres miembro de este workspace.");
+
+        if (member.Role < WorkspaceRole.Admin)
+            throw new ForbiddenException("Solo los administradores pueden duplicar tareas recurrentes.");
+
+        var original = await db.RecurringIssueTemplates
+            .Include(t => t.Projects)
+            .Include(t => t.Assignees)
+            .Include(t => t.Labels)
+            .FirstOrDefaultAsync(t => t.Id == templateId && t.WorkspaceId == workspace.Id, ct)
+            ?? throw new NotFoundException("Tarea recurrente no encontrada.");
+
+        var sequenceId = await GenerateSequenceIdAsync(workspace.Id, ct);
+
+        var copy = new RecurringIssueTemplate
+        {
+            WorkspaceId = workspace.Id,
+            SequenceId = sequenceId,
+            Name = original.Name + " (copia)",
+            DescriptionHtml = original.DescriptionHtml,
+            Frequency = original.Frequency,
+            Interval = original.Interval,
+            DaysOfWeek = (int[])original.DaysOfWeek.Clone(),
+            DayOfMonth = original.DayOfMonth,
+            MonthOfYear = original.MonthOfYear,
+            RunAtTime = original.RunAtTime,
+            EndTime = original.EndTime,
+            Timezone = original.Timezone,
+            StartsOn = original.StartsOn,
+            EndsOn = original.EndsOn,
+            // Por seguridad la copia arranca pausada — el usuario revisa y reanuda.
+            IsActive = true,
+            IsPaused = true,
+            StateGroup = original.StateGroup,
+            Priority = original.Priority,
+            StartDateOffsetDays = original.StartDateOffsetDays,
+            TargetDateOffsetDays = original.TargetDateOffsetDays,
+            BlockPolicy = original.BlockPolicy,
+            IssueTypeId = original.IssueTypeId,
+            CreatedById = userId
+        };
+
+        db.RecurringIssueTemplates.Add(copy);
+        await db.SaveChangesAsync(ct);
+
+        var projectIds = original.Projects.Select(p => p.ProjectId).ToList();
+        var assigneeIds = original.Assignees.Select(a => a.AssigneeId).ToList();
+        var labelIds = original.Labels.Select(l => l.LabelId).ToList();
+        await SyncPivots(copy.Id, projectIds, assigneeIds, labelIds, ct);
+
+        copy.NextRunAt = RecurringScheduleCalculator.ComputeNextRun(copy);
+        await db.SaveChangesAsync(ct);
+
+        return await LoadAndMapAsync(copy.Id, ct);
     }
 
     public async Task<List<RecurringRunDto>> GetRunsAsync(string workspaceSlug, Guid templateId, Guid userId, CancellationToken ct = default)
@@ -271,13 +386,41 @@ public class RecurringService(AppDbContext db, IConfiguration configuration) : I
             DescriptionHtml = issue.Description ?? string.Empty,
             Priority = issue.Priority.ToString().ToLowerInvariant(),
             StateGroup = stateGroup,
-            CompanyIds = [issue.CompanyId],
+            IssueTypeId = issue.IssueTypeId,
+            ProjectIds = [issue.ProjectId],
             AssigneeIds = issue.Assignees.Select(a => a.UserId).ToList(),
             LabelIds = issue.Labels.Select(l => l.LabelId).ToList()
         };
     }
 
     // --- Helpers ---
+
+    private async Task<int> GenerateSequenceIdAsync(Guid workspaceId, CancellationToken ct)
+    {
+        var connString = configuration.GetConnectionString("Postgres")!;
+        int sequenceId;
+
+        await using var conn = new NpgsqlConnection(connString);
+        await conn.OpenAsync(ct);
+        await using var tx = await conn.BeginTransactionAsync(ct);
+
+        var lockKey = BitConverter.ToInt64(workspaceId.ToByteArray(), 0);
+        await using (var lockCmd = new NpgsqlCommand($"SELECT pg_advisory_xact_lock({lockKey})", conn, tx))
+            await lockCmd.ExecuteNonQueryAsync(ct);
+
+        await using (var seqCmd = new NpgsqlCommand(
+            "SELECT COALESCE(MAX(\"SequenceId\"), 0) + 1 FROM \"RecurringIssueTemplates\" WHERE \"WorkspaceId\" = @wid AND \"IsDeleted\" = false",
+            conn, tx))
+        {
+            seqCmd.Parameters.AddWithValue("wid", workspaceId);
+            sequenceId = Convert.ToInt32(await seqCmd.ExecuteScalarAsync(ct));
+        }
+
+        await tx.CommitAsync(ct);
+        await conn.CloseAsync();
+
+        return sequenceId;
+    }
 
     private async Task<RecurringIssueTemplate> GetTemplateWithAdminCheckAsync(
         string workspaceSlug, Guid templateId, Guid userId, CancellationToken ct)
@@ -297,11 +440,11 @@ public class RecurringService(AppDbContext db, IConfiguration configuration) : I
             ?? throw new NotFoundException("Tarea recurrente no encontrada.");
     }
 
-    private async Task SyncPivots(Guid templateId, List<Guid> companyIds, List<Guid> assigneeIds, List<Guid> labelIds, CancellationToken ct)
+    private async Task SyncPivots(Guid templateId, List<Guid> projectIds, List<Guid> assigneeIds, List<Guid> labelIds, CancellationToken ct)
     {
-        var existingCompanies = await db.RecurringIssueTemplateCompanies
+        var existingProjects = await db.RecurringIssueTemplateProjects
             .Where(x => x.TemplateId == templateId).ToListAsync(ct);
-        db.RecurringIssueTemplateCompanies.RemoveRange(existingCompanies);
+        db.RecurringIssueTemplateProjects.RemoveRange(existingProjects);
 
         var existingAssignees = await db.RecurringIssueTemplateAssignees
             .Where(x => x.TemplateId == templateId).ToListAsync(ct);
@@ -311,8 +454,8 @@ public class RecurringService(AppDbContext db, IConfiguration configuration) : I
             .Where(x => x.TemplateId == templateId).ToListAsync(ct);
         db.RecurringIssueTemplateLabels.RemoveRange(existingLabels);
 
-        db.RecurringIssueTemplateCompanies.AddRange(
-            companyIds.Select(cid => new RecurringIssueTemplateCompany { TemplateId = templateId, CompanyId = cid }));
+        db.RecurringIssueTemplateProjects.AddRange(
+            projectIds.Select(cid => new RecurringIssueTemplateProject { TemplateId = templateId, ProjectId = cid }));
         db.RecurringIssueTemplateAssignees.AddRange(
             assigneeIds.Select(aid => new RecurringIssueTemplateAssignee { TemplateId = templateId, AssigneeId = aid }));
         db.RecurringIssueTemplateLabels.AddRange(
@@ -324,8 +467,10 @@ public class RecurringService(AppDbContext db, IConfiguration configuration) : I
     private async Task<RecurringTemplateDto> LoadAndMapAsync(Guid templateId, CancellationToken ct)
     {
         var template = await db.RecurringIssueTemplates
-            .Include(t => t.Companies)
+            .Include(t => t.Projects)
+                .ThenInclude(p => p.Project)
             .Include(t => t.Assignees)
+                .ThenInclude(a => a.Assignee)
             .Include(t => t.Labels)
             .FirstOrDefaultAsync(t => t.Id == templateId, ct)
             ?? throw new NotFoundException("Tarea recurrente no encontrada.");
@@ -360,13 +505,40 @@ public class RecurringService(AppDbContext db, IConfiguration configuration) : I
         StartDateOffsetDays = t.StartDateOffsetDays,
         TargetDateOffsetDays = t.TargetDateOffsetDays,
         BlockPolicy = t.BlockPolicy.ToString(),
+        IssueTypeId = t.IssueTypeId,
         CreatedById = t.CreatedById,
         CreatedAt = t.CreatedAt,
         UpdatedAt = t.UpdatedAt,
-        CompanyIds = t.Companies.Select(c => c.CompanyId).ToList(),
+        ProjectIds = t.Projects.Select(p => p.ProjectId).ToList(),
         AssigneeIds = t.Assignees.Select(a => a.AssigneeId).ToList(),
-        LabelIds = t.Labels.Select(l => l.LabelId).ToList()
+        LabelIds = t.Labels.Select(l => l.LabelId).ToList(),
+        Projects = t.Projects
+            .Where(p => p.Project != null)
+            .Select(p => new RecurringTemplateProjectSummaryDto
+            {
+                Id = p.ProjectId,
+                Identifier = p.Project!.Identifier,
+                Name = p.Project.Name
+            }).ToList(),
+        Assignees = t.Assignees
+            .Where(a => a.Assignee != null)
+            .Select(a => new RecurringTemplateAssigneeSummaryDto
+            {
+                Id = a.AssigneeId,
+                DisplayName = ResolveDisplayName(a.Assignee!),
+                AvatarUrl = a.Assignee!.AvatarUrl
+            }).ToList()
     };
+
+    private static string ResolveDisplayName(User user)
+    {
+        if (!string.IsNullOrWhiteSpace(user.DisplayName)) return user.DisplayName!;
+        var first = user.FirstName?.Trim();
+        var last = user.LastName?.Trim();
+        if (!string.IsNullOrEmpty(first) || !string.IsNullOrEmpty(last))
+            return $"{first} {last}".Trim();
+        return user.Email ?? user.UserName ?? string.Empty;
+    }
 
     private static RecurringRunDto MapRunToDto(RecurringIssueRun r) => new()
     {
@@ -379,7 +551,7 @@ public class RecurringService(AppDbContext db, IConfiguration configuration) : I
         GeneratedIssueIds = r.GeneratedIssues.Select(i => new RecurringRunIssueRefDto
         {
             IssueId = i.IssueId,
-            CompanyId = i.CompanyId
+            ProjectId = i.ProjectId
         }).ToList(),
         BlockedByIssueIds = r.BlockedByIssues.Select(i => i.Id).ToList(),
         CreatedAt = r.CreatedAt

@@ -15,10 +15,7 @@ public interface IWorkspaceService
     Task<IEnumerable<WorkspaceMemberDto>> GetMembersAsync(string slug, CancellationToken ct = default);
     Task RemoveMemberAsync(string slug, Guid userId, Guid requesterId, CancellationToken ct = default);
     Task<WorkspaceMemberDto> UpdateMemberRoleAsync(string slug, Guid userId, UpdateMemberRoleDto dto, Guid requesterId, CancellationToken ct = default);
-
-    // Invitations
-    Task<WorkspaceInvitationDto> InviteMemberAsync(string slug, CreateWorkspaceInvitationDto dto, Guid invitedById, CancellationToken ct = default);
-    Task AcceptInvitationAsync(string token, Guid userId, CancellationToken ct = default);
-    Task<IEnumerable<WorkspaceInvitationDto>> GetPendingInvitationsAsync(string slug, CancellationToken ct = default);
-    Task RevokeInvitationAsync(Guid invitationId, Guid requesterId, CancellationToken ct = default);
+    Task<IEnumerable<WorkspaceUserSearchDto>> SearchUsersAsync(string slug, string query, int limit, Guid requesterId, CancellationToken ct = default);
+    Task<WorkspaceMemberDto> AddMemberAsync(string slug, AddWorkspaceMemberDto dto, Guid requesterId, CancellationToken ct = default);
+    Task<WorkspaceMemberDto> CreateUserAndAddMemberAsync(string slug, CreateUserAndAddMemberDto dto, Guid requesterId, CancellationToken ct = default);
 }

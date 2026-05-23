@@ -26,154 +26,154 @@ import type {
 } from '../domain/types';
 
 export const issueRepository = {
-    getAll: (workspaceSlug: string, companyId: string): Promise<PagedResult<Issue>> =>
+    getAll: (workspaceSlug: string, projectId: string): Promise<PagedResult<Issue>> =>
         apiClient
             .get<PagedResult<Issue>>(
-                `/api/workspaces/${workspaceSlug}/companies/${companyId}/issues`,
+                `/api/workspaces/${workspaceSlug}/projects/${projectId}/issues`,
             )
             .then((r) => r.data),
     create: (
         workspaceSlug: string,
-        companyId: string,
+        projectId: string,
         data: CreateIssueData,
     ): Promise<Issue> =>
         apiClient
             .post<Issue>(
-                `/api/workspaces/${workspaceSlug}/companies/${companyId}/issues`,
+                `/api/workspaces/${workspaceSlug}/projects/${projectId}/issues`,
                 data,
             )
             .then((r) => r.data),
     update: (
         workspaceSlug: string,
-        companyId: string,
+        projectId: string,
         issueId: string,
         data: UpdateIssueData,
     ): Promise<Issue> =>
         apiClient
             .patch<Issue>(
-                `/api/workspaces/${workspaceSlug}/companies/${companyId}/issues/${issueId}`,
+                `/api/workspaces/${workspaceSlug}/projects/${projectId}/issues/${issueId}`,
                 data,
             )
             .then((r) => r.data),
-    delete: (workspaceSlug: string, companyId: string, issueId: string): Promise<void> =>
+    delete: (workspaceSlug: string, projectId: string, issueId: string): Promise<void> =>
         apiClient
             .delete(
-                `/api/workspaces/${workspaceSlug}/companies/${companyId}/issues/${issueId}`,
+                `/api/workspaces/${workspaceSlug}/projects/${projectId}/issues/${issueId}`,
             )
             .then(() => undefined),
     approve: (
         workspaceSlug: string,
-        companyId: string,
+        projectId: string,
         issueId: string,
         targetStateId: string,
     ): Promise<Issue> =>
         apiClient
             .post<Issue>(
-                `/api/workspaces/${workspaceSlug}/companies/${companyId}/issues/${issueId}/approve`,
+                `/api/workspaces/${workspaceSlug}/projects/${projectId}/issues/${issueId}/approve`,
                 { targetStateId },
             )
             .then((r) => r.data),
-    getById: (workspaceSlug: string, companyId: string, issueId: string): Promise<Issue> =>
+    getById: (workspaceSlug: string, projectId: string, issueId: string): Promise<Issue> =>
         apiClient
             .get<Issue>(
-                `/api/workspaces/${workspaceSlug}/companies/${companyId}/issues/${issueId}`,
+                `/api/workspaces/${workspaceSlug}/projects/${projectId}/issues/${issueId}`,
             )
             .then((r) => r.data),
-    archive: (workspaceSlug: string, companyId: string, issueId: string): Promise<void> =>
+    archive: (workspaceSlug: string, projectId: string, issueId: string): Promise<void> =>
         apiClient
-            .post(`/api/workspaces/${workspaceSlug}/companies/${companyId}/issues/${issueId}/archive`)
+            .post(`/api/workspaces/${workspaceSlug}/projects/${projectId}/issues/${issueId}/archive`)
             .then(() => undefined),
-    duplicate: (workspaceSlug: string, companyId: string, issueId: string): Promise<Issue> =>
+    duplicate: (workspaceSlug: string, projectId: string, issueId: string): Promise<Issue> =>
         apiClient
-            .post<Issue>(`/api/workspaces/${workspaceSlug}/companies/${companyId}/issues/${issueId}/duplicate`)
+            .post<Issue>(`/api/workspaces/${workspaceSlug}/projects/${projectId}/issues/${issueId}/duplicate`)
             .then((r) => r.data),
 };
 
 // Comments
 export const getComments = (
     workspaceSlug: string,
-    companyId: string,
+    projectId: string,
     issueId: string,
 ): Promise<IssueComment[]> =>
     apiClient
         .get<IssueComment[]>(
-            `/api/workspaces/${workspaceSlug}/companies/${companyId}/issues/${issueId}/comments`,
+            `/api/workspaces/${workspaceSlug}/projects/${projectId}/issues/${issueId}/comments`,
         )
         .then((r) => r.data);
 
 export const createComment = (
     workspaceSlug: string,
-    companyId: string,
+    projectId: string,
     issueId: string,
     data: CreateCommentData,
 ): Promise<IssueComment> =>
     apiClient
         .post<IssueComment>(
-            `/api/workspaces/${workspaceSlug}/companies/${companyId}/issues/${issueId}/comments`,
+            `/api/workspaces/${workspaceSlug}/projects/${projectId}/issues/${issueId}/comments`,
             data,
         )
         .then((r) => r.data);
 
 export const updateComment = (
     workspaceSlug: string,
-    companyId: string,
+    projectId: string,
     issueId: string,
     commentId: string,
     data: { body: string },
 ): Promise<IssueComment> =>
     apiClient
         .patch<IssueComment>(
-            `/api/workspaces/${workspaceSlug}/companies/${companyId}/issues/${issueId}/comments/${commentId}`,
+            `/api/workspaces/${workspaceSlug}/projects/${projectId}/issues/${issueId}/comments/${commentId}`,
             data,
         )
         .then((r) => r.data);
 
 export const deleteComment = (
     workspaceSlug: string,
-    companyId: string,
+    projectId: string,
     issueId: string,
     commentId: string,
 ): Promise<void> =>
     apiClient
         .delete(
-            `/api/workspaces/${workspaceSlug}/companies/${companyId}/issues/${issueId}/comments/${commentId}`,
+            `/api/workspaces/${workspaceSlug}/projects/${projectId}/issues/${issueId}/comments/${commentId}`,
         )
         .then(() => undefined);
 
 // Reactions
 export const getReactions = (
     workspaceSlug: string,
-    companyId: string,
+    projectId: string,
     issueId: string,
 ): Promise<IssueReaction[]> =>
     apiClient
         .get<IssueReaction[]>(
-            `/api/workspaces/${workspaceSlug}/companies/${companyId}/issues/${issueId}/reactions`,
+            `/api/workspaces/${workspaceSlug}/projects/${projectId}/issues/${issueId}/reactions`,
         )
         .then((r) => r.data);
 
 export const addReaction = (
     workspaceSlug: string,
-    companyId: string,
+    projectId: string,
     issueId: string,
     data: CreateReactionData,
 ): Promise<IssueReaction> =>
     apiClient
         .post<IssueReaction>(
-            `/api/workspaces/${workspaceSlug}/companies/${companyId}/issues/${issueId}/reactions`,
+            `/api/workspaces/${workspaceSlug}/projects/${projectId}/issues/${issueId}/reactions`,
             data,
         )
         .then((r) => r.data);
 
 export const removeReaction = (
     workspaceSlug: string,
-    companyId: string,
+    projectId: string,
     issueId: string,
     emoji: string,
 ): Promise<void> =>
     apiClient
         .delete(
-            `/api/workspaces/${workspaceSlug}/companies/${companyId}/issues/${issueId}/reactions/${encodeURIComponent(emoji)}`,
+            `/api/workspaces/${workspaceSlug}/projects/${projectId}/issues/${issueId}/reactions/${encodeURIComponent(emoji)}`,
         )
         .then(() => undefined);
 
@@ -218,133 +218,133 @@ export const deleteIssueType = (workspaceSlug: string, id: string): Promise<void
 // Subscribers
 export const getSubscribers = (
     workspaceSlug: string,
-    companyId: string,
+    projectId: string,
     issueId: string,
 ): Promise<IssueSubscriber[]> =>
     apiClient
         .get<IssueSubscriber[]>(
-            `/api/workspaces/${workspaceSlug}/companies/${companyId}/issues/${issueId}/subscribers`,
+            `/api/workspaces/${workspaceSlug}/projects/${projectId}/issues/${issueId}/subscribers`,
         )
         .then((r) => r.data);
 
 export const subscribe = (
     workspaceSlug: string,
-    companyId: string,
+    projectId: string,
     issueId: string,
 ): Promise<void> =>
     apiClient
         .post(
-            `/api/workspaces/${workspaceSlug}/companies/${companyId}/issues/${issueId}/subscribers`,
+            `/api/workspaces/${workspaceSlug}/projects/${projectId}/issues/${issueId}/subscribers`,
             {},
         )
         .then(() => undefined);
 
 export const unsubscribe = (
     workspaceSlug: string,
-    companyId: string,
+    projectId: string,
     issueId: string,
 ): Promise<void> =>
     apiClient
         .delete(
-            `/api/workspaces/${workspaceSlug}/companies/${companyId}/issues/${issueId}/subscribers`,
+            `/api/workspaces/${workspaceSlug}/projects/${projectId}/issues/${issueId}/subscribers`,
         )
         .then(() => undefined);
 
 // Links
 export const getLinks = (
     workspaceSlug: string,
-    companyId: string,
+    projectId: string,
     issueId: string,
 ): Promise<IssueLink[]> =>
     apiClient
         .get<IssueLink[]>(
-            `/api/workspaces/${workspaceSlug}/companies/${companyId}/issues/${issueId}/links`,
+            `/api/workspaces/${workspaceSlug}/projects/${projectId}/issues/${issueId}/links`,
         )
         .then((r) => r.data);
 
 export const createLink = (
     workspaceSlug: string,
-    companyId: string,
+    projectId: string,
     issueId: string,
     data: CreateIssueLinkData,
 ): Promise<IssueLink> =>
     apiClient
         .post<IssueLink>(
-            `/api/workspaces/${workspaceSlug}/companies/${companyId}/issues/${issueId}/links`,
+            `/api/workspaces/${workspaceSlug}/projects/${projectId}/issues/${issueId}/links`,
             data,
         )
         .then((r) => r.data);
 
 export const deleteLink = (
     workspaceSlug: string,
-    companyId: string,
+    projectId: string,
     issueId: string,
     linkId: string,
 ): Promise<void> =>
     apiClient
         .delete(
-            `/api/workspaces/${workspaceSlug}/companies/${companyId}/issues/${issueId}/links/${linkId}`,
+            `/api/workspaces/${workspaceSlug}/projects/${projectId}/issues/${issueId}/links/${linkId}`,
         )
         .then(() => undefined);
 
 // Relations
 export const getRelations = (
     workspaceSlug: string,
-    companyId: string,
+    projectId: string,
     issueId: string,
 ): Promise<IssueRelation[]> =>
     apiClient
         .get<IssueRelation[]>(
-            `/api/workspaces/${workspaceSlug}/companies/${companyId}/issues/${issueId}/relations`,
+            `/api/workspaces/${workspaceSlug}/projects/${projectId}/issues/${issueId}/relations`,
         )
         .then((r) => r.data);
 
 export const createRelation = (
     workspaceSlug: string,
-    companyId: string,
+    projectId: string,
     issueId: string,
     data: CreateIssueRelationData,
 ): Promise<IssueRelation> =>
     apiClient
         .post<IssueRelation>(
-            `/api/workspaces/${workspaceSlug}/companies/${companyId}/issues/${issueId}/relations`,
+            `/api/workspaces/${workspaceSlug}/projects/${projectId}/issues/${issueId}/relations`,
             data,
         )
         .then((r) => r.data);
 
 export const deleteRelation = (
     workspaceSlug: string,
-    companyId: string,
+    projectId: string,
     issueId: string,
     relationId: string,
 ): Promise<void> =>
     apiClient
         .delete(
-            `/api/workspaces/${workspaceSlug}/companies/${companyId}/issues/${issueId}/relations/${relationId}`,
+            `/api/workspaces/${workspaceSlug}/projects/${projectId}/issues/${issueId}/relations/${relationId}`,
         )
         .then(() => undefined);
 
 // Activity
 export const getActivities = (
     workspaceSlug: string,
-    companyId: string,
+    projectId: string,
     issueId: string,
 ): Promise<IssueActivity[]> =>
     apiClient
         .get<IssueActivity[]>(
-            `/api/workspaces/${workspaceSlug}/companies/${companyId}/issues/${issueId}/activities`,
+            `/api/workspaces/${workspaceSlug}/projects/${projectId}/issues/${issueId}/activities`,
         )
         .then((r) => r.data);
 
 // DeDupe — search similar
 export const searchSimilarIssues = (
     workspaceSlug: string,
-    companyId: string,
+    projectId: string,
     data: SearchSimilarIssuesData,
 ): Promise<Issue[]> =>
     apiClient
         .post<Issue[]>(
-            `/api/workspaces/${workspaceSlug}/companies/${companyId}/issues/search-similar`,
+            `/api/workspaces/${workspaceSlug}/projects/${projectId}/issues/search-similar`,
             data,
         )
         .then((r) => r.data);
@@ -352,57 +352,57 @@ export const searchSimilarIssues = (
 // Cycle
 export const attachCycle = (
     workspaceSlug: string,
-    companyId: string,
+    projectId: string,
     issueId: string,
     cycleId: string,
 ): Promise<void> =>
     apiClient
-        .post(`/api/workspaces/${workspaceSlug}/companies/${companyId}/issues/${issueId}/cycle`, { cycleId })
+        .post(`/api/workspaces/${workspaceSlug}/projects/${projectId}/issues/${issueId}/cycle`, { cycleId })
         .then(() => undefined);
 
 export const detachCycle = (
     workspaceSlug: string,
-    companyId: string,
+    projectId: string,
     issueId: string,
 ): Promise<void> =>
     apiClient
-        .delete(`/api/workspaces/${workspaceSlug}/companies/${companyId}/issues/${issueId}/cycle`)
+        .delete(`/api/workspaces/${workspaceSlug}/projects/${projectId}/issues/${issueId}/cycle`)
         .then(() => undefined);
 
 // Modules
 export const attachModules = (
     workspaceSlug: string,
-    companyId: string,
+    projectId: string,
     issueId: string,
     moduleIds: string[],
 ): Promise<void> =>
     apiClient
-        .post(`/api/workspaces/${workspaceSlug}/companies/${companyId}/issues/${issueId}/modules`, { moduleIds })
+        .post(`/api/workspaces/${workspaceSlug}/projects/${projectId}/issues/${issueId}/modules`, { moduleIds })
         .then(() => undefined);
 
 export const detachModule = (
     workspaceSlug: string,
-    companyId: string,
+    projectId: string,
     issueId: string,
     moduleId: string,
 ): Promise<void> =>
     apiClient
-        .delete(`/api/workspaces/${workspaceSlug}/companies/${companyId}/issues/${issueId}/modules/${moduleId}`)
+        .delete(`/api/workspaces/${workspaceSlug}/projects/${projectId}/issues/${issueId}/modules/${moduleId}`)
         .then(() => undefined);
 
 // Attachments
 export const getAttachments = (
     workspaceSlug: string,
-    companyId: string,
+    projectId: string,
     issueId: string,
 ): Promise<Array<{ id: string; fileName: string; contentType: string; sizeBytes: number; url: string; createdAt: string }>> =>
     apiClient
-        .get(`/api/workspaces/${workspaceSlug}/companies/${companyId}/issues/${issueId}/attachments`)
+        .get(`/api/workspaces/${workspaceSlug}/projects/${projectId}/issues/${issueId}/attachments`)
         .then((r) => r.data);
 
 export const uploadAttachment = (
     workspaceSlug: string,
-    companyId: string,
+    projectId: string,
     issueId: string,
     file: File,
 ): Promise<{ id: string; fileName: string; url: string }> => {
@@ -410,7 +410,7 @@ export const uploadAttachment = (
     form.append('file', file);
     return apiClient
         .post(
-            `/api/workspaces/${workspaceSlug}/companies/${companyId}/issues/${issueId}/attachments`,
+            `/api/workspaces/${workspaceSlug}/projects/${projectId}/issues/${issueId}/attachments`,
             form,
             { headers: { 'Content-Type': 'multipart/form-data' } },
         )
@@ -419,34 +419,34 @@ export const uploadAttachment = (
 
 export const deleteAttachment = (
     workspaceSlug: string,
-    companyId: string,
+    projectId: string,
     attachmentId: string,
 ): Promise<void> =>
     apiClient
-        .delete(`/api/workspaces/${workspaceSlug}/companies/${companyId}/issues/attachments/${attachmentId}`)
+        .delete(`/api/workspaces/${workspaceSlug}/projects/${projectId}/issues/attachments/${attachmentId}`)
         .then(() => undefined);
 
 // Mentions
 export const getMentions = (
     workspaceSlug: string,
-    companyId: string,
+    projectId: string,
     issueId: string,
 ): Promise<IssueMention[]> =>
     apiClient
         .get<IssueMention[]>(
-            `/api/workspaces/${workspaceSlug}/companies/${companyId}/issues/${issueId}/mentions`,
+            `/api/workspaces/${workspaceSlug}/projects/${projectId}/issues/${issueId}/mentions`,
         )
         .then((r) => r.data);
 
 export const syncMentions = (
     workspaceSlug: string,
-    companyId: string,
+    projectId: string,
     issueId: string,
     mentionedUserIds: string[],
 ): Promise<void> =>
     apiClient
         .post(
-            `/api/workspaces/${workspaceSlug}/companies/${companyId}/issues/${issueId}/mentions`,
+            `/api/workspaces/${workspaceSlug}/projects/${projectId}/issues/${issueId}/mentions`,
             { mentionedUserIds },
         )
         .then(() => undefined);
@@ -454,12 +454,12 @@ export const syncMentions = (
 // Versions
 export const getVersions = (
     workspaceSlug: string,
-    companyId: string,
+    projectId: string,
     issueId: string,
 ): Promise<IssueVersion[]> =>
     apiClient
         .get<IssueVersion[]>(
-            `/api/workspaces/${workspaceSlug}/companies/${companyId}/issues/${issueId}/versions`,
+            `/api/workspaces/${workspaceSlug}/projects/${projectId}/issues/${issueId}/versions`,
         )
         .then((r) => r.data);
 

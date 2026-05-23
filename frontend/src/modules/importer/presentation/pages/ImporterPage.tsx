@@ -65,15 +65,15 @@ function StatusBadge({ status }: { status: ImporterHistory['status'] }): React.R
 }
 
 export const ImporterPage = (): React.ReactElement => {
-    const { workspaceSlug = '', companyId = '' } = useParams<{
+    const { workspaceSlug = '', projectId = '' } = useParams<{
         workspaceSlug: string;
-        companyId: string;
+        projectId: string;
     }>();
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
-    const { data: history = [], isLoading } = useImporterHistory(workspaceSlug, companyId);
-    const { mutate: uploadCsv, isPending: isUploading } = useUploadCsv(workspaceSlug, companyId);
+    const { data: history = [], isLoading } = useImporterHistory(workspaceSlug, projectId);
+    const { mutate: uploadCsv, isPending: isUploading } = useUploadCsv(workspaceSlug, projectId);
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
         const file = e.target.files?.[0] ?? null;

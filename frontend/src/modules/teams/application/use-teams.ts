@@ -63,6 +63,7 @@ export const useAddTeamMember = (workspaceSlug: string, teamId: string) => {
         mutationFn: (userId: string) => teamsRepository.addMember(workspaceSlug, teamId, userId),
         onSuccess: () => {
             void qc.invalidateQueries({ queryKey: membersKey(workspaceSlug, teamId) });
+            void qc.invalidateQueries({ queryKey: listKey(workspaceSlug) });
             toast.success('Miembro agregado');
         },
         onError: (error: unknown) => { const e = error as { response?: { data?: { message?: string } } }; toast.error(e?.response?.data?.message ?? 'Error al agregar miembro'); },
@@ -75,6 +76,7 @@ export const useRemoveTeamMember = (workspaceSlug: string, teamId: string) => {
         mutationFn: (userId: string) => teamsRepository.removeMember(workspaceSlug, teamId, userId),
         onSuccess: () => {
             void qc.invalidateQueries({ queryKey: membersKey(workspaceSlug, teamId) });
+            void qc.invalidateQueries({ queryKey: listKey(workspaceSlug) });
             toast.success('Miembro removido');
         },
         onError: (error: unknown) => { const e = error as { response?: { data?: { message?: string } } }; toast.error(e?.response?.data?.message ?? 'Error al remover miembro'); },

@@ -16,9 +16,9 @@ import { CreateIssueDialog } from './CreateIssueDialog';
 
 interface IssueRowProps {
     issue: Issue;
-    companyIdentifier?: string;
+    projectIdentifier?: string;
     workspaceSlug?: string;
-    companyId?: string;
+    projectId?: string;
     onClick: () => void;
 }
 
@@ -88,18 +88,18 @@ function renderDue(issue: Issue): string {
 
 export const IssueRow = ({
     issue,
-    companyIdentifier,
+    projectIdentifier,
     workspaceSlug,
-    companyId,
+    projectId,
     onClick,
 }: IssueRowProps): React.ReactElement => {
-    const params = useParams<{ workspaceSlug: string; companyId: string }>();
+    const params = useParams<{ workspaceSlug: string; projectId: string }>();
     const resolvedSlug = workspaceSlug ?? params.workspaceSlug ?? '';
-    const resolvedCompanyId = companyId ?? params.companyId ?? '';
+    const resolvedProjectId = projectId ?? params.projectId ?? '';
     const [editingIssue, setEditingIssue] = useState<Issue | null>(null);
 
     const { data: labelsData } = useLabels(resolvedSlug);
-    const { data: cyclesData } = useCycles(resolvedSlug, resolvedCompanyId);
+    const { data: cyclesData } = useCycles(resolvedSlug, resolvedProjectId);
 
     const label = useMemo<Label | undefined>(() => {
         const firstLabelId = issue.labelIds[0];
@@ -158,7 +158,7 @@ export const IssueRow = ({
 
                 {/* 3. ID */}
                 <span className="font-mono text-[11px] text-[var(--neutral-600)] tracking-tight">
-                    {companyIdentifier ?? 'ISS'}-{issue.sequenceId}
+                    {projectIdentifier ?? 'ISS'}-{issue.sequenceId}
                 </span>
 
                 {/* 4. Título */}
@@ -237,12 +237,12 @@ export const IssueRow = ({
                         />
                     )}
 
-                    {resolvedSlug && resolvedCompanyId && (
+                    {resolvedSlug && resolvedProjectId && (
                         <div className="flex items-center shrink-0 opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:pointer-events-auto transition-opacity">
                             <IssueActionsMenu
                                 issue={issue}
                                 workspaceSlug={resolvedSlug}
-                                companyId={resolvedCompanyId}
+                                projectId={resolvedProjectId}
                                 onEdit={() => setEditingIssue(issue)}
                             />
                         </div>
@@ -250,7 +250,7 @@ export const IssueRow = ({
                 </div>
             </div>
 
-            {editingIssue && resolvedSlug && resolvedCompanyId && (
+            {editingIssue && resolvedSlug && resolvedProjectId && (
                 <CreateIssueDialog
                     issue={editingIssue}
                     open={!!editingIssue}
@@ -258,7 +258,7 @@ export const IssueRow = ({
                         if (!open) setEditingIssue(null);
                     }}
                     workspaceSlug={resolvedSlug}
-                    companyId={resolvedCompanyId}
+                    projectId={resolvedProjectId}
                     trigger={<span />}
                 />
             )}

@@ -578,148 +578,6 @@ namespace TaskManager.Api.Migrations
                     b.ToTable("AspNetUsers", (string)null);
                 });
 
-            modelBuilder.Entity("TaskManager.Api.Modules.Companies.Entities.Company", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateTime?>("DeletedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("Description")
-                        .HasMaxLength(1000)
-                        .HasColumnType("character varying(1000)");
-
-                    b.Property<string>("Identifier")
-                        .IsRequired()
-                        .HasMaxLength(10)
-                        .HasColumnType("character varying(10)");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("boolean");
-
-                    b.Property<string>("LogoUrl")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(255)
-                        .HasColumnType("character varying(255)");
-
-                    b.Property<Guid>("OwnerId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("StateGroupId")
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid>("WorkspaceId")
-                        .HasColumnType("uuid");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("OwnerId");
-
-                    b.HasIndex("StateGroupId");
-
-                    b.HasIndex("WorkspaceId", "Identifier")
-                        .IsUnique();
-
-                    b.ToTable("Companies");
-                });
-
-            modelBuilder.Entity("TaskManager.Api.Modules.Companies.Entities.CompanyInvitation", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime?>("AcceptedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid>("CompanyId")
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateTime?>("DeletedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("Email")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<DateTime>("ExpiresAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid>("InvitedById")
-                        .HasColumnType("uuid");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("boolean");
-
-                    b.Property<int>("Role")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("Token")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("CompanyId");
-
-                    b.ToTable("CompanyInvitations");
-                });
-
-            modelBuilder.Entity("TaskManager.Api.Modules.Companies.Entities.CompanyMember", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("CompanyId")
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateTime?>("DeletedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("boolean");
-
-                    b.Property<int>("Role")
-                        .HasColumnType("integer");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uuid");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("UserId");
-
-                    b.HasIndex("CompanyId", "UserId")
-                        .IsUnique();
-
-                    b.ToTable("CompanyMembers");
-                });
-
             modelBuilder.Entity("TaskManager.Api.Modules.Cycles.Entities.Cycle", b =>
                 {
                     b.Property<Guid>("Id")
@@ -728,9 +586,6 @@ namespace TaskManager.Api.Migrations
 
                     b.Property<DateTime?>("ArchivedAt")
                         .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid>("CompanyId")
-                        .HasColumnType("uuid");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
@@ -758,6 +613,9 @@ namespace TaskManager.Api.Migrations
                     b.Property<Guid>("OwnerId")
                         .HasColumnType("uuid");
 
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnType("uuid");
+
                     b.Property<DateTime?>("StartDate")
                         .HasColumnType("timestamp with time zone");
 
@@ -770,9 +628,9 @@ namespace TaskManager.Api.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("CompanyId");
-
                     b.HasIndex("OwnerId");
+
+                    b.HasIndex("ProjectId");
 
                     b.ToTable("Cycles");
                 });
@@ -823,9 +681,6 @@ namespace TaskManager.Api.Migrations
                     b.Property<Guid?>("AssigneeId")
                         .HasColumnType("uuid");
 
-                    b.Property<Guid>("CompanyId")
-                        .HasColumnType("uuid");
-
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -847,6 +702,9 @@ namespace TaskManager.Api.Migrations
                     b.Property<int>("Priority")
                         .HasColumnType("integer");
 
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnType("uuid");
+
                     b.Property<Guid?>("StateId")
                         .HasColumnType("uuid");
 
@@ -861,9 +719,9 @@ namespace TaskManager.Api.Migrations
 
                     b.HasIndex("AssigneeId");
 
-                    b.HasIndex("CompanyId");
-
                     b.HasIndex("OwnedById");
+
+                    b.HasIndex("ProjectId");
 
                     b.HasIndex("StateId");
 
@@ -874,9 +732,6 @@ namespace TaskManager.Api.Migrations
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("CompanyId")
                         .HasColumnType("uuid");
 
                     b.Property<DateTime>("CreatedAt")
@@ -896,6 +751,9 @@ namespace TaskManager.Api.Migrations
                         .HasMaxLength(255)
                         .HasColumnType("character varying(255)");
 
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("Type")
                         .IsRequired()
                         .HasColumnType("text");
@@ -905,7 +763,7 @@ namespace TaskManager.Api.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("CompanyId");
+                    b.HasIndex("ProjectId");
 
                     b.ToTable("Estimates");
                 });
@@ -1159,9 +1017,6 @@ namespace TaskManager.Api.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
-                    b.Property<Guid>("CompanyId")
-                        .HasColumnType("uuid");
-
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -1181,6 +1036,9 @@ namespace TaskManager.Api.Migrations
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("boolean");
 
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasColumnType("text");
@@ -1199,7 +1057,7 @@ namespace TaskManager.Api.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("CompanyId");
+                    b.HasIndex("ProjectId");
 
                     b.HasIndex("WorkspaceId");
 
@@ -1213,9 +1071,6 @@ namespace TaskManager.Api.Migrations
                         .HasColumnType("uuid");
 
                     b.Property<Guid?>("AcceptedAsIssueId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("CompanyId")
                         .HasColumnType("uuid");
 
                     b.Property<DateTime>("CreatedAt")
@@ -1235,6 +1090,9 @@ namespace TaskManager.Api.Migrations
 
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("boolean");
+
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnType("uuid");
 
                     b.Property<DateTime?>("ReviewedAt")
                         .HasColumnType("timestamp with time zone");
@@ -1263,7 +1121,7 @@ namespace TaskManager.Api.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("CompanyId");
+                    b.HasIndex("ProjectId");
 
                     b.ToTable("IntakeIssues");
                 });
@@ -1307,24 +1165,6 @@ namespace TaskManager.Api.Migrations
                     b.ToTable("CommentReactions");
                 });
 
-            modelBuilder.Entity("TaskManager.Api.Modules.Issues.Entities.CompanyIssueType", b =>
-                {
-                    b.Property<Guid>("CompanyId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("IssueTypeId")
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.HasKey("CompanyId", "IssueTypeId");
-
-                    b.HasIndex("IssueTypeId");
-
-                    b.ToTable("CompanyIssueTypes");
-                });
-
             modelBuilder.Entity("TaskManager.Api.Modules.Issues.Entities.Issue", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1345,9 +1185,6 @@ namespace TaskManager.Api.Migrations
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<Guid?>("AssigneeId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("CompanyId")
                         .HasColumnType("uuid");
 
                     b.Property<DateTime?>("CompletedAt")
@@ -1406,6 +1243,9 @@ namespace TaskManager.Api.Migrations
                     b.Property<int>("Priority")
                         .HasColumnType("integer");
 
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnType("uuid");
+
                     b.Property<bool>("RequiresAdminApproval")
                         .HasColumnType("boolean");
 
@@ -1452,20 +1292,20 @@ namespace TaskManager.Api.Migrations
 
                     b.HasIndex("UpdatedById");
 
-                    b.HasIndex("CompanyId", "AssigneeId")
-                        .HasDatabaseName("IX_Issues_CompanyId_AssigneeId");
+                    b.HasIndex("ProjectId", "AssigneeId")
+                        .HasDatabaseName("IX_Issues_ProjectId_AssigneeId");
 
-                    b.HasIndex("CompanyId", "SequenceId")
+                    b.HasIndex("ProjectId", "SequenceId")
                         .IsUnique();
 
-                    b.HasIndex("CompanyId", "StateId")
-                        .HasDatabaseName("IX_Issues_CompanyId_StateId");
+                    b.HasIndex("ProjectId", "StateId")
+                        .HasDatabaseName("IX_Issues_ProjectId_StateId");
 
-                    b.HasIndex("CompanyId", "IsDeleted", "IsArchived")
-                        .HasDatabaseName("IX_Issues_CompanyId_IsDeleted_IsArchived");
+                    b.HasIndex("ProjectId", "IsDeleted", "IsArchived")
+                        .HasDatabaseName("IX_Issues_ProjectId_IsDeleted_IsArchived");
 
-                    b.HasIndex("CompanyId", "SortOrder", "CreatedAt")
-                        .HasDatabaseName("IX_Issues_CompanyId_SortOrder_CreatedAt");
+                    b.HasIndex("ProjectId", "SortOrder", "CreatedAt")
+                        .HasDatabaseName("IX_Issues_ProjectId_SortOrder_CreatedAt");
 
                     b.ToTable("Issues");
                 });
@@ -1892,9 +1732,6 @@ namespace TaskManager.Api.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
-                    b.Property<Guid?>("CompanyId")
-                        .HasColumnType("uuid");
-
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -1933,6 +1770,9 @@ namespace TaskManager.Api.Migrations
                     b.Property<Guid>("OwnerId")
                         .HasColumnType("uuid");
 
+                    b.Property<Guid?>("ProjectId")
+                        .HasColumnType("uuid");
+
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -1941,13 +1781,31 @@ namespace TaskManager.Api.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("CompanyId");
-
                     b.HasIndex("OwnerId");
+
+                    b.HasIndex("ProjectId");
 
                     b.HasIndex("WorkspaceId");
 
                     b.ToTable("IssueViews");
+                });
+
+            modelBuilder.Entity("TaskManager.Api.Modules.Issues.Entities.ProjectIssueType", b =>
+                {
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("IssueTypeId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("ProjectId", "IssueTypeId");
+
+                    b.HasIndex("IssueTypeId");
+
+                    b.ToTable("ProjectIssueTypes");
                 });
 
             modelBuilder.Entity("TaskManager.Api.Modules.Labels.Entities.Label", b =>
@@ -1990,6 +1848,175 @@ namespace TaskManager.Api.Migrations
                         .IsUnique();
 
                     b.ToTable("Labels");
+                });
+
+            modelBuilder.Entity("TaskManager.Api.Modules.Modules.Entities.Module", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("ArchivedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("EndDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsArchived")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)");
+
+                    b.Property<Guid>("OwnerId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("StartDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OwnerId");
+
+                    b.HasIndex("ProjectId");
+
+                    b.ToTable("Modules");
+                });
+
+            modelBuilder.Entity("TaskManager.Api.Modules.Modules.Entities.ModuleIssue", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("AddedById")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<Guid>("IssueId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ModuleId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("IssueId");
+
+                    b.HasIndex("ModuleId", "IssueId")
+                        .IsUnique();
+
+                    b.ToTable("ModuleIssues");
+                });
+
+            modelBuilder.Entity("TaskManager.Api.Modules.Modules.Entities.ModuleLink", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("CreatedById")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<Guid>("ModuleId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Url")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ModuleId");
+
+                    b.ToTable("ModuleLinks");
+                });
+
+            modelBuilder.Entity("TaskManager.Api.Modules.Modules.Entities.ModuleMember", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<Guid>("ModuleId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("ModuleId", "UserId")
+                        .IsUnique();
+
+                    b.ToTable("ModuleMembers");
                 });
 
             modelBuilder.Entity("TaskManager.Api.Modules.Notifications.Entities.Notification", b =>
@@ -2075,44 +2102,7 @@ namespace TaskManager.Api.Migrations
                     b.ToTable("UserNotificationPreferences");
                 });
 
-            modelBuilder.Entity("TaskManager.Api.Modules.ProjectModules.Entities.ModuleIssue", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("AddedById")
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateTime?>("DeletedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("boolean");
-
-                    b.Property<Guid>("IssueId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("ModuleId")
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("IssueId");
-
-                    b.HasIndex("ModuleId", "IssueId")
-                        .IsUnique();
-
-                    b.ToTable("ModuleIssues");
-                });
-
-            modelBuilder.Entity("TaskManager.Api.Modules.ProjectModules.Entities.ModuleLink", b =>
+            modelBuilder.Entity("TaskManager.Api.Modules.Projects.Entities.Project", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -2121,39 +2111,108 @@ namespace TaskManager.Api.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<Guid>("CreatedById")
-                        .HasColumnType("uuid");
-
                     b.Property<DateTime?>("DeletedAt")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<string>("Identifier")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)");
 
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("boolean");
 
-                    b.Property<Guid>("ModuleId")
-                        .HasColumnType("uuid");
+                    b.Property<string>("LogoUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
 
-                    b.Property<string>("Title")
+                    b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(255)
                         .HasColumnType("character varying(255)");
 
+                    b.Property<Guid>("OwnerId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("StateGroupId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("TeamId")
+                        .HasColumnType("uuid");
+
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<string>("Url")
-                        .IsRequired()
-                        .HasMaxLength(2000)
-                        .HasColumnType("character varying(2000)");
+                    b.Property<Guid>("WorkspaceId")
+                        .HasColumnType("uuid");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("ModuleId");
+                    b.HasIndex("OwnerId");
 
-                    b.ToTable("ModuleLinks");
+                    b.HasIndex("StateGroupId");
+
+                    b.HasIndex("TeamId");
+
+                    b.HasIndex("WorkspaceId", "Identifier")
+                        .IsUnique();
+
+                    b.ToTable("Projects");
                 });
 
-            modelBuilder.Entity("TaskManager.Api.Modules.ProjectModules.Entities.ModuleMember", b =>
+            modelBuilder.Entity("TaskManager.Api.Modules.Projects.Entities.ProjectInvitation", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("AcceptedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("InvitedById")
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Role")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Token")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProjectId");
+
+                    b.ToTable("ProjectInvitations");
+                });
+
+            modelBuilder.Entity("TaskManager.Api.Modules.Projects.Entities.ProjectMember", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -2168,8 +2227,11 @@ namespace TaskManager.Api.Migrations
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("boolean");
 
-                    b.Property<Guid>("ModuleId")
+                    b.Property<Guid>("ProjectId")
                         .HasColumnType("uuid");
+
+                    b.Property<int>("Role")
+                        .HasColumnType("integer");
 
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
@@ -2181,67 +2243,10 @@ namespace TaskManager.Api.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.HasIndex("ModuleId", "UserId")
+                    b.HasIndex("ProjectId", "UserId")
                         .IsUnique();
 
-                    b.ToTable("ModuleMembers");
-                });
-
-            modelBuilder.Entity("TaskManager.Api.Modules.ProjectModules.Entities.ProjectModule", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime?>("ArchivedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid>("CompanyId")
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateTime?>("DeletedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("Description")
-                        .HasColumnType("text");
-
-                    b.Property<DateTime?>("EndDate")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<bool>("IsArchived")
-                        .HasColumnType("boolean");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("boolean");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(255)
-                        .HasColumnType("character varying(255)");
-
-                    b.Property<Guid>("OwnerId")
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime?>("StartDate")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("CompanyId");
-
-                    b.HasIndex("OwnerId");
-
-                    b.ToTable("ProjectModules");
+                    b.ToTable("ProjectMembers");
                 });
 
             modelBuilder.Entity("TaskManager.Api.Modules.Recurring.Entities.RecurringIssueRun", b =>
@@ -2301,14 +2306,14 @@ namespace TaskManager.Api.Migrations
                     b.Property<Guid>("IssueId")
                         .HasColumnType("uuid");
 
-                    b.Property<Guid>("CompanyId")
+                    b.Property<Guid>("ProjectId")
                         .HasColumnType("uuid");
 
                     b.HasKey("RunId", "IssueId");
 
-                    b.HasIndex("CompanyId");
-
                     b.HasIndex("IssueId");
+
+                    b.HasIndex("ProjectId");
 
                     b.ToTable("RecurringIssueRunIssues");
                 });
@@ -2369,6 +2374,9 @@ namespace TaskManager.Api.Migrations
                     b.Property<bool>("IsPaused")
                         .HasColumnType("boolean");
 
+                    b.Property<Guid?>("IssueTypeId")
+                        .HasColumnType("uuid");
+
                     b.Property<DateTime?>("LastRunAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -2426,6 +2434,8 @@ namespace TaskManager.Api.Migrations
 
                     b.HasIndex("CreatedById");
 
+                    b.HasIndex("IssueTypeId");
+
                     b.HasIndex("WorkspaceId", "SequenceId")
                         .IsUnique();
 
@@ -2447,21 +2457,6 @@ namespace TaskManager.Api.Migrations
                     b.ToTable("RecurringIssueTemplateAssignees");
                 });
 
-            modelBuilder.Entity("TaskManager.Api.Modules.Recurring.Entities.RecurringIssueTemplateCompany", b =>
-                {
-                    b.Property<Guid>("TemplateId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("CompanyId")
-                        .HasColumnType("uuid");
-
-                    b.HasKey("TemplateId", "CompanyId");
-
-                    b.HasIndex("CompanyId");
-
-                    b.ToTable("RecurringIssueTemplateCompanies");
-                });
-
             modelBuilder.Entity("TaskManager.Api.Modules.Recurring.Entities.RecurringIssueTemplateLabel", b =>
                 {
                     b.Property<Guid>("TemplateId")
@@ -2477,13 +2472,25 @@ namespace TaskManager.Api.Migrations
                     b.ToTable("RecurringIssueTemplateLabels");
                 });
 
+            modelBuilder.Entity("TaskManager.Api.Modules.Recurring.Entities.RecurringIssueTemplateProject", b =>
+                {
+                    b.Property<Guid>("TemplateId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("TemplateId", "ProjectId");
+
+                    b.HasIndex("ProjectId");
+
+                    b.ToTable("RecurringIssueTemplateProjects");
+                });
+
             modelBuilder.Entity("TaskManager.Api.Modules.Space.Entities.DeployBoard", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("CompanyId")
                         .HasColumnType("uuid");
 
                     b.Property<DateTime>("CreatedAt")
@@ -2500,6 +2507,9 @@ namespace TaskManager.Api.Migrations
 
                     b.Property<bool>("IsPublic")
                         .HasColumnType("boolean");
+
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnType("uuid");
 
                     b.Property<bool>("ShowAssignees")
                         .HasColumnType("boolean");
@@ -2532,7 +2542,7 @@ namespace TaskManager.Api.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("CompanyId");
+                    b.HasIndex("ProjectId");
 
                     b.HasIndex("WorkspaceId");
 
@@ -2711,9 +2721,6 @@ namespace TaskManager.Api.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
-                    b.Property<Guid?>("CompanyId")
-                        .HasColumnType("uuid");
-
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -2730,6 +2737,9 @@ namespace TaskManager.Api.Migrations
                         .IsRequired()
                         .HasMaxLength(255)
                         .HasColumnType("character varying(255)");
+
+                    b.Property<Guid?>("ProjectId")
+                        .HasColumnType("uuid");
 
                     b.Property<string>("TemplateJson")
                         .HasColumnType("text");
@@ -2891,54 +2901,6 @@ namespace TaskManager.Api.Migrations
                     b.HasIndex("WorkspaceId");
 
                     b.ToTable("WorkspaceActivities");
-                });
-
-            modelBuilder.Entity("TaskManager.Api.Modules.Workspaces.Entities.WorkspaceInvitation", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime?>("AcceptedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateTime?>("DeletedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("Email")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<DateTime>("ExpiresAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid>("InvitedById")
-                        .HasColumnType("uuid");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("boolean");
-
-                    b.Property<int>("Role")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("Token")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid>("WorkspaceId")
-                        .HasColumnType("uuid");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("WorkspaceId");
-
-                    b.ToTable("WorkspaceInvitations");
                 });
 
             modelBuilder.Entity("TaskManager.Api.Modules.Workspaces.Entities.WorkspaceMember", b =>
@@ -3135,80 +3097,23 @@ namespace TaskManager.Api.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("TaskManager.Api.Modules.Companies.Entities.Company", b =>
-                {
-                    b.HasOne("TaskManager.Api.Modules.Auth.Entities.User", "Owner")
-                        .WithMany()
-                        .HasForeignKey("OwnerId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("TaskManager.Api.Modules.States.Entities.StateGroup", "StateGroup")
-                        .WithMany()
-                        .HasForeignKey("StateGroupId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("TaskManager.Api.Modules.Workspaces.Entities.Workspace", "Workspace")
-                        .WithMany()
-                        .HasForeignKey("WorkspaceId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Owner");
-
-                    b.Navigation("StateGroup");
-
-                    b.Navigation("Workspace");
-                });
-
-            modelBuilder.Entity("TaskManager.Api.Modules.Companies.Entities.CompanyInvitation", b =>
-                {
-                    b.HasOne("TaskManager.Api.Modules.Companies.Entities.Company", "Company")
-                        .WithMany()
-                        .HasForeignKey("CompanyId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Company");
-                });
-
-            modelBuilder.Entity("TaskManager.Api.Modules.Companies.Entities.CompanyMember", b =>
-                {
-                    b.HasOne("TaskManager.Api.Modules.Companies.Entities.Company", "Company")
-                        .WithMany("Members")
-                        .HasForeignKey("CompanyId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("TaskManager.Api.Modules.Auth.Entities.User", "User")
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Company");
-
-                    b.Navigation("User");
-                });
-
             modelBuilder.Entity("TaskManager.Api.Modules.Cycles.Entities.Cycle", b =>
                 {
-                    b.HasOne("TaskManager.Api.Modules.Companies.Entities.Company", "Company")
-                        .WithMany()
-                        .HasForeignKey("CompanyId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
                     b.HasOne("TaskManager.Api.Modules.Auth.Entities.User", "Owner")
                         .WithMany()
                         .HasForeignKey("OwnerId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.Navigation("Company");
+                    b.HasOne("TaskManager.Api.Modules.Projects.Entities.Project", "Project")
+                        .WithMany()
+                        .HasForeignKey("ProjectId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
                     b.Navigation("Owner");
+
+                    b.Navigation("Project");
                 });
 
             modelBuilder.Entity("TaskManager.Api.Modules.Cycles.Entities.CycleIssue", b =>
@@ -3236,15 +3141,15 @@ namespace TaskManager.Api.Migrations
                         .WithMany()
                         .HasForeignKey("AssigneeId");
 
-                    b.HasOne("TaskManager.Api.Modules.Companies.Entities.Company", "Company")
-                        .WithMany()
-                        .HasForeignKey("CompanyId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
                     b.HasOne("TaskManager.Api.Modules.Auth.Entities.User", "OwnedBy")
                         .WithMany()
                         .HasForeignKey("OwnedById")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("TaskManager.Api.Modules.Projects.Entities.Project", "Project")
+                        .WithMany()
+                        .HasForeignKey("ProjectId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -3254,22 +3159,22 @@ namespace TaskManager.Api.Migrations
 
                     b.Navigation("Assignee");
 
-                    b.Navigation("Company");
-
                     b.Navigation("OwnedBy");
+
+                    b.Navigation("Project");
 
                     b.Navigation("State");
                 });
 
             modelBuilder.Entity("TaskManager.Api.Modules.Estimates.Entities.Estimate", b =>
                 {
-                    b.HasOne("TaskManager.Api.Modules.Companies.Entities.Company", "Company")
+                    b.HasOne("TaskManager.Api.Modules.Projects.Entities.Project", "Project")
                         .WithMany()
-                        .HasForeignKey("CompanyId")
+                        .HasForeignKey("ProjectId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("Company");
+                    b.Navigation("Project");
                 });
 
             modelBuilder.Entity("TaskManager.Api.Modules.Estimates.Entities.EstimatePoint", b =>
@@ -3361,9 +3266,9 @@ namespace TaskManager.Api.Migrations
 
             modelBuilder.Entity("TaskManager.Api.Modules.Importer.Entities.ImporterHistory", b =>
                 {
-                    b.HasOne("TaskManager.Api.Modules.Companies.Entities.Company", "Company")
+                    b.HasOne("TaskManager.Api.Modules.Projects.Entities.Project", "Project")
                         .WithMany()
-                        .HasForeignKey("CompanyId")
+                        .HasForeignKey("ProjectId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -3373,20 +3278,20 @@ namespace TaskManager.Api.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("Company");
+                    b.Navigation("Project");
 
                     b.Navigation("Workspace");
                 });
 
             modelBuilder.Entity("TaskManager.Api.Modules.Intake.Entities.IntakeIssue", b =>
                 {
-                    b.HasOne("TaskManager.Api.Modules.Companies.Entities.Company", "Company")
+                    b.HasOne("TaskManager.Api.Modules.Projects.Entities.Project", "Project")
                         .WithMany()
-                        .HasForeignKey("CompanyId")
+                        .HasForeignKey("ProjectId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.Navigation("Company");
+                    b.Navigation("Project");
                 });
 
             modelBuilder.Entity("TaskManager.Api.Modules.Issues.Entities.CommentReaction", b =>
@@ -3408,25 +3313,6 @@ namespace TaskManager.Api.Migrations
                     b.Navigation("Comment");
                 });
 
-            modelBuilder.Entity("TaskManager.Api.Modules.Issues.Entities.CompanyIssueType", b =>
-                {
-                    b.HasOne("TaskManager.Api.Modules.Companies.Entities.Company", "Company")
-                        .WithMany()
-                        .HasForeignKey("CompanyId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("TaskManager.Api.Modules.Issues.Entities.IssueType", "IssueType")
-                        .WithMany()
-                        .HasForeignKey("IssueTypeId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Company");
-
-                    b.Navigation("IssueType");
-                });
-
             modelBuilder.Entity("TaskManager.Api.Modules.Issues.Entities.Issue", b =>
                 {
                     b.HasOne("TaskManager.Api.Modules.Auth.Entities.User", "ApprovedBy")
@@ -3438,12 +3324,6 @@ namespace TaskManager.Api.Migrations
                         .WithMany()
                         .HasForeignKey("AssigneeId")
                         .OnDelete(DeleteBehavior.SetNull);
-
-                    b.HasOne("TaskManager.Api.Modules.Companies.Entities.Company", "Company")
-                        .WithMany()
-                        .HasForeignKey("CompanyId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
 
                     b.HasOne("TaskManager.Api.Modules.Auth.Entities.User", "CreatedBy")
                         .WithMany()
@@ -3466,6 +3346,12 @@ namespace TaskManager.Api.Migrations
                         .HasForeignKey("ParentId")
                         .OnDelete(DeleteBehavior.SetNull);
 
+                    b.HasOne("TaskManager.Api.Modules.Projects.Entities.Project", "Project")
+                        .WithMany()
+                        .HasForeignKey("ProjectId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
                     b.HasOne("TaskManager.Api.Modules.States.Entities.State", "State")
                         .WithMany()
                         .HasForeignKey("StateId")
@@ -3481,8 +3367,6 @@ namespace TaskManager.Api.Migrations
 
                     b.Navigation("Assignee");
 
-                    b.Navigation("Company");
-
                     b.Navigation("CreatedBy");
 
                     b.Navigation("EstimatePoint");
@@ -3490,6 +3374,8 @@ namespace TaskManager.Api.Migrations
                     b.Navigation("IssueType");
 
                     b.Navigation("Parent");
+
+                    b.Navigation("Project");
 
                     b.Navigation("State");
 
@@ -3717,16 +3603,16 @@ namespace TaskManager.Api.Migrations
 
             modelBuilder.Entity("TaskManager.Api.Modules.Issues.Entities.IssueView", b =>
                 {
-                    b.HasOne("TaskManager.Api.Modules.Companies.Entities.Company", "Company")
-                        .WithMany()
-                        .HasForeignKey("CompanyId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
                     b.HasOne("TaskManager.Api.Modules.Auth.Entities.User", "Owner")
                         .WithMany()
                         .HasForeignKey("OwnerId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.HasOne("TaskManager.Api.Modules.Projects.Entities.Project", "Project")
+                        .WithMany()
+                        .HasForeignKey("ProjectId")
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("TaskManager.Api.Modules.Workspaces.Entities.Workspace", "Workspace")
                         .WithMany()
@@ -3734,11 +3620,30 @@ namespace TaskManager.Api.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.Navigation("Company");
-
                     b.Navigation("Owner");
 
+                    b.Navigation("Project");
+
                     b.Navigation("Workspace");
+                });
+
+            modelBuilder.Entity("TaskManager.Api.Modules.Issues.Entities.ProjectIssueType", b =>
+                {
+                    b.HasOne("TaskManager.Api.Modules.Issues.Entities.IssueType", "IssueType")
+                        .WithMany()
+                        .HasForeignKey("IssueTypeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("TaskManager.Api.Modules.Projects.Entities.Project", "Project")
+                        .WithMany()
+                        .HasForeignKey("ProjectId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("IssueType");
+
+                    b.Navigation("Project");
                 });
 
             modelBuilder.Entity("TaskManager.Api.Modules.Labels.Entities.Label", b =>
@@ -3750,6 +3655,74 @@ namespace TaskManager.Api.Migrations
                         .IsRequired();
 
                     b.Navigation("Workspace");
+                });
+
+            modelBuilder.Entity("TaskManager.Api.Modules.Modules.Entities.Module", b =>
+                {
+                    b.HasOne("TaskManager.Api.Modules.Auth.Entities.User", "Owner")
+                        .WithMany()
+                        .HasForeignKey("OwnerId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("TaskManager.Api.Modules.Projects.Entities.Project", "Project")
+                        .WithMany()
+                        .HasForeignKey("ProjectId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Owner");
+
+                    b.Navigation("Project");
+                });
+
+            modelBuilder.Entity("TaskManager.Api.Modules.Modules.Entities.ModuleIssue", b =>
+                {
+                    b.HasOne("TaskManager.Api.Modules.Issues.Entities.Issue", "Issue")
+                        .WithMany("ModuleIssues")
+                        .HasForeignKey("IssueId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("TaskManager.Api.Modules.Modules.Entities.Module", "Module")
+                        .WithMany("ModuleIssues")
+                        .HasForeignKey("ModuleId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Issue");
+
+                    b.Navigation("Module");
+                });
+
+            modelBuilder.Entity("TaskManager.Api.Modules.Modules.Entities.ModuleLink", b =>
+                {
+                    b.HasOne("TaskManager.Api.Modules.Modules.Entities.Module", "Module")
+                        .WithMany("Links")
+                        .HasForeignKey("ModuleId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Module");
+                });
+
+            modelBuilder.Entity("TaskManager.Api.Modules.Modules.Entities.ModuleMember", b =>
+                {
+                    b.HasOne("TaskManager.Api.Modules.Modules.Entities.Module", "Module")
+                        .WithMany("Members")
+                        .HasForeignKey("ModuleId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("TaskManager.Api.Modules.Auth.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Module");
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("TaskManager.Api.Modules.Notifications.Entities.Notification", b =>
@@ -3781,41 +3754,56 @@ namespace TaskManager.Api.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("TaskManager.Api.Modules.ProjectModules.Entities.ModuleIssue", b =>
+            modelBuilder.Entity("TaskManager.Api.Modules.Projects.Entities.Project", b =>
                 {
-                    b.HasOne("TaskManager.Api.Modules.Issues.Entities.Issue", "Issue")
-                        .WithMany("ModuleIssues")
-                        .HasForeignKey("IssueId")
+                    b.HasOne("TaskManager.Api.Modules.Auth.Entities.User", "Owner")
+                        .WithMany()
+                        .HasForeignKey("OwnerId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("TaskManager.Api.Modules.States.Entities.StateGroup", "StateGroup")
+                        .WithMany()
+                        .HasForeignKey("StateGroupId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("TaskManager.Api.Modules.Teams.Entities.Team", "Team")
+                        .WithMany()
+                        .HasForeignKey("TeamId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("TaskManager.Api.Modules.Workspaces.Entities.Workspace", "Workspace")
+                        .WithMany()
+                        .HasForeignKey("WorkspaceId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("TaskManager.Api.Modules.ProjectModules.Entities.ProjectModule", "Module")
-                        .WithMany("ModuleIssues")
-                        .HasForeignKey("ModuleId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                    b.Navigation("Owner");
 
-                    b.Navigation("Issue");
+                    b.Navigation("StateGroup");
 
-                    b.Navigation("Module");
+                    b.Navigation("Team");
+
+                    b.Navigation("Workspace");
                 });
 
-            modelBuilder.Entity("TaskManager.Api.Modules.ProjectModules.Entities.ModuleLink", b =>
+            modelBuilder.Entity("TaskManager.Api.Modules.Projects.Entities.ProjectInvitation", b =>
                 {
-                    b.HasOne("TaskManager.Api.Modules.ProjectModules.Entities.ProjectModule", "Module")
-                        .WithMany("Links")
-                        .HasForeignKey("ModuleId")
+                    b.HasOne("TaskManager.Api.Modules.Projects.Entities.Project", "Project")
+                        .WithMany()
+                        .HasForeignKey("ProjectId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("Module");
+                    b.Navigation("Project");
                 });
 
-            modelBuilder.Entity("TaskManager.Api.Modules.ProjectModules.Entities.ModuleMember", b =>
+            modelBuilder.Entity("TaskManager.Api.Modules.Projects.Entities.ProjectMember", b =>
                 {
-                    b.HasOne("TaskManager.Api.Modules.ProjectModules.Entities.ProjectModule", "Module")
+                    b.HasOne("TaskManager.Api.Modules.Projects.Entities.Project", "Project")
                         .WithMany("Members")
-                        .HasForeignKey("ModuleId")
+                        .HasForeignKey("ProjectId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -3825,28 +3813,9 @@ namespace TaskManager.Api.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("Module");
+                    b.Navigation("Project");
 
                     b.Navigation("User");
-                });
-
-            modelBuilder.Entity("TaskManager.Api.Modules.ProjectModules.Entities.ProjectModule", b =>
-                {
-                    b.HasOne("TaskManager.Api.Modules.Companies.Entities.Company", "Company")
-                        .WithMany()
-                        .HasForeignKey("CompanyId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("TaskManager.Api.Modules.Auth.Entities.User", "Owner")
-                        .WithMany()
-                        .HasForeignKey("OwnerId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("Company");
-
-                    b.Navigation("Owner");
                 });
 
             modelBuilder.Entity("TaskManager.Api.Modules.Recurring.Entities.RecurringIssueRun", b =>
@@ -3870,16 +3839,16 @@ namespace TaskManager.Api.Migrations
 
             modelBuilder.Entity("TaskManager.Api.Modules.Recurring.Entities.RecurringIssueRunIssue", b =>
                 {
-                    b.HasOne("TaskManager.Api.Modules.Companies.Entities.Company", "Company")
-                        .WithMany()
-                        .HasForeignKey("CompanyId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
                     b.HasOne("TaskManager.Api.Modules.Issues.Entities.Issue", "Issue")
                         .WithMany()
                         .HasForeignKey("IssueId")
                         .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("TaskManager.Api.Modules.Projects.Entities.Project", "Project")
+                        .WithMany()
+                        .HasForeignKey("ProjectId")
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.HasOne("TaskManager.Api.Modules.Recurring.Entities.RecurringIssueRun", "Run")
@@ -3888,9 +3857,9 @@ namespace TaskManager.Api.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("Company");
-
                     b.Navigation("Issue");
+
+                    b.Navigation("Project");
 
                     b.Navigation("Run");
                 });
@@ -3903,6 +3872,11 @@ namespace TaskManager.Api.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("TaskManager.Api.Modules.Issues.Entities.IssueType", "IssueType")
+                        .WithMany()
+                        .HasForeignKey("IssueTypeId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("TaskManager.Api.Modules.Workspaces.Entities.Workspace", "Workspace")
                         .WithMany()
                         .HasForeignKey("WorkspaceId")
@@ -3910,6 +3884,8 @@ namespace TaskManager.Api.Migrations
                         .IsRequired();
 
                     b.Navigation("CreatedBy");
+
+                    b.Navigation("IssueType");
 
                     b.Navigation("Workspace");
                 });
@@ -3933,25 +3909,6 @@ namespace TaskManager.Api.Migrations
                     b.Navigation("Template");
                 });
 
-            modelBuilder.Entity("TaskManager.Api.Modules.Recurring.Entities.RecurringIssueTemplateCompany", b =>
-                {
-                    b.HasOne("TaskManager.Api.Modules.Companies.Entities.Company", "Company")
-                        .WithMany()
-                        .HasForeignKey("CompanyId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("TaskManager.Api.Modules.Recurring.Entities.RecurringIssueTemplate", "Template")
-                        .WithMany("Companies")
-                        .HasForeignKey("TemplateId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Company");
-
-                    b.Navigation("Template");
-                });
-
             modelBuilder.Entity("TaskManager.Api.Modules.Recurring.Entities.RecurringIssueTemplateLabel", b =>
                 {
                     b.HasOne("TaskManager.Api.Modules.Labels.Entities.Label", "Label")
@@ -3971,11 +3928,30 @@ namespace TaskManager.Api.Migrations
                     b.Navigation("Template");
                 });
 
+            modelBuilder.Entity("TaskManager.Api.Modules.Recurring.Entities.RecurringIssueTemplateProject", b =>
+                {
+                    b.HasOne("TaskManager.Api.Modules.Projects.Entities.Project", "Project")
+                        .WithMany()
+                        .HasForeignKey("ProjectId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("TaskManager.Api.Modules.Recurring.Entities.RecurringIssueTemplate", "Template")
+                        .WithMany("Projects")
+                        .HasForeignKey("TemplateId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Project");
+
+                    b.Navigation("Template");
+                });
+
             modelBuilder.Entity("TaskManager.Api.Modules.Space.Entities.DeployBoard", b =>
                 {
-                    b.HasOne("TaskManager.Api.Modules.Companies.Entities.Company", "Company")
+                    b.HasOne("TaskManager.Api.Modules.Projects.Entities.Project", "Project")
                         .WithMany()
-                        .HasForeignKey("CompanyId")
+                        .HasForeignKey("ProjectId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -3985,7 +3961,7 @@ namespace TaskManager.Api.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("Company");
+                    b.Navigation("Project");
 
                     b.Navigation("Workspace");
                 });
@@ -4099,17 +4075,6 @@ namespace TaskManager.Api.Migrations
                     b.Navigation("Workspace");
                 });
 
-            modelBuilder.Entity("TaskManager.Api.Modules.Workspaces.Entities.WorkspaceInvitation", b =>
-                {
-                    b.HasOne("TaskManager.Api.Modules.Workspaces.Entities.Workspace", "Workspace")
-                        .WithMany()
-                        .HasForeignKey("WorkspaceId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Workspace");
-                });
-
             modelBuilder.Entity("TaskManager.Api.Modules.Workspaces.Entities.WorkspaceMember", b =>
                 {
                     b.HasOne("TaskManager.Api.Modules.Auth.Entities.User", "User")
@@ -4138,11 +4103,6 @@ namespace TaskManager.Api.Migrations
                         .IsRequired();
 
                     b.Navigation("Workspace");
-                });
-
-            modelBuilder.Entity("TaskManager.Api.Modules.Companies.Entities.Company", b =>
-                {
-                    b.Navigation("Members");
                 });
 
             modelBuilder.Entity("TaskManager.Api.Modules.Cycles.Entities.Cycle", b =>
@@ -4181,13 +4141,18 @@ namespace TaskManager.Api.Migrations
                     b.Navigation("Replies");
                 });
 
-            modelBuilder.Entity("TaskManager.Api.Modules.ProjectModules.Entities.ProjectModule", b =>
+            modelBuilder.Entity("TaskManager.Api.Modules.Modules.Entities.Module", b =>
                 {
                     b.Navigation("Links");
 
                     b.Navigation("Members");
 
                     b.Navigation("ModuleIssues");
+                });
+
+            modelBuilder.Entity("TaskManager.Api.Modules.Projects.Entities.Project", b =>
+                {
+                    b.Navigation("Members");
                 });
 
             modelBuilder.Entity("TaskManager.Api.Modules.Recurring.Entities.RecurringIssueRun", b =>
@@ -4199,9 +4164,9 @@ namespace TaskManager.Api.Migrations
                 {
                     b.Navigation("Assignees");
 
-                    b.Navigation("Companies");
-
                     b.Navigation("Labels");
+
+                    b.Navigation("Projects");
 
                     b.Navigation("Runs");
                 });

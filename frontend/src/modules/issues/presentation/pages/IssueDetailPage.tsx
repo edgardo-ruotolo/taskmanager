@@ -72,7 +72,7 @@ import {
     useDeleteIssueRelation,
 } from '../../application/use-issue-detail';
 import { useUpdateIssue, useIssues } from '../../application/use-issues';
-import { useCompany } from '@/modules/companies/application/use-companies';
+import { useProject } from '@/modules/projects/application/use-projects';
 import { CreateIssueDialog } from '../components/CreateIssueDialog';
 import { useEstimates } from '@/modules/estimates/application/use-estimates';
 import type {
@@ -278,7 +278,7 @@ interface CommentItemProps {
     comment: IssueComment;
     currentUserId: string;
     workspaceSlug: string;
-    companyId: string;
+    projectId: string;
     issueId: string;
     onDelete: (id: string) => void;
     isDeleting: boolean;
@@ -288,14 +288,14 @@ function CommentItem({
     comment,
     currentUserId,
     workspaceSlug,
-    companyId,
+    projectId,
     issueId,
     onDelete,
     isDeleting,
 }: CommentItemProps): React.ReactElement {
     const [isEditing, setIsEditing] = useState(false);
     const [editBody, setEditBody] = useState(comment.body);
-    const { mutate: updateComment, isPending: isUpdating } = useUpdateComment(workspaceSlug, companyId, issueId);
+    const { mutate: updateComment, isPending: isUpdating } = useUpdateComment(workspaceSlug, projectId, issueId);
     const isOwner = comment.authorId === currentUserId;
 
     const handleSaveEdit = (): void => {
@@ -496,22 +496,22 @@ function CommentForm({ onSubmit, isPending }: CommentFormProps): React.ReactElem
 /* ── Links section ── */
 interface LinksSectionProps {
     workspaceSlug: string;
-    companyId: string;
+    projectId: string;
     issueId: string;
 }
 
-function LinksSection({ workspaceSlug, companyId, issueId }: LinksSectionProps): React.ReactElement {
+function LinksSection({ workspaceSlug, projectId, issueId }: LinksSectionProps): React.ReactElement {
     const [urlInput, setUrlInput] = useState('');
     const [titleInput, setTitleInput] = useState('');
-    const { data: links = [] } = useIssueLinks(workspaceSlug, companyId, issueId);
+    const { data: links = [] } = useIssueLinks(workspaceSlug, projectId, issueId);
     const { mutate: createLink, isPending: isCreating } = useCreateIssueLink(
         workspaceSlug,
-        companyId,
+        projectId,
         issueId,
     );
     const { mutate: deleteLink, isPending: isDeleting } = useDeleteIssueLink(
         workspaceSlug,
-        companyId,
+        projectId,
         issueId,
     );
 
@@ -582,23 +582,23 @@ function LinksSection({ workspaceSlug, companyId, issueId }: LinksSectionProps):
 /* ── Relations section ── */
 interface RelationsSectionProps {
     workspaceSlug: string;
-    companyId: string;
+    projectId: string;
     issueId: string;
-    companyIdentifier?: string;
+    projectIdentifier?: string;
 }
 
 function RelationsSection({
     workspaceSlug,
-    companyId,
+    projectId,
     issueId,
-    companyIdentifier,
+    projectIdentifier,
 }: RelationsSectionProps): React.ReactElement {
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedIssueId, setSelectedIssueId] = useState('');
     const [pickerOpen, setPickerOpen] = useState(false);
     const [relationType, setRelationType] = useState<IssueRelationType>('DuplicateOf');
-    const { data: relations = [] } = useIssueRelations(workspaceSlug, companyId, issueId);
-    const { data: allIssuesData } = useIssues(workspaceSlug, companyId);
+    const { data: relations = [] } = useIssueRelations(workspaceSlug, projectId, issueId);
+    const { data: allIssuesData } = useIssues(workspaceSlug, projectId);
     const candidateIssues = (allIssuesData?.items ?? []).filter(
         (i) => i.id !== issueId && !relations.some((r) => r.relatedIssueId === i.id),
     );
@@ -612,12 +612,12 @@ function RelationsSection({
 
     const { mutate: createRelation, isPending: isCreating } = useCreateIssueRelation(
         workspaceSlug,
-        companyId,
+        projectId,
         issueId,
     );
     const { mutate: deleteRelation, isPending: isDeleting } = useDeleteIssueRelation(
         workspaceSlug,
-        companyId,
+        projectId,
         issueId,
     );
 
@@ -651,7 +651,7 @@ function RelationsSection({
                                 {RELATION_LABELS[rel.relationType]}
                             </span>{' '}
                             <span className="text-xs font-mono text-tertiary">
-                                {companyIdentifier ?? 'ISS'}-{rel.relatedIssueSequenceId}
+                                {projectIdentifier ?? 'ISS'}-{rel.relatedIssueSequenceId}
                             </span>{' '}
                             <span className="text-xs text-secondary truncate">
                                 {rel.relatedIssueTitle}
@@ -684,7 +684,7 @@ function RelationsSection({
                 <div className="flex gap-2">
                     <div className="relative flex-1">
                         <Input
-                            value={selectedIssue ? `${companyIdentifier ?? 'ISS'}-${selectedIssue.sequenceId} — ${selectedIssue.title}` : searchQuery}
+                            value={selectedIssue ? `${projectIdentifier ?? 'ISS'}-${selectedIssue.sequenceId} — ${selectedIssue.title}` : searchQuery}
                             onChange={(e) => {
                                 setSelectedIssueId('');
                                 setSearchQuery(e.target.value);
@@ -709,7 +709,7 @@ function RelationsSection({
                                         className="w-full flex items-center gap-2 px-3 py-2 text-xs hover:bg-layer-2 transition-colors text-left"
                                     >
                                         <span className="font-mono text-tertiary shrink-0">
-                                            {companyIdentifier ?? 'ISS'}-{i.sequenceId}
+                                            {projectIdentifier ?? 'ISS'}-{i.sequenceId}
                                         </span>
                                         <span className="text-secondary truncate">{i.title}</span>
                                     </button>
@@ -734,28 +734,28 @@ function RelationsSection({
 /* ── Comments & Activity tabs ── */
 interface CommentsAndActivityTabsProps {
     workspaceSlug: string;
-    companyId: string;
+    projectId: string;
     issueId: string;
     currentUserId: string;
 }
 
 function CommentsAndActivityTabs({
     workspaceSlug,
-    companyId,
+    projectId,
     issueId,
     currentUserId,
 }: CommentsAndActivityTabsProps): React.ReactElement {
     const [activeTab, setActiveTab] = useState<'comments' | 'activity'>('comments');
-    const { data: comments = [] } = useComments(workspaceSlug, companyId, issueId);
-    const { data: activities = [] } = useActivities(workspaceSlug, companyId, issueId);
+    const { data: comments = [] } = useComments(workspaceSlug, projectId, issueId);
+    const { data: activities = [] } = useActivities(workspaceSlug, projectId, issueId);
     const { mutate: createComment, isPending: isCreatingComment } = useCreateComment(
         workspaceSlug,
-        companyId,
+        projectId,
         issueId,
     );
     const { mutate: deleteComment, isPending: isDeletingComment } = useDeleteComment(
         workspaceSlug,
-        companyId,
+        projectId,
         issueId,
     );
 
@@ -801,7 +801,7 @@ function CommentsAndActivityTabs({
                             comment={comment}
                             currentUserId={currentUserId}
                             workspaceSlug={workspaceSlug}
-                            companyId={companyId}
+                            projectId={projectId}
                             issueId={issueId}
                             onDelete={deleteComment}
                             isDeleting={isDeletingComment}
@@ -872,9 +872,9 @@ function CopyLinkButton({ url }: { url: string }): React.ReactElement {
 
 /* ── Main page ── */
 export const IssueDetailPage = (): React.ReactElement => {
-    const { workspaceSlug = '', companyId = '', issueId = '' } = useParams<{
+    const { workspaceSlug = '', projectId = '', issueId = '' } = useParams<{
         workspaceSlug: string;
-        companyId: string;
+        projectId: string;
         issueId: string;
     }>();
     const { data: user } = useAuthMe();
@@ -882,21 +882,21 @@ export const IssueDetailPage = (): React.ReactElement => {
 
     const { data: issue, isLoading: issueLoading } = useIssueDetail(
         workspaceSlug,
-        companyId,
+        projectId,
         issueId,
     );
-    const { data: reactions = [] } = useReactions(workspaceSlug, companyId, issueId);
-    const { data: subscribers = [] } = useSubscribers(workspaceSlug, companyId, issueId);
-    const { data: company } = useCompany(workspaceSlug, companyId);
-    const companyIdentifier = company?.identifier;
-    const { data: parentIssueData } = useIssueDetail(workspaceSlug, companyId, issue?.parentId ?? '');
-    const { data: allIssuesData } = useIssues(workspaceSlug, companyId);
+    const { data: reactions = [] } = useReactions(workspaceSlug, projectId, issueId);
+    const { data: subscribers = [] } = useSubscribers(workspaceSlug, projectId, issueId);
+    const { data: project } = useProject(workspaceSlug, projectId);
+    const projectIdentifier = project?.identifier;
+    const { data: parentIssueData } = useIssueDetail(workspaceSlug, projectId, issue?.parentId ?? '');
+    const { data: allIssuesData } = useIssues(workspaceSlug, projectId);
     const subIssues = (allIssuesData?.items ?? []).filter((i) => i.parentId === issueId);
-    const issueIdentifier = `${companyIdentifier ?? 'ISS'}-${issue?.sequenceId ?? ''}`;
-    const { data: estimates = [] } = useEstimates(workspaceSlug, companyId);
+    const issueIdentifier = `${projectIdentifier ?? 'ISS'}-${issue?.sequenceId ?? ''}`;
+    const { data: estimates = [] } = useEstimates(workspaceSlug, projectId);
     const allEstimatePoints = estimates.flatMap((e) => (e.points ?? []).map((p) => ({ ...p, estimateName: e.name })));
 
-    const { mutate: updateIssue, isPending: isUpdating } = useUpdateIssue(workspaceSlug, companyId);
+    const { mutate: updateIssue, isPending: isUpdating } = useUpdateIssue(workspaceSlug, projectId);
 
     const [descSaveState, setDescSaveState] = useState<'idle' | 'saving' | 'saved'>('idle');
     const descDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -921,22 +921,22 @@ export const IssueDetailPage = (): React.ReactElement => {
 
     const { mutate: addReaction, isPending: isAddingReaction } = useAddReaction(
         workspaceSlug,
-        companyId,
+        projectId,
         issueId,
     );
     const { mutate: removeReaction, isPending: isRemovingReaction } = useRemoveReaction(
         workspaceSlug,
-        companyId,
+        projectId,
         issueId,
     );
     const { mutate: subscribe, isPending: isSubscribing } = useSubscribe(
         workspaceSlug,
-        companyId,
+        projectId,
         issueId,
     );
     const { mutate: unsubscribe, isPending: isUnsubscribing } = useUnsubscribe(
         workspaceSlug,
-        companyId,
+        projectId,
         issueId,
     );
 
@@ -945,7 +945,7 @@ export const IssueDetailPage = (): React.ReactElement => {
     const { participants: docParticipants } = useDocumentCollaboration(
         issueId ? `issue-${issueId}` : '',
     );
-    const backUrl = `/${workspaceSlug}/companies/${companyId}/issues`;
+    const backUrl = `/${workspaceSlug}/projects/${projectId}/issues`;
 
     if (issueLoading) {
         return (
@@ -990,10 +990,10 @@ export const IssueDetailPage = (): React.ReactElement => {
                             <>
                                 <ChevronRight size={12} className="text-placeholder shrink-0" aria-hidden="true" />
                                 <Link
-                                    to={`/${workspaceSlug}/companies/${companyId}/issues/${issue.parentId}`}
+                                    to={`/${workspaceSlug}/projects/${projectId}/issues/${issue.parentId}`}
                                     className="text-xs font-mono text-tertiary hover:text-secondary transition-colors shrink-0"
                                 >
-                                    {companyIdentifier ?? 'ISS'}-{parentIssueData.sequenceId}
+                                    {projectIdentifier ?? 'ISS'}-{parentIssueData.sequenceId}
                                 </Link>
                             </>
                         )}
@@ -1104,7 +1104,7 @@ export const IssueDetailPage = (): React.ReactElement => {
                         <div className="mb-5">
                             <LinksSection
                                 workspaceSlug={workspaceSlug}
-                                companyId={companyId}
+                                projectId={projectId}
                                 issueId={issueId}
                             />
                         </div>
@@ -1115,9 +1115,9 @@ export const IssueDetailPage = (): React.ReactElement => {
                         <div className="mb-5">
                             <RelationsSection
                                 workspaceSlug={workspaceSlug}
-                                companyId={companyId}
+                                projectId={projectId}
                                 issueId={issueId}
-                                companyIdentifier={companyIdentifier}
+                                projectIdentifier={projectIdentifier}
                             />
                         </div>
 
@@ -1137,7 +1137,7 @@ export const IssueDetailPage = (): React.ReactElement => {
                                 </h3>
                                 <CreateIssueDialog
                                     workspaceSlug={workspaceSlug}
-                                    companyId={companyId}
+                                    projectId={projectId}
                                     defaultParentId={issue.id}
                                     trigger={
                                         <button
@@ -1158,11 +1158,11 @@ export const IssueDetailPage = (): React.ReactElement => {
                                     {subIssues.map((sub) => (
                                         <Link
                                             key={sub.id}
-                                            to={`/${workspaceSlug}/companies/${companyId}/issues/${sub.id}`}
+                                            to={`/${workspaceSlug}/projects/${projectId}/issues/${sub.id}`}
                                             className="flex items-center gap-2 px-3 py-2 rounded-md hover:bg-layer-2 transition-colors group"
                                         >
                                             <span className="text-[10px] font-mono text-tertiary shrink-0">
-                                                {companyIdentifier ?? 'ISS'}-{sub.sequenceId}
+                                                {projectIdentifier ?? 'ISS'}-{sub.sequenceId}
                                             </span>
                                             <span className="text-xs text-secondary truncate group-hover:text-primary transition-colors">
                                                 {sub.title}
@@ -1190,7 +1190,7 @@ export const IssueDetailPage = (): React.ReactElement => {
                         <h2 className="text-sm font-semibold text-secondary mb-4">Actividad</h2>
                         <CommentsAndActivityTabs
                             workspaceSlug={workspaceSlug}
-                            companyId={companyId}
+                            projectId={projectId}
                             issueId={issueId}
                             currentUserId={currentUserId}
                         />
@@ -1258,11 +1258,11 @@ export const IssueDetailPage = (): React.ReactElement => {
                                 <PropertyRow label="Padre">
                                     {issue.parentId ? (
                                         <Link
-                                            to={`/${workspaceSlug}/companies/${companyId}/issues/${issue.parentId}`}
+                                            to={`/${workspaceSlug}/projects/${projectId}/issues/${issue.parentId}`}
                                             className="text-xs font-mono text-blue-400 hover:text-blue-300 transition-colors truncate"
                                         >
                                             {parentIssueData
-                                                ? `${companyIdentifier ?? 'ISS'}-${parentIssueData.sequenceId}`
+                                                ? `${projectIdentifier ?? 'ISS'}-${parentIssueData.sequenceId}`
                                                 : `${issue.parentId.slice(0, 8)}…`}
                                         </Link>
                                     ) : (

@@ -60,9 +60,9 @@ public class StateGroupService(AppDbContext db, IMapper mapper) : IStateGroupSer
         if (group.IsDefault)
             throw new InvalidOperationException("Cannot delete the default state group.");
 
-        var hasCompanies = await db.Companies.AnyAsync(c => c.StateGroupId == id, ct);
-        if (hasCompanies)
-            throw new InvalidOperationException("Cannot delete a state group that is assigned to companies.");
+        var hasProjects = await db.Projects.AnyAsync(c => c.StateGroupId == id, ct);
+        if (hasProjects)
+            throw new InvalidOperationException("Cannot delete a state group that is assigned to projects.");
 
         group.IsDeleted = true;
         group.DeletedAt = DateTime.UtcNow;

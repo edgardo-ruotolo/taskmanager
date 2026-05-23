@@ -17,19 +17,19 @@ public class AnalyticsService(AppDbContext db) : IAnalyticsService
         var now = DateTime.UtcNow;
 
         var total = await db.Issues.AsNoTracking()
-            .Where(i => i.Company.WorkspaceId == workspace.Id)
+            .Where(i => i.Project.WorkspaceId == workspace.Id)
             .CountAsync(ct);
 
         var completed = await db.Issues.AsNoTracking()
-            .Where(i => i.Company.WorkspaceId == workspace.Id && i.State.Category == StateCategory.Completed)
+            .Where(i => i.Project.WorkspaceId == workspace.Id && i.State.Category == StateCategory.Completed)
             .CountAsync(ct);
 
         var inProgress = await db.Issues.AsNoTracking()
-            .Where(i => i.Company.WorkspaceId == workspace.Id && i.State.Category == StateCategory.Started)
+            .Where(i => i.Project.WorkspaceId == workspace.Id && i.State.Category == StateCategory.Started)
             .CountAsync(ct);
 
         var overdue = await db.Issues.AsNoTracking()
-            .Where(i => i.Company.WorkspaceId == workspace.Id
+            .Where(i => i.Project.WorkspaceId == workspace.Id
                         && i.DueDate.HasValue
                         && i.DueDate.Value < now
                         && i.State.Category != StateCategory.Completed
@@ -45,7 +45,7 @@ public class AnalyticsService(AppDbContext db) : IAnalyticsService
             ?? throw new NotFoundException($"Workspace '{workspaceSlug}' not found.");
 
         return await db.Issues.AsNoTracking()
-            .Where(i => i.Company.WorkspaceId == workspace.Id)
+            .Where(i => i.Project.WorkspaceId == workspace.Id)
             .GroupBy(i => new { i.StateId, i.State.Name })
             .Select(g => new StateBucket(g.Key.Name, g.Count()))
             .ToListAsync(ct);
@@ -57,7 +57,7 @@ public class AnalyticsService(AppDbContext db) : IAnalyticsService
             ?? throw new NotFoundException($"Workspace '{workspaceSlug}' not found.");
 
         return await db.Issues.AsNoTracking()
-            .Where(i => i.Company.WorkspaceId == workspace.Id)
+            .Where(i => i.Project.WorkspaceId == workspace.Id)
             .GroupBy(i => i.Priority)
             .Select(g => new PriorityBucket(g.Key.ToString(), g.Count()))
             .ToListAsync(ct);
@@ -71,13 +71,13 @@ public class AnalyticsService(AppDbContext db) : IAnalyticsService
         var since = DateTime.UtcNow.AddDays(-30);
 
         var created = await db.Issues.AsNoTracking()
-            .Where(i => i.Company.WorkspaceId == workspace.Id && i.CreatedAt >= since)
+            .Where(i => i.Project.WorkspaceId == workspace.Id && i.CreatedAt >= since)
             .GroupBy(i => i.CreatedAt.Date)
             .Select(g => new { date = g.Key, count = g.Count() })
             .ToListAsync(ct);
 
         var resolved = await db.Issues.AsNoTracking()
-            .Where(i => i.Company.WorkspaceId == workspace.Id
+            .Where(i => i.Project.WorkspaceId == workspace.Id
                         && i.State.Category == StateCategory.Completed
                         && i.UpdatedAt >= since)
             .GroupBy(i => i.UpdatedAt.Date)
@@ -94,45 +94,45 @@ public class AnalyticsService(AppDbContext db) : IAnalyticsService
             .ToList();
     }
 
-    public async Task<CompanyOverview> GetCompanyOverviewAsync(string workspaceSlug, string companyIdentifier, CancellationToken ct = default)
+    public async Task<ProjectOverview> GetProjectOverviewAsync(string workspaceSlug, string projectIdentifier, CancellationToken ct = default)
     {
         var workspace = await db.Workspaces.AsNoTracking().FirstOrDefaultAsync(w => w.Slug == workspaceSlug, ct)
             ?? throw new NotFoundException($"Workspace '{workspaceSlug}' not found.");
 
-        var company = await db.Companies.AsNoTracking()
+        var project = await db.Projects.AsNoTracking()
             .FirstOrDefaultAsync(c => c.WorkspaceId == workspace.Id
-                && c.Identifier == companyIdentifier.ToUpper(), ct)
-            ?? throw new NotFoundException($"Company '{companyIdentifier}' not found.");
+                && c.Identifier == projectIdentifier.ToUpper(), ct)
+            ?? throw new NotFoundException($"Project '{projectIdentifier}' not found.");
 
         var issuesByState = await db.Issues.AsNoTracking()
-            .Where(i => i.CompanyId == company.Id)
+            .Where(i => i.ProjectId == project.Id)
             .GroupBy(i => new { i.StateId, i.State.Name })
-            .Select(g => new CompanyStateBucket(g.Key.StateId, g.Key.Name, g.Count()))
+            .Select(g => new ProjectStateBucket(g.Key.StateId, g.Key.Name, g.Count()))
             .ToListAsync(ct);
 
         var issuesByPriority = await db.Issues.AsNoTracking()
-            .Where(i => i.CompanyId == company.Id)
+            .Where(i => i.ProjectId == project.Id)
             .GroupBy(i => i.Priority)
             .Select(g => new PriorityBucket(g.Key.ToString(), g.Count()))
             .ToListAsync(ct);
 
-        return new CompanyOverview(issuesByState, issuesByPriority);
+        return new ProjectOverview(issuesByState, issuesByPriority);
     }
 
-    public async Task<IReadOnlyList<CompanyActivityPoint>> GetCompanyActivityAsync(string workspaceSlug, string companyIdentifier, CancellationToken ct = default)
+    public async Task<IReadOnlyList<ProjectActivityPoint>> GetProjectActivityAsync(string workspaceSlug, string projectIdentifier, CancellationToken ct = default)
     {
         var workspace = await db.Workspaces.AsNoTracking().FirstOrDefaultAsync(w => w.Slug == workspaceSlug, ct)
             ?? throw new NotFoundException($"Workspace '{workspaceSlug}' not found.");
 
-        var company = await db.Companies.AsNoTracking()
+        var project = await db.Projects.AsNoTracking()
             .FirstOrDefaultAsync(c => c.WorkspaceId == workspace.Id
-                && c.Identifier == companyIdentifier.ToUpper(), ct)
-            ?? throw new NotFoundException($"Company '{companyIdentifier}' not found.");
+                && c.Identifier == projectIdentifier.ToUpper(), ct)
+            ?? throw new NotFoundException($"Project '{projectIdentifier}' not found.");
 
         var since = DateTime.UtcNow.Date.AddDays(-29);
 
         var completedByDay = await db.Issues.AsNoTracking()
-            .Where(i => i.CompanyId == company.Id
+            .Where(i => i.ProjectId == project.Id
                 && i.State.Category == StateCategory.Completed
                 && i.UpdatedAt >= since)
             .GroupBy(i => i.UpdatedAt.Date)
@@ -141,7 +141,7 @@ public class AnalyticsService(AppDbContext db) : IAnalyticsService
 
         return Enumerable.Range(0, 30)
             .Select(offset => DateTime.UtcNow.Date.AddDays(-29 + offset))
-            .Select(date => new CompanyActivityPoint(
+            .Select(date => new ProjectActivityPoint(
                 date.ToString("yyyy-MM-dd"),
                 completedByDay.FirstOrDefault(d => d.date == date)?.completed ?? 0))
             .ToList();

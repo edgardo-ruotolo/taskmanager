@@ -1,4 +1,4 @@
-export type RecurringFrequency = 'Daily' | 'Weekly' | 'Monthly' | 'Yearly';
+﻿export type RecurringFrequency = 'Daily' | 'Weekly' | 'Monthly' | 'Quarterly' | 'Yearly';
 
 export type RecurringRunStatus =
     | 'Success'
@@ -6,6 +6,18 @@ export type RecurringRunStatus =
     | 'SkippedPaused'
     | 'SkippedManual'
     | 'Failed';
+
+export interface RecurringTemplateProjectSummary {
+    id: string;
+    identifier: string;
+    name: string;
+}
+
+export interface RecurringTemplateAssigneeSummary {
+    id: string;
+    displayName: string;
+    avatarUrl: string | null;
+}
 
 export interface RecurringTemplate {
     id: string;
@@ -33,17 +45,20 @@ export interface RecurringTemplate {
     startDateOffsetDays: number;
     targetDateOffsetDays: number;
     blockPolicy: string;
+    issueTypeId?: string | null;
     createdById: string;
     createdAt: string;
     updatedAt: string;
-    companyIds: string[];
+    projectIds: string[];
     assigneeIds: string[];
     labelIds: string[];
+    projects: RecurringTemplateProjectSummary[];
+    assignees: RecurringTemplateAssigneeSummary[];
 }
 
 export interface RecurringRunIssueRef {
     issueId: string;
-    companyId: string;
+    projectId: string;
 }
 
 export interface RecurringRun {
@@ -67,7 +82,8 @@ export interface RecurringFromIssuePrefill {
     descriptionHtml: string;
     priority: string;
     stateGroup: string;
-    companyIds: string[];
+    issueTypeId?: string | null;
+    projectIds: string[];
     assigneeIds: string[];
     labelIds: string[];
 }
@@ -90,9 +106,20 @@ export interface CreateRecurringTemplateData {
     startDateOffsetDays: number;
     targetDateOffsetDays: number;
     blockPolicy: string;
-    companyIds: string[];
+    issueTypeId?: string | null;
+    projectIds: string[];
     assigneeIds: string[];
     labelIds: string[];
 }
 
 export type UpdateRecurringTemplateData = Partial<CreateRecurringTemplateData>;
+
+export type RecurringStatusFilter = 'active' | 'paused' | 'inactive';
+
+export interface RecurringListParams {
+    page?: number;
+    pageSize?: number;
+    search?: string;
+    frequency?: RecurringFrequency;
+    status?: RecurringStatusFilter;
+}

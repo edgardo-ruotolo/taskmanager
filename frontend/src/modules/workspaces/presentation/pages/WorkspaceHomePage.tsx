@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { NavLink, useParams } from 'react-router-dom';
 import { Link2, Plus, Trash2, } from 'lucide-react';
 import { useAuthMe } from '@/modules/auth/application/use-auth-me';
-import { useCompanies } from '@/modules/companies/application/use-companies';
+import { useProjects } from '@/modules/projects/application/use-projects';
 import { useRecentVisits, useQuickLinks, useCreateQuickLink, useDeleteQuickLink } from '@/modules/home/application/use-home';
 import type { CreateQuickLinkData } from '@/modules/home/domain/types';
 import {
@@ -41,7 +41,7 @@ interface QuickStartItem {
 }
 
 const quickStartItems: QuickStartItem[] = [
-    { title: 'Crea tu primera empresa', description: 'Organiza tu trabajo por cliente o proyecto', emoji: '🏢' },
+    { title: 'Crea tu primera proyecto', description: 'Organiza tu trabajo por cliente o proyecto', emoji: '🏢' },
     { title: 'Agrega una tarea', description: 'Registra tareas y haz seguimiento del progreso', emoji: '✅' },
     { title: 'Invita a tu equipo', description: 'Colabora con otros en tu espacio de trabajo', emoji: '👥' },
     { title: 'Configura los estados', description: 'Personaliza el flujo de trabajo de tus tareas', emoji: '⚙️' },
@@ -75,7 +75,7 @@ function formatRelativeTime(isoDate: string): string {
 function entityTypeIcon(entityType: string): string {
     switch (entityType.toLowerCase()) {
         case 'issue': return '✅';
-        case 'company': return '🏢';
+        case 'project': return '🏢';
         case 'cycle': return '🔄';
         case 'module': return '📦';
         default: return '📄';
@@ -162,13 +162,13 @@ export function WorkspaceHomePage(): React.ReactElement {
 
     const [addLinkOpen, setAddLinkOpen] = useState(false);
 
-    const { data: companies, isLoading: companiesLoading } = useCompanies(slug);
+    const { data: projects, isLoading: projectsLoading } = useProjects(slug);
     const { data: recentVisits } = useRecentVisits(slug, 8);
     const { data: quickLinks } = useQuickLinks(slug);
     const { mutate: createQuickLink, isPending: creatingLink } = useCreateQuickLink(slug);
     const { mutate: deleteQuickLink } = useDeleteQuickLink(slug);
 
-    const companiesTotal = companiesLoading ? '--' : (companies?.items.length ?? '--');
+    const projectsTotal = projectsLoading ? '--' : (projects?.items.length ?? '--');
 
     return (
         <div className="h-full overflow-y-auto">
@@ -183,7 +183,7 @@ export function WorkspaceHomePage(): React.ReactElement {
 
                 {/* Stats row */}
                 <div className="grid grid-cols-3 gap-4">
-                    <StatCard label="Empresas" value={companiesTotal} />
+                    <StatCard label="Proyectos" value={projectsTotal} />
                     <StatCard label="Tareas activas" value="--" />
                     <StatCard label="Miembros" value="--" />
                 </div>
@@ -300,23 +300,23 @@ export function WorkspaceHomePage(): React.ReactElement {
                     </div>
                 </div>
 
-                {/* Companies section */}
-                {(companies?.items?.length ?? 0) > 0 && (
+                {/* Projects section */}
+                {(projects?.items?.length ?? 0) > 0 && (
                     <div>
-                        <h2 className="mb-5 text-[20px] font-semibold tracking-[-0.03em] text-[var(--neutral-1200)]">Empresas</h2>
+                        <h2 className="mb-5 text-[20px] font-semibold tracking-[-0.03em] text-[var(--neutral-1200)]">Proyectos</h2>
                         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                            {companies?.items.map((company) => (
+                            {projects?.items.map((project) => (
                                 <NavLink
-                                    key={company.id}
-                                    to={`/${slug}/companies/${company.id}/issues`}
+                                    key={project.id}
+                                    to={`/${slug}/projects/${project.id}/issues`}
                                     className="flex items-center gap-3 rounded-xl border border-[var(--neutral-300)] bg-white p-4 hover:shadow-[0_4px_12px_rgba(0,0,0,0.05)] transition-all"
                                 >
                                     <span className="flex size-9 items-center justify-center rounded-lg bg-[var(--brand-700)] text-[13px] font-bold text-white shrink-0">
-                                        {company.identifier.slice(0, 2).toUpperCase()}
+                                        {project.identifier.slice(0, 2).toUpperCase()}
                                     </span>
                                     <div className="min-w-0">
-                                        <p className="text-[14px] font-semibold text-[var(--neutral-1200)] truncate tracking-[-0.01em]">{company.name}</p>
-                                        <p className="text-[11px] font-mono text-[var(--neutral-600)] uppercase tracking-wider">{company.identifier}</p>
+                                        <p className="text-[14px] font-semibold text-[var(--neutral-1200)] truncate tracking-[-0.01em]">{project.name}</p>
+                                        <p className="text-[11px] font-mono text-[var(--neutral-600)] uppercase tracking-wider">{project.identifier}</p>
                                     </div>
                                 </NavLink>
                             ))}
@@ -329,7 +329,7 @@ export function WorkspaceHomePage(): React.ReactElement {
                     <h2 className="mb-5 text-[20px] font-semibold tracking-[-0.03em] text-[var(--neutral-1200)]">Actividad reciente</h2>
                     <div className="rounded-xl border border-[var(--neutral-300)] bg-white p-12 text-center shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
                         <p className="text-[14px] text-[var(--neutral-600)] font-medium">No hay actividad reciente todavía.</p>
-                        <p className="mt-1.5 text-[13px] text-[var(--neutral-500)]">Crea una empresa y tareas para comenzar.</p>
+                        <p className="mt-1.5 text-[13px] text-[var(--neutral-500)]">Crea una proyecto y tareas para comenzar.</p>
                     </div>
                 </div>
             </div>

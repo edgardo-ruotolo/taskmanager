@@ -15,13 +15,13 @@ import { Eyebrow } from '@/components/ui/eyebrow';
 import { cn } from '@/lib/utils';
 import {
     useAnalyticsOverview,
-    useCompanyActivity,
+    useProjectActivity,
     useCreatedVsResolved,
     useIssuesByPriority,
     useIssuesByState,
 } from '../../application/use-analytics';
 import type {
-    CompanyActivityPoint,
+    ProjectActivityPoint,
     CreatedVsResolvedPoint,
     PriorityBucket,
     StateBucket,
@@ -414,11 +414,11 @@ function PriorityChart({ workspaceSlug }: PriorityChartProps): React.ReactElemen
     );
 }
 
-/* ── Company activity heatmap ── */
+/* ── Project activity heatmap ── */
 
-interface CompanyActivityHeatmapProps {
+interface ProjectActivityHeatmapProps {
     workspaceSlug: string;
-    companyIdentifier?: string;
+    projectIdentifier?: string;
 }
 
 function intensityClass(value: number): string {
@@ -428,9 +428,9 @@ function intensityClass(value: number): string {
     return 'bg-[var(--brand-700)]';
 }
 
-function CompanyActivityHeatmap({ workspaceSlug, companyIdentifier }: CompanyActivityHeatmapProps): React.ReactElement {
-    const enabled = !!companyIdentifier;
-    const { data, isLoading } = useCompanyActivity(workspaceSlug, companyIdentifier ?? '');
+function ProjectActivityHeatmap({ workspaceSlug, projectIdentifier }: ProjectActivityHeatmapProps): React.ReactElement {
+    const enabled = !!projectIdentifier;
+    const { data, isLoading } = useProjectActivity(workspaceSlug, projectIdentifier ?? '');
 
     return (
         <div className="bg-white p-[22px] rounded-lg border border-[var(--neutral-400)]">
@@ -445,8 +445,8 @@ function CompanyActivityHeatmap({ workspaceSlug, companyIdentifier }: CompanyAct
             </div>
             {!enabled ? (
                 <ChartEmpty
-                    title="Selecciona una empresa"
-                    description="La actividad por equipo se muestra al filtrar por empresa."
+                    title="Selecciona una proyecto"
+                    description="La actividad por equipo se muestra al filtrar por proyecto."
                 />
             ) : isLoading ? (
                 <ChartSkeleton variant="heatmap" />
@@ -476,7 +476,7 @@ function Legend(): React.ReactElement {
     );
 }
 
-function HeatmapGrid({ points }: { points: CompanyActivityPoint[] }): React.ReactElement {
+function HeatmapGrid({ points }: { points: ProjectActivityPoint[] }): React.ReactElement {
     // Backend already returns 30 contiguous days ordered ascending. We render as a
     // single-row strip; if multi-member support is added later this becomes
     // `N members × 30 days`.
@@ -506,7 +506,7 @@ function HeatmapGrid({ points }: { points: CompanyActivityPoint[] }): React.Reac
 /* ── Page ── */
 
 export const AnalyticsPage = (): React.ReactElement => {
-    const { workspaceSlug = '', companyId } = useParams<{ workspaceSlug: string; companyId?: string }>();
+    const { workspaceSlug = '', projectId } = useParams<{ workspaceSlug: string; projectId?: string }>();
     const { data: overview } = useAnalyticsOverview(workspaceSlug);
 
     const kpiItems: KpiCardProps[] = useMemo(() => {
@@ -554,7 +554,7 @@ export const AnalyticsPage = (): React.ReactElement => {
                 {/* Priority + team activity */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                     <PriorityChart workspaceSlug={workspaceSlug} />
-                    <CompanyActivityHeatmap workspaceSlug={workspaceSlug} companyIdentifier={companyId} />
+                    <ProjectActivityHeatmap workspaceSlug={workspaceSlug} projectIdentifier={projectId} />
                 </div>
             </div>
         </div>

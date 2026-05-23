@@ -6,7 +6,7 @@ export interface Cycle {
     endDate: string | null;
     status: 'Draft' | 'Started' | 'Completed';
     issueCount: number;
-    companyId: string;
+    projectId: string;
     ownerId: string;
     createdAt: string;
     updatedAt: string;

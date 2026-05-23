@@ -219,7 +219,7 @@ const WorkspaceStep = ({ onNext, onBack, saving, setSaving }: WorkspaceStepProps
             <div className="mb-6">
                 <h1 className="text-lg font-semibold text-primary">Crea tu espacio de trabajo</h1>
                 <p className="text-sm text-placeholder mt-1">
-                    Un espacio de trabajo agrupa todas tus empresas y proyectos.
+                    Un espacio de trabajo agrupa todas tus proyectos y proyectos.
                 </p>
             </div>
             <Form {...form}>
@@ -231,7 +231,7 @@ const WorkspaceStep = ({ onNext, onBack, saving, setSaving }: WorkspaceStepProps
                             <FormItem>
                                 <FormLabel className="text-secondary text-sm">Nombre del espacio</FormLabel>
                                 <FormControl>
-                                    <Input placeholder="Mi empresa" className={inputClass} {...field} />
+                                    <Input placeholder="Mi proyecto" className={inputClass} {...field} />
                                 </FormControl>
                                 <FormMessage />
                             </FormItem>
@@ -244,7 +244,7 @@ const WorkspaceStep = ({ onNext, onBack, saving, setSaving }: WorkspaceStepProps
                             <FormItem>
                                 <FormLabel className="text-secondary text-sm">URL del espacio</FormLabel>
                                 <FormControl>
-                                    <Input placeholder="mi-empresa" className={inputClass} {...field} />
+                                    <Input placeholder="mi-proyecto" className={inputClass} {...field} />
                                 </FormControl>
                                 <FormMessage />
                             </FormItem>
@@ -320,7 +320,7 @@ const InviteStep = ({ onNext, onBack }: InviteStepProps): React.ReactElement => 
                                         />
                                         <Input
                                             type="email"
-                                            placeholder="compañero@empresa.com"
+                                            placeholder="compañero@proyecto.com"
                                             className={`${inputClass} pl-9`}
                                             {...field}
                                         />
@@ -366,7 +366,7 @@ const DoneStep = ({ workspaceSlug }: { workspaceSlug: string }): React.ReactElem
     const navigate = useNavigate();
 
     const handleGoToWorkspace = (): void => {
-        const dest = workspaceSlug ? `/${workspaceSlug}/companies` : '/workspaces';
+        const dest = workspaceSlug ? `/${workspaceSlug}/projects` : '/workspaces';
         void navigate(dest);
     };
 
@@ -398,7 +398,7 @@ export const OnboardingPage = (): React.ReactElement => {
     useEffect(() => {
         const state = getOnboardingState();
         if (state.hasCompletedOnboarding && location.pathname === '/onboarding') {
-            void navigate(workspaceSlug ? `/${workspaceSlug}/companies` : '/workspaces', { replace: true });
+            void navigate(workspaceSlug ? `/${workspaceSlug}/projects` : '/workspaces', { replace: true });
         }
     }, [navigate, location.pathname, workspaceSlug]);
 

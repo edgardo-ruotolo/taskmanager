@@ -10,27 +10,27 @@ using TaskManager.Api.Modules.Space.Entities;
 namespace TaskManager.Api.Modules.Space.Controllers;
 
 [ApiController]
-[Route("api/workspaces/{workspaceSlug}/companies/{companyId:guid}/deploy-boards")]
+[Route("api/workspaces/{workspaceSlug}/projects/{projectId:guid}/deploy-boards")]
 [Authorize]
-[ServiceFilter(typeof(RequireCompanyMemberAttribute))]
+[ServiceFilter(typeof(RequireProjectMemberAttribute))]
 public class DeployBoardController(AppDbContext db) : ControllerBase
 {
 
     [HttpGet]
     public async Task<ActionResult<List<DeployBoardDto>>> GetAll(
         string workspaceSlug,
-        Guid companyId,
+        Guid projectId,
         CancellationToken ct)
     {
         var workspace = await db.Workspaces.FirstOrDefaultAsync(w => w.Slug == workspaceSlug, ct);
         if (workspace is null) return NotFound();
 
         var boards = await db.DeployBoards
-            .Where(b => b.CompanyId == companyId && b.WorkspaceId == workspace.Id)
+            .Where(b => b.ProjectId == projectId && b.WorkspaceId == workspace.Id)
             .Select(b => new DeployBoardDto
             {
                 Id = b.Id,
-                CompanyId = b.CompanyId,
+                ProjectId = b.ProjectId,
                 WorkspaceId = b.WorkspaceId,
                 Token = b.Token,
                 Title = b.Title,
@@ -51,19 +51,19 @@ public class DeployBoardController(AppDbContext db) : ControllerBase
     [HttpPost]
     public async Task<ActionResult<DeployBoardDto>> Create(
         string workspaceSlug,
-        Guid companyId,
+        Guid projectId,
         [FromBody] CreateDeployBoardDto dto,
         CancellationToken ct)
     {
         var workspace = await db.Workspaces.FirstOrDefaultAsync(w => w.Slug == workspaceSlug, ct);
         if (workspace is null) return NotFound();
 
-        var company = await db.Companies.FirstOrDefaultAsync(c => c.Id == companyId && c.WorkspaceId == workspace.Id, ct);
-        if (company is null) return NotFound();
+        var project = await db.Projects.FirstOrDefaultAsync(c => c.Id == projectId && c.WorkspaceId == workspace.Id, ct);
+        if (project is null) return NotFound();
 
         var board = new DeployBoard
         {
-            CompanyId = companyId,
+            ProjectId = projectId,
             WorkspaceId = workspace.Id,
             Token = Guid.NewGuid().ToString("N"),
             Title = dto.Title,
@@ -82,7 +82,7 @@ public class DeployBoardController(AppDbContext db) : ControllerBase
         var result = new DeployBoardDto
         {
             Id = board.Id,
-            CompanyId = board.CompanyId,
+            ProjectId = board.ProjectId,
             WorkspaceId = board.WorkspaceId,
             Token = board.Token,
             Title = board.Title,
@@ -96,13 +96,13 @@ public class DeployBoardController(AppDbContext db) : ControllerBase
             CreatedAt = board.CreatedAt
         };
 
-        return CreatedAtAction(nameof(GetById), new { workspaceSlug, companyId, id = board.Id }, result);
+        return CreatedAtAction(nameof(GetById), new { workspaceSlug, projectId, id = board.Id }, result);
     }
 
     [HttpGet("{id:guid}")]
     public async Task<ActionResult<DeployBoardDto>> GetById(
         string workspaceSlug,
-        Guid companyId,
+        Guid projectId,
         Guid id,
         CancellationToken ct)
     {
@@ -110,14 +110,14 @@ public class DeployBoardController(AppDbContext db) : ControllerBase
         if (workspace is null) return NotFound();
 
         var board = await db.DeployBoards
-            .FirstOrDefaultAsync(b => b.Id == id && b.CompanyId == companyId && b.WorkspaceId == workspace.Id, ct);
+            .FirstOrDefaultAsync(b => b.Id == id && b.ProjectId == projectId && b.WorkspaceId == workspace.Id, ct);
 
         if (board is null) return NotFound();
 
         return Ok(new DeployBoardDto
         {
             Id = board.Id,
-            CompanyId = board.CompanyId,
+            ProjectId = board.ProjectId,
             WorkspaceId = board.WorkspaceId,
             Token = board.Token,
             Title = board.Title,
@@ -135,7 +135,7 @@ public class DeployBoardController(AppDbContext db) : ControllerBase
     [HttpPatch("{id:guid}")]
     public async Task<ActionResult<DeployBoardDto>> Update(
         string workspaceSlug,
-        Guid companyId,
+        Guid projectId,
         Guid id,
         [FromBody] UpdateDeployBoardDto dto,
         CancellationToken ct)
@@ -144,7 +144,7 @@ public class DeployBoardController(AppDbContext db) : ControllerBase
         if (workspace is null) return NotFound();
 
         var board = await db.DeployBoards
-            .FirstOrDefaultAsync(b => b.Id == id && b.CompanyId == companyId && b.WorkspaceId == workspace.Id, ct);
+            .FirstOrDefaultAsync(b => b.Id == id && b.ProjectId == projectId && b.WorkspaceId == workspace.Id, ct);
 
         if (board is null) return NotFound();
 
@@ -162,7 +162,7 @@ public class DeployBoardController(AppDbContext db) : ControllerBase
         return Ok(new DeployBoardDto
         {
             Id = board.Id,
-            CompanyId = board.CompanyId,
+            ProjectId = board.ProjectId,
             WorkspaceId = board.WorkspaceId,
             Token = board.Token,
             Title = board.Title,
@@ -180,7 +180,7 @@ public class DeployBoardController(AppDbContext db) : ControllerBase
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(
         string workspaceSlug,
-        Guid companyId,
+        Guid projectId,
         Guid id,
         CancellationToken ct)
     {
@@ -188,7 +188,7 @@ public class DeployBoardController(AppDbContext db) : ControllerBase
         if (workspace is null) return NotFound();
 
         var board = await db.DeployBoards
-            .FirstOrDefaultAsync(b => b.Id == id && b.CompanyId == companyId && b.WorkspaceId == workspace.Id, ct);
+            .FirstOrDefaultAsync(b => b.Id == id && b.ProjectId == projectId && b.WorkspaceId == workspace.Id, ct);
 
         if (board is null) return NotFound();
 

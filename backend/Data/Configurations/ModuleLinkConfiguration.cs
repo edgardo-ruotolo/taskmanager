@@ -1,6 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
-using TaskManager.Api.Modules.ProjectModules.Entities;
+using TaskManager.Api.Modules.Modules.Entities;
 
 namespace TaskManager.Api.Data.Configurations;
 

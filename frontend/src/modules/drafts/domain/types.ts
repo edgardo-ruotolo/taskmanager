@@ -5,7 +5,7 @@ export interface DraftIssue {
     title: string;
     description: string | null;
     priority: IssuePriority;
-    companyId: string;
+    projectId: string;
     stateId: string | null;
     stateName: string | null;
     ownedById: string;
@@ -19,7 +19,7 @@ export interface CreateDraftIssueData {
     title: string;
     description?: string;
     priority?: IssuePriority;
-    companyId: string;
+    projectId: string;
     stateId?: string;
     assigneeId?: string;
     dueDate?: string;

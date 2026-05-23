@@ -84,19 +84,19 @@ function LoadingSkeleton(): React.ReactElement {
 }
 
 export const ArchivesPage = (): React.ReactElement => {
-    const { workspaceSlug = '', companyId = '' } = useParams<{
+    const { workspaceSlug = '', projectId = '' } = useParams<{
         workspaceSlug: string;
-        companyId: string;
+        projectId: string;
     }>();
     const [activeTab, setActiveTab] = useState<ArchiveTab>('issues');
 
-    const { data: archivedIssues = [], isLoading: loadingIssues } = useArchivedIssues(workspaceSlug, companyId);
-    const { data: archivedCycles = [], isLoading: loadingCycles } = useArchivedCycles(workspaceSlug, companyId);
-    const { data: archivedModules = [], isLoading: loadingModules } = useArchivedModules(workspaceSlug, companyId);
+    const { data: archivedIssues = [], isLoading: loadingIssues } = useArchivedIssues(workspaceSlug, projectId);
+    const { data: archivedCycles = [], isLoading: loadingCycles } = useArchivedCycles(workspaceSlug, projectId);
+    const { data: archivedModules = [], isLoading: loadingModules } = useArchivedModules(workspaceSlug, projectId);
 
-    const restoreIssueMutation = useRestoreIssue(workspaceSlug, companyId);
-    const restoreCycleMutation = useRestoreCycle(workspaceSlug, companyId);
-    const restoreModuleMutation = useRestoreModule(workspaceSlug, companyId);
+    const restoreIssueMutation = useRestoreIssue(workspaceSlug, projectId);
+    const restoreCycleMutation = useRestoreCycle(workspaceSlug, projectId);
+    const restoreModuleMutation = useRestoreModule(workspaceSlug, projectId);
 
     return (
         <div className="p-6 md:p-8">

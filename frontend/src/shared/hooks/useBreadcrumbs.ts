@@ -7,7 +7,7 @@ export interface Breadcrumb {
 }
 
 const ROUTE_LABELS: Record<string, string> = {
-    companies: 'Empresas',
+    projects: 'Proyectos',
     issues: 'Tareas',
     cycles: 'Ciclos',
     modules: 'Módulos',

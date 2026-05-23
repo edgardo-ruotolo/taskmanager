@@ -4,11 +4,11 @@ using TaskManager.Api.Common.Auth;
 using TaskManager.Api.Common.Exceptions;
 using TaskManager.Api.Common.Pagination;
 using TaskManager.Api.Data;
-using TaskManager.Api.Modules.Companies.Entities;
+using TaskManager.Api.Modules.Projects.Entities;
 using TaskManager.Api.Modules.Cycles.Entities;
 using TaskManager.Api.Modules.Issues.Dtos;
 using TaskManager.Api.Modules.Issues.Entities;
-using TaskManager.Api.Modules.ProjectModules.Entities;
+using TaskManager.Api.Modules.Modules.Entities;
 using TaskManager.Api.Modules.States.Entities;
 
 namespace TaskManager.Api.Modules.Issues.Services;
@@ -22,25 +22,25 @@ public class IssueService(
     private string? Sanitize(string? html) =>
         string.IsNullOrEmpty(html) ? html : htmlSanitizer.Sanitize(html);
 
-    private async Task<bool> CanApproveAsync(Guid userId, Guid companyId, CancellationToken ct)
+    private async Task<bool> CanApproveAsync(Guid userId, Guid projectId, CancellationToken ct)
     {
         if (currentUser.IsSuperAdmin) return true;
-        var member = await db.CompanyMembers
+        var member = await db.ProjectMembers
             .AsNoTracking()
-            .FirstOrDefaultAsync(m => m.UserId == userId && m.CompanyId == companyId, ct);
-        return member is not null && (member.Role == CompanyRole.Admin || member.Role == CompanyRole.Lead);
+            .FirstOrDefaultAsync(m => m.UserId == userId && m.ProjectId == projectId, ct);
+        return member is not null && (member.Role == ProjectRole.Admin || member.Role == ProjectRole.Lead);
     }
 
-    public async Task<IssueDto> CreateAsync(string workspaceSlug, Guid companyId, Guid userId, CreateIssueDto dto, CancellationToken ct = default)
+    public async Task<IssueDto> CreateAsync(string workspaceSlug, Guid projectId, Guid userId, CreateIssueDto dto, CancellationToken ct = default)
     {
         // Reads — no tracking needed for validation.
         var workspace = await db.Workspaces.AsNoTracking()
             .FirstOrDefaultAsync(w => w.Slug == workspaceSlug, ct)
             ?? throw new NotFoundException($"Workspace '{workspaceSlug}' not found.");
 
-        var company = await db.Companies.AsNoTracking()
-            .FirstOrDefaultAsync(c => c.Id == companyId && c.WorkspaceId == workspace.Id, ct)
-            ?? throw new NotFoundException("Company not found.");
+        var project = await db.Projects.AsNoTracking()
+            .FirstOrDefaultAsync(c => c.Id == projectId && c.WorkspaceId == workspace.Id, ct)
+            ?? throw new NotFoundException("Project not found.");
 
         var state = await db.States.AsNoTracking()
             .FirstOrDefaultAsync(s => s.Id == dto.StateId, ct)
@@ -52,13 +52,13 @@ public class IssueService(
         // connection so pg_advisory_xact_lock and the INSERT live in the same backend session.
         await using var tx = await db.Database.BeginTransactionAsync(ct);
 
-        var lockKey = BitConverter.ToInt64(companyId.ToByteArray(), 0);
+        var lockKey = BitConverter.ToInt64(projectId.ToByteArray(), 0);
         await db.Database.ExecuteSqlInterpolatedAsync($"SELECT pg_advisory_xact_lock({lockKey})", ct);
 
         var maxSeq = await db.Issues
             .IgnoreQueryFilters()
             .AsNoTracking()
-            .Where(i => i.CompanyId == companyId)
+            .Where(i => i.ProjectId == projectId)
             .Select(i => (int?)i.SequenceId)
             .MaxAsync(ct) ?? 0;
         var sequenceId = maxSeq + 1;
@@ -71,7 +71,7 @@ public class IssueService(
             DescriptionJson = dto.DescriptionJson,
             Priority = dto.Priority,
             StateId = state.Id,
-            CompanyId = company.Id,
+            ProjectId = project.Id,
             CreatedById = userId,
             SequenceId = sequenceId,
             AssigneeId = dto.AssigneeId,
@@ -125,7 +125,7 @@ public class IssueService(
         return IssueMapper.MapToDto(created);
     }
 
-    public async Task<PagedResult<IssueDto>> GetAllAsync(string workspaceSlug, Guid companyId, int page, int pageSize, CancellationToken ct = default)
+    public async Task<PagedResult<IssueDto>> GetAllAsync(string workspaceSlug, Guid projectId, int page, int pageSize, CancellationToken ct = default)
     {
         var workspace = await db.Workspaces.AsNoTracking()
             .FirstOrDefaultAsync(w => w.Slug == workspaceSlug, ct)
@@ -136,7 +136,7 @@ public class IssueService(
         // DTO needs. This trims payload size and avoids materializing the full entity graph.
         var query = db.Issues
             .AsNoTracking()
-            .Where(i => i.CompanyId == companyId && i.Company.WorkspaceId == workspace.Id);
+            .Where(i => i.ProjectId == projectId && i.Project.WorkspaceId == workspace.Id);
 
         var total = await query.CountAsync(ct);
 
@@ -154,7 +154,7 @@ public class IssueService(
                 DescriptionHtml = i.DescriptionHtml,
                 DescriptionJson = i.DescriptionJson,
                 Priority = i.Priority,
-                CompanyId = i.CompanyId,
+                ProjectId = i.ProjectId,
                 StateId = i.StateId,
                 StateName = i.State!.Name,
                 StateColor = i.State.Color,
@@ -197,7 +197,7 @@ public class IssueService(
         };
     }
 
-    public async Task<IssueDto> GetByIdAsync(string workspaceSlug, Guid companyId, Guid issueId, CancellationToken ct = default)
+    public async Task<IssueDto> GetByIdAsync(string workspaceSlug, Guid projectId, Guid issueId, CancellationToken ct = default)
     {
         // Detail view needs the full graph for back-references; AsNoTracking is still safe
         // because we never persist the loaded entity from this read path.
@@ -208,13 +208,13 @@ public class IssueService(
             .Include(i => i.Labels)
             .Include(i => i.CycleIssues)
             .Include(i => i.ModuleIssues)
-            .FirstOrDefaultAsync(i => i.Id == issueId && i.CompanyId == companyId, ct)
+            .FirstOrDefaultAsync(i => i.Id == issueId && i.ProjectId == projectId, ct)
             ?? throw new NotFoundException("Issue not found.");
 
         return IssueMapper.MapToDto(issue);
     }
 
-    public async Task<IssueDto> UpdateAsync(string workspaceSlug, Guid companyId, Guid issueId, UpdateIssueDto dto, Guid currentUserId, CancellationToken ct = default)
+    public async Task<IssueDto> UpdateAsync(string workspaceSlug, Guid projectId, Guid issueId, UpdateIssueDto dto, Guid currentUserId, CancellationToken ct = default)
     {
         var issue = await db.Issues
             .Include(i => i.State)
@@ -222,7 +222,7 @@ public class IssueService(
             .Include(i => i.Labels)
             .Include(i => i.CycleIssues)
             .Include(i => i.ModuleIssues)
-            .FirstOrDefaultAsync(i => i.Id == issueId && i.CompanyId == companyId, ct)
+            .FirstOrDefaultAsync(i => i.Id == issueId && i.ProjectId == projectId, ct)
             ?? throw new NotFoundException("Issue not found.");
 
         var oldStateName = issue.State?.Name;
@@ -249,7 +249,7 @@ public class IssueService(
         {
             if (issue.RequiresAdminApproval && issue.ApprovalRequiredStateIds.Contains(dto.StateId.Value))
             {
-                var canApprove = await CanApproveAsync(currentUserId, issue.CompanyId, ct);
+                var canApprove = await CanApproveAsync(currentUserId, issue.ProjectId, ct);
                 if (!canApprove)
                     throw new ConflictException(
                         "Esta tarea requiere aprobación de un Administrador o Gestor para moverse a este estado.",
@@ -331,9 +331,9 @@ public class IssueService(
     }
 
     public async Task<IssueDto> ApproveAsync(
-        string workspaceSlug, Guid companyId, Guid issueId, Guid targetStateId, Guid currentUserId, CancellationToken ct = default)
+        string workspaceSlug, Guid projectId, Guid issueId, Guid targetStateId, Guid currentUserId, CancellationToken ct = default)
     {
-        var canApprove = await CanApproveAsync(currentUserId, companyId, ct);
+        var canApprove = await CanApproveAsync(currentUserId, projectId, ct);
         if (!canApprove)
             throw new ForbiddenException("Solo un Administrador o Gestor puede aprobar esta tarea.");
 
@@ -342,7 +342,7 @@ public class IssueService(
             .Include(i => i.Assignees)
             .Include(i => i.Labels)
             .Include(i => i.ModuleIssues)
-            .FirstOrDefaultAsync(i => i.Id == issueId && i.CompanyId == companyId, ct)
+            .FirstOrDefaultAsync(i => i.Id == issueId && i.ProjectId == projectId, ct)
             ?? throw new NotFoundException("Issue not found.");
 
         if (!issue.RequiresAdminApproval || !issue.ApprovalRequiredStateIds.Contains(targetStateId))
@@ -370,9 +370,9 @@ public class IssueService(
         return IssueMapper.MapToDto(issue);
     }
 
-    public async Task DeleteAsync(string workspaceSlug, Guid companyId, Guid issueId, CancellationToken ct = default)
+    public async Task DeleteAsync(string workspaceSlug, Guid projectId, Guid issueId, CancellationToken ct = default)
     {
-        var issue = await db.Issues.FirstOrDefaultAsync(i => i.Id == issueId && i.CompanyId == companyId, ct)
+        var issue = await db.Issues.FirstOrDefaultAsync(i => i.Id == issueId && i.ProjectId == projectId, ct)
             ?? throw new NotFoundException("Issue not found.");
 
         issue.IsDeleted = true;
@@ -380,11 +380,11 @@ public class IssueService(
         await db.SaveChangesAsync(ct);
     }
 
-    public async Task AddAssigneeAsync(string workspaceSlug, Guid companyId, Guid issueId, Guid userId, CancellationToken ct = default)
+    public async Task AddAssigneeAsync(string workspaceSlug, Guid projectId, Guid issueId, Guid userId, CancellationToken ct = default)
     {
         var issue = await db.Issues
             .Include(i => i.Assignees)
-            .FirstOrDefaultAsync(i => i.Id == issueId && i.CompanyId == companyId, ct)
+            .FirstOrDefaultAsync(i => i.Id == issueId && i.ProjectId == projectId, ct)
             ?? throw new NotFoundException("Issue not found.");
 
         if (issue.Assignees.Any(a => a.UserId == userId))
@@ -394,7 +394,7 @@ public class IssueService(
         await db.SaveChangesAsync(ct);
     }
 
-    public async Task RemoveAssigneeAsync(string workspaceSlug, Guid companyId, Guid issueId, Guid userId, CancellationToken ct = default)
+    public async Task RemoveAssigneeAsync(string workspaceSlug, Guid projectId, Guid issueId, Guid userId, CancellationToken ct = default)
     {
         var assignee = await db.IssueAssignees
             .FirstOrDefaultAsync(a => a.IssueId == issueId && a.UserId == userId, ct)
@@ -404,11 +404,11 @@ public class IssueService(
         await db.SaveChangesAsync(ct);
     }
 
-    public async Task AddLabelAsync(string workspaceSlug, Guid companyId, Guid issueId, Guid labelId, CancellationToken ct = default)
+    public async Task AddLabelAsync(string workspaceSlug, Guid projectId, Guid issueId, Guid labelId, CancellationToken ct = default)
     {
         var issue = await db.Issues
             .Include(i => i.Labels)
-            .FirstOrDefaultAsync(i => i.Id == issueId && i.CompanyId == companyId, ct)
+            .FirstOrDefaultAsync(i => i.Id == issueId && i.ProjectId == projectId, ct)
             ?? throw new NotFoundException("Issue not found.");
 
         if (issue.Labels.Any(l => l.LabelId == labelId))
@@ -418,7 +418,7 @@ public class IssueService(
         await db.SaveChangesAsync(ct);
     }
 
-    public async Task RemoveLabelAsync(string workspaceSlug, Guid companyId, Guid issueId, Guid labelId, CancellationToken ct = default)
+    public async Task RemoveLabelAsync(string workspaceSlug, Guid projectId, Guid issueId, Guid labelId, CancellationToken ct = default)
     {
         var label = await db.IssueLabels
             .FirstOrDefaultAsync(l => l.IssueId == issueId && l.LabelId == labelId, ct)
@@ -428,9 +428,9 @@ public class IssueService(
         await db.SaveChangesAsync(ct);
     }
 
-    public async Task AttachCycleAsync(Guid companyId, Guid issueId, Guid cycleId, Guid userId, CancellationToken ct = default)
+    public async Task AttachCycleAsync(Guid projectId, Guid issueId, Guid cycleId, Guid userId, CancellationToken ct = default)
     {
-        var issue = await db.Issues.FirstOrDefaultAsync(i => i.Id == issueId && i.CompanyId == companyId, ct)
+        var issue = await db.Issues.FirstOrDefaultAsync(i => i.Id == issueId && i.ProjectId == projectId, ct)
             ?? throw new NotFoundException("Issue not found.");
 
         var existing = await db.CycleIssues.FirstOrDefaultAsync(ci => ci.IssueId == issueId, ct);
@@ -444,7 +444,7 @@ public class IssueService(
         await db.SaveChangesAsync(ct);
     }
 
-    public async Task DetachCycleAsync(Guid companyId, Guid issueId, CancellationToken ct = default)
+    public async Task DetachCycleAsync(Guid projectId, Guid issueId, CancellationToken ct = default)
     {
         var existing = await db.CycleIssues.FirstOrDefaultAsync(ci => ci.IssueId == issueId, ct);
         if (existing == null) return;
@@ -452,9 +452,9 @@ public class IssueService(
         await db.SaveChangesAsync(ct);
     }
 
-    public async Task AttachModulesAsync(Guid companyId, Guid issueId, List<Guid> moduleIds, Guid userId, CancellationToken ct = default)
+    public async Task AttachModulesAsync(Guid projectId, Guid issueId, List<Guid> moduleIds, Guid userId, CancellationToken ct = default)
     {
-        var issue = await db.Issues.FirstOrDefaultAsync(i => i.Id == issueId && i.CompanyId == companyId, ct)
+        var issue = await db.Issues.FirstOrDefaultAsync(i => i.Id == issueId && i.ProjectId == projectId, ct)
             ?? throw new NotFoundException("Issue not found.");
 
         var incoming = moduleIds.Distinct().ToHashSet();
@@ -465,7 +465,7 @@ public class IssueService(
         await db.SaveChangesAsync(ct);
     }
 
-    public async Task DetachModuleAsync(Guid companyId, Guid issueId, Guid moduleId, CancellationToken ct = default)
+    public async Task DetachModuleAsync(Guid projectId, Guid issueId, Guid moduleId, CancellationToken ct = default)
     {
         var existing = await db.ModuleIssues.FirstOrDefaultAsync(mi => mi.IssueId == issueId && mi.ModuleId == moduleId, ct)
             ?? throw new NotFoundException("Module not attached to this issue.");
@@ -473,7 +473,7 @@ public class IssueService(
         await db.SaveChangesAsync(ct);
     }
 
-    public async Task<List<IssueDto>> SearchSimilarAsync(string workspaceSlug, Guid companyId, string title, double threshold = 0.3, CancellationToken ct = default)
+    public async Task<List<IssueDto>> SearchSimilarAsync(string workspaceSlug, Guid projectId, string title, double threshold = 0.3, CancellationToken ct = default)
     {
         var workspace = await db.Workspaces.AsNoTracking()
             .FirstOrDefaultAsync(w => w.Slug == workspaceSlug, ct)
@@ -486,7 +486,7 @@ public class IssueService(
             .Include(i => i.Labels)
             .Include(i => i.CycleIssues)
             .Include(i => i.ModuleIssues)
-            .Where(i => i.CompanyId == companyId && i.Company.WorkspaceId == workspace.Id)
+            .Where(i => i.ProjectId == projectId && i.Project.WorkspaceId == workspace.Id)
             .Where(i => EF.Functions.TrigramsSimilarity(i.Title, title) >= threshold)
             .OrderByDescending(i => EF.Functions.TrigramsSimilarity(i.Title, title))
             .Take(10)

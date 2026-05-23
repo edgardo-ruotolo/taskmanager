@@ -18,7 +18,7 @@ public class PublicSpaceController(AppDbContext db) : ControllerBase
         if (board is null || !board.IsPublic) return NotFound();
 
         var issuesQuery = db.Issues
-            .Where(i => i.CompanyId == board.CompanyId);
+            .Where(i => i.ProjectId == board.ProjectId);
 
         var issues = await issuesQuery
             .Include(i => i.State)

@@ -10,25 +10,25 @@ export interface SearchIssueResult {
     id: string;
     title: string;
     sequenceId: number;
-    companyId: string;
+    projectId: string;
 }
 
 export interface SearchCycleResult {
     id: string;
     name: string;
-    companyId: string;
+    projectId: string;
 }
 
 export interface SearchModuleResult {
     id: string;
     name: string;
-    companyId: string;
+    projectId: string;
 }
 
 export interface SearchViewResult {
     id: string;
     name: string;
-    companyId: string | null;
+    projectId: string | null;
 }
 
 export interface SearchLabelResult {

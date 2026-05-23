@@ -36,7 +36,7 @@ export interface CreatedVsResolvedPoint {
     resolved: number;
 }
 
-export interface CompanyActivityPoint {
+export interface ProjectActivityPoint {
     date: string;
     completed: number;
 }

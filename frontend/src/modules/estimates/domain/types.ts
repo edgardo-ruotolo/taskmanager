@@ -14,7 +14,7 @@ export interface Estimate {
     name: string;
     description: string | null;
     type: EstimateType;
-    companyId: string;
+    projectId: string;
     createdAt: string;
     updatedAt: string;
     points: EstimatePoint[];

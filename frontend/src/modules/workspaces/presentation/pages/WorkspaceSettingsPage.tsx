@@ -8,10 +8,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import {
     UserX,
-    Send,
     Shield,
     User,
-    Trash2,
     Settings,
     Users,
     Webhook,
@@ -21,6 +19,9 @@ import {
     Palette,
     ImageIcon,
     Plug,
+    UserPlus,
+    Search,
+    Loader2,
 } from 'lucide-react';
 import { UnsplashPicker } from '@/modules/unsplash/presentation/components/UnsplashPicker';
 import type { UnsplashPhoto } from '@/modules/unsplash/domain/types';
@@ -39,10 +40,22 @@ import {
     AlertDialogTitle,
     AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
+import { getErrorMessage } from '@/shared/lib/api-errors';
+import { ThemedSelect } from '@/shared/components/ThemedSelect';
 import { workspaceRepository } from '../../infrastructure/workspace-repository';
-import { WORKSPACES_KEY, workspaceMembersKey, workspaceInvitationsKey, useWorkspaceTheme, useUpdateWorkspaceTheme } from '../../application/use-workspaces';
-import type { WorkspaceMember } from '../../domain/types';
+import { WORKSPACES_KEY, workspaceMembersKey, useWorkspaceTheme, useUpdateWorkspaceTheme } from '../../application/use-workspaces';
+import type { WorkspaceMember, WorkspaceRole, WorkspaceUserSearchResult } from '../../domain/types';
+import { WORKSPACE_ROLE_LABELS } from '../../domain/types';
 import type { UpdateWorkspaceThemeData } from '../../domain/theme-types';
 
 const settingsSchema = z.object({
@@ -51,10 +64,16 @@ const settingsSchema = z.object({
 });
 type SettingsForm = z.infer<typeof settingsSchema>;
 
-const inviteSchema = z.object({
-    email: z.string().email('Email inválido'),
+const ROLE_OPTIONS: WorkspaceRole[] = ['Member', 'Lead', 'Admin'];
+
+const createUserSchema = z.object({
+    email: z.string().email('Email inválido').max(256),
+    firstName: z.string().min(1, 'Requerido').max(100),
+    lastName: z.string().min(1, 'Requerido').max(100),
+    password: z.string().min(8, 'Mínimo 8 caracteres').max(128),
+    role: z.enum(['Admin', 'Lead', 'Member']),
 });
-type InviteForm = z.infer<typeof inviteSchema>;
+type CreateUserForm = z.infer<typeof createUserSchema>;
 
 const inputClass =
     'bg-layer-1 border-subtle text-primary placeholder:text-placeholder focus:border-strong transition-colors';
@@ -138,21 +157,17 @@ function SectionHeader({ title, description }: { title: string; description: str
     );
 }
 
-const RoleBadge = ({ role }: { role: WorkspaceMember['role'] }): React.ReactElement => {
-    const colors: Record<string, string> = {
-        Admin: 'bg-blue-500/15 text-blue-400 border border-blue-500/20',
-        Member: 'bg-surface-1/50 text-secondary border border-subtle',
-    };
-    const labels: Record<string, string> = {
-        Admin: 'Administrador',
-        Member: 'Usuario',
-    };
-    return (
-        <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${colors[role] ?? ''}`}>
-            {labels[role] ?? role}
-        </span>
-    );
+const ROLE_BADGE_COLORS: Record<WorkspaceRole, string> = {
+    Admin: 'bg-blue-500/15 text-blue-400 border border-blue-500/20',
+    Lead: 'bg-amber-500/15 text-amber-400 border border-amber-500/20',
+    Member: 'bg-surface-1/50 text-secondary border border-subtle',
 };
+
+const RoleBadge = ({ role }: { role: WorkspaceRole }): React.ReactElement => (
+    <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${ROLE_BADGE_COLORS[role]}`}>
+        {WORKSPACE_ROLE_LABELS[role]}
+    </span>
+);
 
 function GeneralTab({ workspaceSlug }: { workspaceSlug: string }): React.ReactElement {
     const qc = useQueryClient();
@@ -299,55 +314,501 @@ function GeneralTab({ workspaceSlug }: { workspaceSlug: string }): React.ReactEl
     );
 }
 
-function MembersTab({ workspaceSlug }: { workspaceSlug: string }): React.ReactElement {
-    const qc = useQueryClient();
+function useDebouncedValue<T>(value: T, delay = 300): T {
+    const [debounced, setDebounced] = useState(value);
+    useEffect(() => {
+        const id = setTimeout(() => setDebounced(value), delay);
+        return () => clearTimeout(id);
+    }, [value, delay]);
+    return debounced;
+}
 
-    const inviteForm = useForm<InviteForm>({ resolver: zodResolver(inviteSchema) });
+interface SearchResultsListProps {
+    enabled: boolean;
+    isFetching: boolean;
+    results: WorkspaceUserSearchResult[];
+    onSelect: (user: WorkspaceUserSearchResult) => void;
+}
+
+function SearchResultsList({ enabled, isFetching, results, onSelect }: SearchResultsListProps): React.ReactElement {
+    if (!enabled) {
+        return (
+            <p className="text-xs text-placeholder px-3 py-4 text-center">
+                Empieza a escribir para buscar usuarios.
+            </p>
+        );
+    }
+    if (isFetching) {
+        return (
+            <div className="flex items-center justify-center py-6 text-placeholder">
+                <Loader2 size={16} className="animate-spin" aria-hidden="true" />
+            </div>
+        );
+    }
+    if (results.length === 0) {
+        return (
+            <p className="text-xs text-placeholder px-3 py-4 text-center">
+                Sin resultados.
+            </p>
+        );
+    }
+    return (
+        <ul className="divide-y divide-subtle">
+            {results.map((u) => (
+                <li key={u.userId}>
+                    <button
+                        type="button"
+                        onClick={() => onSelect(u)}
+                        className="w-full flex items-center gap-3 px-3 py-2 hover:bg-layer-transparent-hover transition-colors text-left"
+                    >
+                        <div className="w-7 h-7 rounded-full bg-layer-2 flex items-center justify-center overflow-hidden shrink-0">
+                            {u.avatarUrl ? (
+                                <img
+                                    src={u.avatarUrl}
+                                    alt={u.displayName ?? u.email}
+                                    className="w-full h-full rounded-full object-cover"
+                                />
+                            ) : (
+                                <User size={12} aria-hidden="true" />
+                            )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                            <p className="text-sm text-primary truncate">
+                                {u.displayName ?? u.email}
+                            </p>
+                            {u.displayName && (
+                                <p className="text-xs text-placeholder truncate">{u.email}</p>
+                            )}
+                        </div>
+                    </button>
+                </li>
+            ))}
+        </ul>
+    );
+}
+
+interface SearchUserPanelProps {
+    workspaceSlug: string;
+    onClose: () => void;
+}
+
+function SearchUserPanel({ workspaceSlug, onClose }: SearchUserPanelProps): React.ReactElement {
+    const qc = useQueryClient();
+    const [query, setQuery] = useState('');
+    const debouncedQuery = useDebouncedValue(query, 300);
+    const [selectedUser, setSelectedUser] = useState<WorkspaceUserSearchResult | null>(null);
+    const [role, setRole] = useState<WorkspaceRole>('Member');
+
+    const enabled = debouncedQuery.trim().length >= 1;
+    const { data: results = [], isFetching } = useQuery({
+        queryKey: ['workspace-users-search', workspaceSlug, debouncedQuery],
+        queryFn: () => workspaceRepository.searchUsers(workspaceSlug, debouncedQuery),
+        enabled,
+        staleTime: 30_000,
+    });
+
+    const addMutation = useMutation({
+        mutationFn: () => {
+            if (!selectedUser) throw new Error('No user selected');
+            return workspaceRepository.addMember(workspaceSlug, {
+                userId: selectedUser.userId,
+                role,
+            });
+        },
+        onSuccess: () => {
+            void qc.invalidateQueries({ queryKey: workspaceMembersKey(workspaceSlug) });
+            toast.success('Miembro agregado');
+            onClose();
+        },
+        onError: (err) => {
+            const msg = getErrorMessage(err) ?? 'Error al agregar miembro';
+            toast.error(msg);
+        },
+    });
+
+    return (
+        <div className="space-y-4">
+            {selectedUser ? (
+                <div className="flex items-center gap-3 p-3 rounded-md border border-subtle bg-layer-1">
+                    <div className="w-9 h-9 rounded-full bg-layer-2 flex items-center justify-center overflow-hidden">
+                        {selectedUser.avatarUrl ? (
+                            <img
+                                src={selectedUser.avatarUrl}
+                                alt={selectedUser.displayName ?? selectedUser.email}
+                                className="w-full h-full rounded-full object-cover"
+                            />
+                        ) : (
+                            <User size={14} aria-hidden="true" />
+                        )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                        <p className="text-sm text-primary truncate">
+                            {selectedUser.displayName ?? selectedUser.email}
+                        </p>
+                        {selectedUser.displayName && (
+                            <p className="text-xs text-placeholder truncate">{selectedUser.email}</p>
+                        )}
+                    </div>
+                    <button
+                        type="button"
+                        onClick={() => setSelectedUser(null)}
+                        className="text-xs text-placeholder hover:text-primary transition-colors"
+                    >
+                        Cambiar
+                    </button>
+                </div>
+            ) : (
+                <>
+                    <div className="relative">
+                        <Search
+                            size={14}
+                            className="absolute left-3 top-1/2 -translate-y-1/2 text-placeholder pointer-events-none"
+                            aria-hidden="true"
+                        />
+                        <Input
+                            type="search"
+                            value={query}
+                            onChange={(e) => setQuery(e.target.value)}
+                            placeholder="Buscar por nombre o email…"
+                            className={`${inputClass} pl-9`}
+                            autoFocus
+                        />
+                    </div>
+                    <div className="min-h-[140px] max-h-[260px] overflow-y-auto border border-subtle rounded-md bg-layer-1">
+                        <SearchResultsList
+                            enabled={enabled}
+                            isFetching={isFetching}
+                            results={results}
+                            onSelect={setSelectedUser}
+                        />
+                    </div>
+                </>
+            )}
+
+            {selectedUser && (
+                <div className="space-y-2">
+                    <label htmlFor="search-role" className="text-sm font-medium text-secondary">
+                        Rol
+                    </label>
+                    <ThemedSelect<WorkspaceRole>
+                        id="search-role"
+                        value={role}
+                        onValueChange={setRole}
+                        options={ROLE_OPTIONS.map((r) => ({ value: r, label: WORKSPACE_ROLE_LABELS[r] }))}
+                    />
+                </div>
+            )}
+
+            <DialogFooter>
+                <Button type="button" variant="outline" onClick={onClose}>
+                    Cancelar
+                </Button>
+                <Button
+                    type="button"
+                    disabled={!selectedUser || addMutation.isPending}
+                    onClick={() => addMutation.mutate()}
+                    className="bg-accent-primary hover:bg-accent-primary-hover text-on-color"
+                >
+                    {addMutation.isPending ? 'Agregando…' : 'Agregar al workspace'}
+                </Button>
+            </DialogFooter>
+        </div>
+    );
+}
+
+interface CreateUserPanelProps {
+    workspaceSlug: string;
+    onClose: () => void;
+}
+
+function CreateUserPanel({ workspaceSlug, onClose }: CreateUserPanelProps): React.ReactElement {
+    const qc = useQueryClient();
+    const form = useForm<CreateUserForm>({
+        resolver: zodResolver(createUserSchema),
+        defaultValues: {
+            email: '',
+            firstName: '',
+            lastName: '',
+            password: '',
+            role: 'Member',
+        },
+    });
+
+    const createMutation = useMutation({
+        mutationFn: (data: CreateUserForm) =>
+            workspaceRepository.createUserAndAddMember(workspaceSlug, data),
+        onSuccess: () => {
+            void qc.invalidateQueries({ queryKey: workspaceMembersKey(workspaceSlug) });
+            toast.success('Usuario creado y agregado');
+            onClose();
+        },
+        onError: (err) => {
+            const msg = getErrorMessage(err) ?? 'Error al crear usuario';
+            toast.error(msg);
+        },
+    });
+
+    const onSubmit = (data: CreateUserForm): void => {
+        createMutation.mutate(data);
+    };
+
+    return (
+        <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-3">
+                <FormField
+                    control={form.control}
+                    name="email"
+                    render={({ field }) => (
+                        <FormItem>
+                            <FormLabel className="text-secondary text-sm">Email</FormLabel>
+                            <FormControl>
+                                <Input type="email" className={inputClass} {...field} />
+                            </FormControl>
+                            <FormMessage />
+                        </FormItem>
+                    )}
+                />
+                <div className="grid grid-cols-2 gap-3">
+                    <FormField
+                        control={form.control}
+                        name="firstName"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel className="text-secondary text-sm">Nombre</FormLabel>
+                                <FormControl>
+                                    <Input className={inputClass} {...field} />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+                    <FormField
+                        control={form.control}
+                        name="lastName"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel className="text-secondary text-sm">Apellido</FormLabel>
+                                <FormControl>
+                                    <Input className={inputClass} {...field} />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+                </div>
+                <FormField
+                    control={form.control}
+                    name="password"
+                    render={({ field }) => (
+                        <FormItem>
+                            <FormLabel className="text-secondary text-sm">Contraseña</FormLabel>
+                            <FormControl>
+                                <Input type="password" className={inputClass} {...field} />
+                            </FormControl>
+                            <FormMessage />
+                        </FormItem>
+                    )}
+                />
+                <FormField
+                    control={form.control}
+                    name="role"
+                    render={({ field }) => (
+                        <FormItem>
+                            <FormLabel className="text-secondary text-sm">Rol</FormLabel>
+                            <FormControl>
+                                <ThemedSelect<WorkspaceRole>
+                                    value={field.value}
+                                    onValueChange={field.onChange}
+                                    options={ROLE_OPTIONS.map((r) => ({ value: r, label: WORKSPACE_ROLE_LABELS[r] }))}
+                                />
+                            </FormControl>
+                            <FormMessage />
+                        </FormItem>
+                    )}
+                />
+                <DialogFooter className="pt-2">
+                    <Button type="button" variant="outline" onClick={onClose}>
+                        Cancelar
+                    </Button>
+                    <Button
+                        type="submit"
+                        disabled={createMutation.isPending}
+                        className="bg-accent-primary hover:bg-accent-primary-hover text-on-color"
+                    >
+                        {createMutation.isPending ? 'Creando…' : 'Crear y agregar'}
+                    </Button>
+                </DialogFooter>
+            </form>
+        </Form>
+    );
+}
+
+interface AddMemberDialogProps {
+    workspaceSlug: string;
+    open: boolean;
+    onOpenChange: (open: boolean) => void;
+}
+
+function AddMemberDialog({ workspaceSlug, open, onOpenChange }: AddMemberDialogProps): React.ReactElement {
+    return (
+        <Dialog open={open} onOpenChange={onOpenChange}>
+            <DialogContent className="bg-surface-2 border-subtle max-w-lg">
+                <DialogHeader>
+                    <DialogTitle className="text-primary">Agregar miembro</DialogTitle>
+                    <DialogDescription className="text-placeholder">
+                        Busca un usuario existente o crea una cuenta nueva.
+                    </DialogDescription>
+                </DialogHeader>
+                <Tabs defaultValue="search" className="mt-2">
+                    <TabsList className="grid grid-cols-2 w-full">
+                        <TabsTrigger value="search">Buscar usuario</TabsTrigger>
+                        <TabsTrigger value="create">Crear usuario</TabsTrigger>
+                    </TabsList>
+                    <TabsContent value="search" className="mt-4">
+                        <SearchUserPanel
+                            workspaceSlug={workspaceSlug}
+                            onClose={() => onOpenChange(false)}
+                        />
+                    </TabsContent>
+                    <TabsContent value="create" className="mt-4">
+                        <CreateUserPanel
+                            workspaceSlug={workspaceSlug}
+                            onClose={() => onOpenChange(false)}
+                        />
+                    </TabsContent>
+                </Tabs>
+            </DialogContent>
+        </Dialog>
+    );
+}
+
+interface MemberRowProps {
+    member: WorkspaceMember;
+    workspaceSlug: string;
+    workspaceOwnerId?: string;
+}
+
+function MemberRow({ member, workspaceSlug, workspaceOwnerId }: MemberRowProps): React.ReactElement {
+    const qc = useQueryClient();
+    const isOwner = workspaceOwnerId !== undefined && member.userId === workspaceOwnerId;
+
+    const updateRoleMutation = useMutation({
+        mutationFn: (role: WorkspaceRole) =>
+            workspaceRepository.updateMemberRole(workspaceSlug, member.userId, role),
+        onSuccess: () => {
+            void qc.invalidateQueries({ queryKey: workspaceMembersKey(workspaceSlug) });
+            toast.success('Rol actualizado');
+        },
+        onError: (err) => {
+            const msg = getErrorMessage(err) ?? 'Error al actualizar el rol';
+            toast.error(msg);
+            void qc.invalidateQueries({ queryKey: workspaceMembersKey(workspaceSlug) });
+        },
+    });
+
+    const removeMutation = useMutation({
+        mutationFn: () => workspaceRepository.removeMember(workspaceSlug, member.userId),
+        onSuccess: () => {
+            void qc.invalidateQueries({ queryKey: workspaceMembersKey(workspaceSlug) });
+            toast.success('Miembro eliminado');
+        },
+        onError: (err) => {
+            const msg = getErrorMessage(err) ?? 'Error al eliminar miembro';
+            toast.error(msg);
+        },
+    });
+
+    return (
+        <li className="flex items-center justify-between px-4 py-3 hover:bg-layer-transparent-hover transition-colors gap-3">
+            <div className="flex items-center gap-3 min-w-0">
+                <div className="w-7 h-7 rounded-full bg-layer-2 flex items-center justify-center text-xs font-medium text-secondary overflow-hidden shrink-0">
+                    {member.avatarUrl ? (
+                        <img
+                            src={member.avatarUrl}
+                            alt={member.displayName ?? member.email}
+                            className="w-full h-full rounded-full object-cover"
+                        />
+                    ) : (
+                        <User size={12} aria-hidden="true" />
+                    )}
+                </div>
+                <div className="min-w-0">
+                    <p className="text-sm text-primary truncate">{member.displayName ?? member.email}</p>
+                    {member.displayName && (
+                        <p className="text-xs text-placeholder truncate">{member.email}</p>
+                    )}
+                </div>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+                {isOwner ? (
+                    <>
+                        <RoleBadge role={member.role} />
+                        <Shield size={14} className="text-blue-400" aria-label="Owner del workspace" />
+                    </>
+                ) : (
+                    <>
+                        <ThemedSelect<WorkspaceRole>
+                            value={member.role}
+                            onValueChange={(v) => updateRoleMutation.mutate(v)}
+                            options={ROLE_OPTIONS.map((r) => ({ value: r, label: WORKSPACE_ROLE_LABELS[r] }))}
+                            size="sm"
+                            triggerClassName="w-[140px]"
+                            disabled={updateRoleMutation.isPending}
+                            ariaLabel="Cambiar rol"
+                        />
+                        <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                                <button
+                                    type="button"
+                                    className="p-1 text-placeholder hover:text-red-400 transition-colors rounded"
+                                    aria-label="Eliminar miembro"
+                                >
+                                    <UserX size={14} aria-hidden="true" />
+                                </button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent className="bg-surface-2 border-subtle">
+                                <AlertDialogHeader>
+                                    <AlertDialogTitle className="text-primary">
+                                        ¿Eliminar miembro?
+                                    </AlertDialogTitle>
+                                    <AlertDialogDescription className="text-placeholder">
+                                        {member.email} perderá acceso al workspace.
+                                    </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                    <AlertDialogCancel className="bg-layer-2 border-subtle text-secondary">
+                                        Cancelar
+                                    </AlertDialogCancel>
+                                    <AlertDialogAction
+                                        onClick={() => removeMutation.mutate()}
+                                        className="bg-destructive hover:bg-destructive/90 text-on-color"
+                                    >
+                                        Eliminar
+                                    </AlertDialogAction>
+                                </AlertDialogFooter>
+                            </AlertDialogContent>
+                        </AlertDialog>
+                    </>
+                )}
+            </div>
+        </li>
+    );
+}
+
+function MembersTab({ workspaceSlug }: { workspaceSlug: string }): React.ReactElement {
+    const [addOpen, setAddOpen] = useState(false);
+
+    const { data: workspaceData } = useQuery({
+        queryKey: ['workspace-detail', workspaceSlug],
+        queryFn: () => workspaceRepository.getBySlug(workspaceSlug),
+        enabled: !!workspaceSlug,
+    });
 
     const { data: members = [], isLoading: loadingMembers } = useQuery({
         queryKey: workspaceMembersKey(workspaceSlug),
         queryFn: () => workspaceRepository.getMembers(workspaceSlug),
         enabled: !!workspaceSlug,
     });
-
-    const { data: invitations = [] } = useQuery({
-        queryKey: workspaceInvitationsKey(workspaceSlug),
-        queryFn: () => workspaceRepository.getInvitations(workspaceSlug),
-        enabled: !!workspaceSlug,
-    });
-
-    const removeMutation = useMutation({
-        mutationFn: (userId: string) => workspaceRepository.removeMember(workspaceSlug, userId),
-        onSuccess: () => {
-            void qc.invalidateQueries({ queryKey: workspaceMembersKey(workspaceSlug) });
-            toast.success('Miembro eliminado');
-        },
-        onError: () => toast.error('Error al eliminar miembro'),
-    });
-
-    const revokeInviteMutation = useMutation({
-        mutationFn: (id: string) => workspaceRepository.revokeInvitation(workspaceSlug, id),
-        onSuccess: () => {
-            void qc.invalidateQueries({ queryKey: workspaceInvitationsKey(workspaceSlug) });
-            toast.success('Invitación revocada');
-        },
-    });
-
-    const inviteMutation = useMutation({
-        mutationFn: (data: InviteForm) =>
-            workspaceRepository.invite(workspaceSlug, { email: data.email, role: 'Member' }),
-        onSuccess: () => {
-            void qc.invalidateQueries({ queryKey: workspaceInvitationsKey(workspaceSlug) });
-            void qc.invalidateQueries({ queryKey: workspaceMembersKey(workspaceSlug) });
-            inviteForm.reset();
-            toast.success('Invitación enviada');
-        },
-        onError: () => toast.error('Error al enviar la invitación'),
-    });
-
-    const onInvite = (data: InviteForm): void => {
-        inviteMutation.mutate(data);
-    };
 
     return (
         <div className="space-y-6">
@@ -356,157 +817,51 @@ function MembersTab({ workspaceSlug }: { workspaceSlug: string }): React.ReactEl
                 description="Gestiona los miembros del workspace y sus roles."
             />
 
-            {/* Invite */}
-            <div className="space-y-2">
-                <p className="text-sm font-medium text-secondary">Invitar miembro</p>
-                <Form {...inviteForm}>
-                    <form onSubmit={inviteForm.handleSubmit(onInvite)} className="flex gap-2 max-w-lg">
-                        <FormField
-                            control={inviteForm.control}
-                            name="email"
-                            render={({ field }) => (
-                                <FormItem className="flex-1">
-                                    <FormControl>
-                                        <Input
-                                            type="email"
-                                            placeholder="email@ejemplo.com"
-                                            className={inputClass}
-                                            {...field}
-                                        />
-                                    </FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-                        <Button
-                            type="submit"
-                            className="bg-accent-primary hover:bg-accent-primary-hover text-on-color gap-1.5 shrink-0"
-                            disabled={inviteMutation.isPending}
-                        >
-                            <Send size={13} aria-hidden="true" />
-                            {inviteMutation.isPending ? 'Enviando...' : 'Invitar'}
-                        </Button>
-                    </form>
-                </Form>
-            </div>
-
-            {/* Members list */}
-            <div>
-                <p className="text-sm font-medium text-secondary mb-3">
+            <div className="flex items-center justify-between">
+                <p className="text-sm font-medium text-secondary">
                     Miembros activos
                     <span className="ml-2 text-xs font-normal text-placeholder">({members.length})</span>
                 </p>
-                <div className="border border-subtle rounded-lg overflow-hidden">
-                    {loadingMembers ? (
-                        <div className="p-4 space-y-3">
-                            {(['sk0', 'sk1', 'sk2'] as const).map((k) => (
-                                <div key={k} className="h-10 rounded animate-shimmer bg-layer-1" />
-                            ))}
-                        </div>
-                    ) : (
-                        <ul className="divide-y divide-subtle">
-                            {members.map((m) => (
-                                <li key={m.userId} className="flex items-center justify-between px-4 py-3 hover:bg-layer-transparent-hover transition-colors">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-7 h-7 rounded-full bg-layer-2 flex items-center justify-center text-xs font-medium text-secondary overflow-hidden">
-                                            {m.avatarUrl ? (
-                                                <img
-                                                    src={m.avatarUrl}
-                                                    alt={m.displayName ?? m.email}
-                                                    className="w-full h-full rounded-full object-cover"
-                                                />
-                                            ) : (
-                                                <User size={12} aria-hidden="true" />
-                                            )}
-                                        </div>
-                                        <div>
-                                            <p className="text-sm text-primary">{m.displayName ?? m.email}</p>
-                                            {m.displayName && (
-                                                <p className="text-xs text-placeholder">{m.email}</p>
-                                            )}
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                        <RoleBadge role={m.role} />
-                                        {m.role !== 'Admin' && (
-                                            <AlertDialog>
-                                                <AlertDialogTrigger asChild>
-                                                    <button
-                                                        type="button"
-                                                        className="p-1 text-placeholder hover:text-red-400 transition-colors rounded"
-                                                        aria-label="Eliminar miembro"
-                                                    >
-                                                        <UserX size={14} aria-hidden="true" />
-                                                    </button>
-                                                </AlertDialogTrigger>
-                                                <AlertDialogContent className="bg-surface-2 border-subtle">
-                                                    <AlertDialogHeader>
-                                                        <AlertDialogTitle className="text-primary">
-                                                            ¿Eliminar miembro?
-                                                        </AlertDialogTitle>
-                                                        <AlertDialogDescription className="text-placeholder">
-                                                            {m.email} perderá acceso al workspace.
-                                                        </AlertDialogDescription>
-                                                    </AlertDialogHeader>
-                                                    <AlertDialogFooter>
-                                                        <AlertDialogCancel className="bg-layer-2 border-subtle text-secondary">
-                                                            Cancelar
-                                                        </AlertDialogCancel>
-                                                        <AlertDialogAction
-                                                            onClick={() => removeMutation.mutate(m.userId)}
-                                                            className="bg-destructive hover:bg-destructive/90 text-on-color"
-                                                        >
-                                                            Eliminar
-                                                        </AlertDialogAction>
-                                                    </AlertDialogFooter>
-                                                </AlertDialogContent>
-                                            </AlertDialog>
-                                        )}
-                                        {m.role === 'Admin' && (
-                                            <Shield size={14} className="text-blue-400" aria-label="Administrador" />
-                                        )}
-                                    </div>
-                                </li>
-                            ))}
-                        </ul>
-                    )}
-                </div>
+                <Button
+                    type="button"
+                    onClick={() => setAddOpen(true)}
+                    className="bg-accent-primary hover:bg-accent-primary-hover text-on-color gap-1.5"
+                >
+                    <UserPlus size={14} aria-hidden="true" />
+                    Agregar miembro
+                </Button>
             </div>
 
-            {/* Pending invitations */}
-            {invitations.length > 0 && (
-                <div>
-                    <p className="text-sm font-medium text-secondary mb-3">
-                        Invitaciones pendientes
-                        <span className="ml-2 text-xs font-normal text-placeholder">({invitations.length})</span>
-                    </p>
-                    <div className="border border-subtle rounded-lg overflow-hidden">
-                        <ul className="divide-y divide-subtle">
-                            {invitations.map((inv) => (
-                                <li key={inv.id} className="flex items-center justify-between px-4 py-3 hover:bg-layer-transparent-hover transition-colors">
-                                    <div>
-                                        <p className="text-sm text-primary">{inv.email}</p>
-                                        <p className="text-xs text-placeholder">
-                                            Expira: {new Date(inv.expiresAt).toLocaleDateString('es-AR')}
-                                        </p>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                        <RoleBadge role={inv.role} />
-                                        <button
-                                            type="button"
-                                            onClick={() => revokeInviteMutation.mutate(inv.id)}
-                                            className="p-1 text-placeholder hover:text-red-400 transition-colors rounded"
-                                            aria-label="Revocar invitación"
-                                        >
-                                            <Trash2 size={14} aria-hidden="true" />
-                                        </button>
-                                    </div>
-                                </li>
-                            ))}
-                        </ul>
+            <div className="border border-subtle rounded-lg overflow-hidden">
+                {loadingMembers ? (
+                    <div className="p-4 space-y-3">
+                        {(['sk0', 'sk1', 'sk2'] as const).map((k) => (
+                            <div key={k} className="h-10 rounded animate-shimmer bg-layer-1" />
+                        ))}
                     </div>
-                </div>
-            )}
+                ) : members.length === 0 ? (
+                    <p className="text-xs text-placeholder px-4 py-6 text-center">
+                        No hay miembros todavía.
+                    </p>
+                ) : (
+                    <ul className="divide-y divide-subtle">
+                        {members.map((m) => (
+                            <MemberRow
+                                key={m.userId}
+                                member={m}
+                                workspaceSlug={workspaceSlug}
+                                workspaceOwnerId={workspaceData?.ownerId}
+                            />
+                        ))}
+                    </ul>
+                )}
+            </div>
+
+            <AddMemberDialog
+                workspaceSlug={workspaceSlug}
+                open={addOpen}
+                onOpenChange={setAddOpen}
+            />
         </div>
     );
 }

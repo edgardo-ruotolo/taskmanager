@@ -11,9 +11,9 @@ public class CycleConfiguration : IEntityTypeConfiguration<Cycle>
         builder.Property(c => c.Name).IsRequired().HasMaxLength(255);
         builder.Property(c => c.Status).HasConversion<string>();
 
-        builder.HasOne(c => c.Company)
+        builder.HasOne(c => c.Project)
             .WithMany()
-            .HasForeignKey(c => c.CompanyId)
+            .HasForeignKey(c => c.ProjectId)
             .OnDelete(DeleteBehavior.Cascade);
 
         builder.HasOne(c => c.Owner)

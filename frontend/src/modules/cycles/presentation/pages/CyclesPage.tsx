@@ -60,21 +60,21 @@ function formatShortDate(date: string | null): string {
 
 interface CycleIssuesPanelProps {
     workspaceSlug: string;
-    companyId: string;
+    projectId: string;
     cycle: Cycle;
     onClose: () => void;
 }
 
 const CycleIssuesPanel = ({
     workspaceSlug,
-    companyId,
+    projectId,
     cycle,
     onClose,
 }: CycleIssuesPanelProps): React.ReactElement => {
     const [issueIdInput, setIssueIdInput] = useState('');
-    const { data: cycleIssues, isLoading } = useCycleIssues(workspaceSlug, companyId, cycle.id);
-    const { mutate: addIssue, isPending: isAdding } = useAddCycleIssue(workspaceSlug, companyId, cycle.id);
-    const { mutate: removeIssue, isPending: isRemoving } = useRemoveCycleIssue(workspaceSlug, companyId, cycle.id);
+    const { data: cycleIssues, isLoading } = useCycleIssues(workspaceSlug, projectId, cycle.id);
+    const { mutate: addIssue, isPending: isAdding } = useAddCycleIssue(workspaceSlug, projectId, cycle.id);
+    const { mutate: removeIssue, isPending: isRemoving } = useRemoveCycleIssue(workspaceSlug, projectId, cycle.id);
 
     const issues = cycleIssues ?? [];
 
@@ -220,13 +220,13 @@ function BurndownSparkline(): React.ReactElement {
 }
 
 export const CyclesPage = (): React.ReactElement => {
-    const { workspaceSlug = '', companyId = '' } = useParams<{
+    const { workspaceSlug = '', projectId = '' } = useParams<{
         workspaceSlug: string;
-        companyId: string;
+        projectId: string;
     }>();
 
-    const { data: cycles, isLoading } = useCycles(workspaceSlug, companyId);
-    const { mutate: deleteCycle, isPending: isDeleting } = useDeleteCycle(workspaceSlug, companyId);
+    const { data: cycles, isLoading } = useCycles(workspaceSlug, projectId);
+    const { mutate: deleteCycle, isPending: isDeleting } = useDeleteCycle(workspaceSlug, projectId);
     const [selectedCycle, setSelectedCycle] = useState<Cycle | null>(null);
 
     const items = cycles ?? [];
@@ -258,7 +258,7 @@ export const CyclesPage = (): React.ReactElement => {
                     <div className="shrink-0 mt-2">
                         <CreateCycleDialog
                             workspaceSlug={workspaceSlug}
-                            companyId={companyId}
+                            projectId={projectId}
                             trigger={
                                 <Button className="gap-2 bg-[var(--neutral-1200)] hover:bg-[var(--neutral-1000)] text-[var(--text-on-dark)]">
                                     <Plus size={14} />
@@ -296,11 +296,11 @@ export const CyclesPage = (): React.ReactElement => {
                         </div>
                         <h2 className="text-[18px] font-medium text-[var(--neutral-1200)] mb-2">No hay ciclos aún</h2>
                         <p className="text-[13px] text-[var(--neutral-600)] mb-6">
-                            Crea el primer ciclo para esta empresa
+                            Crea el primer ciclo para esta proyecto
                         </p>
                         <CreateCycleDialog
                             workspaceSlug={workspaceSlug}
-                            companyId={companyId}
+                            projectId={projectId}
                             trigger={
                                 <Button className="gap-2 bg-[var(--neutral-1200)] hover:bg-[var(--neutral-1000)] text-[var(--text-on-dark)]">
                                     <Plus size={14} />
@@ -432,7 +432,7 @@ export const CyclesPage = (): React.ReactElement => {
                     {selectedCycle && (
                         <CycleIssuesPanel
                             workspaceSlug={workspaceSlug}
-                            companyId={companyId}
+                            projectId={projectId}
                             cycle={selectedCycle}
                             onClose={() => setSelectedCycle(null)}
                         />

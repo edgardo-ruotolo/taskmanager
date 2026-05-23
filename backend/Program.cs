@@ -31,14 +31,14 @@ using TaskManager.Api.Modules.Search.Services;
 using TaskManager.Api.Modules.Teams.Services;
 using TaskManager.Api.Modules.Auth.Onboarding.Services;
 using TaskManager.Api.Modules.Auth.Services;
-using TaskManager.Api.Modules.Companies.Services;
+using TaskManager.Api.Modules.Projects.Services;
 using TaskManager.Api.Modules.Cycles.Services;
 using TaskManager.Api.Modules.Estimates.Services;
 using TaskManager.Api.Modules.Files.Services;
 using TaskManager.Api.Modules.Issues.Services;
 using TaskManager.Api.Modules.Labels.Services;
 using TaskManager.Api.Modules.Notifications.Services;
-using TaskManager.Api.Modules.ProjectModules.Services;
+using TaskManager.Api.Modules.Modules.Services;
 using TaskManager.Api.Modules.States.Services;
 using TaskManager.Api.Modules.Intake.Services;
 using TaskManager.Api.Modules.Recurring.Services;
@@ -115,7 +115,7 @@ builder.Services.ConfigureApplicationCookie(options =>
 
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUser, CurrentUser>();
-builder.Services.AddScoped<ICurrentCompanyContext, CurrentCompanyContext>();
+builder.Services.AddScoped<ICurrentProjectContext, CurrentProjectContext>();
 
 builder.Services.AddSignalR();
 
@@ -126,8 +126,8 @@ builder.Services.AddFluentValidationAutoValidation();
 
 builder.Services.AddScoped<RequireWorkspaceMemberAttribute>();
 builder.Services.AddScoped<RequireWorkspaceAdminAttribute>();
-builder.Services.AddScoped<RequireCompanyMemberAttribute>();
-builder.Services.AddScoped<RequireCompanyAdminAttribute>();
+builder.Services.AddScoped<RequireProjectMemberAttribute>();
+builder.Services.AddScoped<RequireProjectAdminAttribute>();
 builder.Services.AddScoped<IDocumentAccessChecker, DocumentAccessChecker>();
 
 // HTML sanitizer (singleton — instances are thread-safe and configured once)
@@ -149,7 +149,7 @@ builder.Services.AddScoped<ITeamService, TeamService>();
 builder.Services.AddScoped<ISearchService, SearchService>();
 builder.Services.AddScoped<IWorkspaceService, WorkspaceService>();
 builder.Services.AddScoped<IWorkspaceActivityService, WorkspaceActivityService>();
-builder.Services.AddScoped<ICompanyService, CompanyService>();
+builder.Services.AddScoped<IProjectService, ProjectService>();
 builder.Services.AddScoped<IStateService, StateService>();
 builder.Services.AddScoped<IStateGroupService, StateGroupService>();
 builder.Services.AddScoped<IIssueService, IssueService>();
@@ -162,7 +162,7 @@ builder.Services.AddScoped<IIssueRelationService, IssueRelationService>();
 builder.Services.AddScoped<IIssueLinkService, IssueLinkService>();
 builder.Services.AddScoped<IIssueVersionService, IssueVersionService>();
 builder.Services.AddScoped<ICycleService, CycleService>();
-builder.Services.AddScoped<IProjectModuleService, ProjectModuleService>();
+builder.Services.AddScoped<IModuleService, ModuleService>();
 builder.Services.AddScoped<ILabelService, LabelService>();
 builder.Services.AddScoped<IIssueViewService, IssueViewService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();

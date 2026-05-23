@@ -3,7 +3,7 @@ using TaskManager.Api.Modules.Auth.Entities;
 
 namespace TaskManager.Api.Modules.Workspaces.Entities;
 
-public enum WorkspaceRole { Member = 15, Admin = 20 }
+public enum WorkspaceRole { Member = 15, Lead = 18, Admin = 20 }
 
 public class WorkspaceMember : AuditableEntity
 {

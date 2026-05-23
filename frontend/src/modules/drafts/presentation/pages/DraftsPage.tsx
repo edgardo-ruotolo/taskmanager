@@ -126,10 +126,10 @@ function DraftSection({ title, count, accent, items, onPublish, onDelete, publis
 interface NewDraftForm {
     title: string;
     description: string;
-    companyId: string;
+    projectId: string;
 }
 
-const EMPTY_FORM: NewDraftForm = { title: '', description: '', companyId: '' };
+const EMPTY_FORM: NewDraftForm = { title: '', description: '', projectId: '' };
 
 export const DraftsPage = (): React.ReactElement => {
     const { workspaceSlug = '' } = useParams<{ workspaceSlug: string }>();
@@ -147,10 +147,10 @@ export const DraftsPage = (): React.ReactElement => {
     };
 
     const handleCreate = (): void => {
-        if (!form.title.trim() || !form.companyId.trim()) return;
+        if (!form.title.trim() || !form.projectId.trim()) return;
         const payload: CreateDraftIssueData = {
             title: form.title.trim(),
-            companyId: form.companyId.trim(),
+            projectId: form.projectId.trim(),
             description: form.description.trim() || undefined,
             priority: 0,
         };
@@ -239,12 +239,12 @@ export const DraftsPage = (): React.ReactElement => {
                             />
                         </div>
                         <div className="space-y-1.5">
-                            <Label htmlFor="draft-company">ID de empresa *</Label>
+                            <Label htmlFor="draft-project">ID de proyecto *</Label>
                             <Input
-                                id="draft-company"
-                                placeholder="company-id"
-                                value={form.companyId}
-                                onChange={(e) => setForm((f) => ({ ...f, companyId: e.target.value }))}
+                                id="draft-project"
+                                placeholder="project-id"
+                                value={form.projectId}
+                                onChange={(e) => setForm((f) => ({ ...f, projectId: e.target.value }))}
                             />
                         </div>
                         <div className="space-y-1.5">
@@ -262,7 +262,7 @@ export const DraftsPage = (): React.ReactElement => {
                         <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button>
                         <Button
                             onClick={handleCreate}
-                            disabled={!form.title.trim() || !form.companyId.trim() || createDraft.isPending}
+                            disabled={!form.title.trim() || !form.projectId.trim() || createDraft.isPending}
                         >
                             Crear borrador
                         </Button>

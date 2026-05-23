@@ -11,9 +11,9 @@ namespace TaskManager.Api.Modules.Intake.Services;
 public class IntakeService(AppDbContext db, IMapper mapper) : IIntakeService
 {
     public async Task<PagedResult<IntakeIssueDto>> GetAllAsync(
-        Guid companyId, string? status, int page, int pageSize, CancellationToken ct = default)
+        Guid projectId, string? status, int page, int pageSize, CancellationToken ct = default)
     {
-        var query = db.IntakeIssues.Where(i => i.CompanyId == companyId);
+        var query = db.IntakeIssues.Where(i => i.ProjectId == projectId);
 
         if (!string.IsNullOrWhiteSpace(status) && Enum.TryParse<IntakeStatus>(status, true, out var parsed))
             query = query.Where(i => i.Status == parsed);
@@ -41,11 +41,11 @@ public class IntakeService(AppDbContext db, IMapper mapper) : IIntakeService
         return mapper.Map<IntakeIssueDto>(item);
     }
 
-    public async Task<IntakeIssueDto> CreateAsync(Guid companyId, CreateIntakeIssueDto dto, CancellationToken ct = default)
+    public async Task<IntakeIssueDto> CreateAsync(Guid projectId, CreateIntakeIssueDto dto, CancellationToken ct = default)
     {
         var item = new IntakeIssue
         {
-            CompanyId = companyId,
+            ProjectId = projectId,
             Title = dto.Title,
             Description = dto.Description,
             Source = dto.Source ?? "manual",

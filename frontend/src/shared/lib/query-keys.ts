@@ -19,15 +19,15 @@ export const queryKeys = {
         members: (slug: string) => [...queryKeys.workspaces.detail(slug), 'members'] as const,
         activity: (slug: string) => [...queryKeys.workspaces.detail(slug), 'activity'] as const,
     },
-    companies: {
-        all: ['companies'] as const,
-        lists: () => [...queryKeys.companies.all, 'list'] as const,
-        list: (workspaceSlug: string) => [...queryKeys.companies.lists(), workspaceSlug] as const,
-        details: () => [...queryKeys.companies.all, 'detail'] as const,
-        detail: (workspaceSlug: string, companyId: string) =>
-            [...queryKeys.companies.details(), workspaceSlug, companyId] as const,
-        members: (workspaceSlug: string, companyId: string) =>
-            [...queryKeys.companies.detail(workspaceSlug, companyId), 'members'] as const,
+    projects: {
+        all: ['projects'] as const,
+        lists: () => [...queryKeys.projects.all, 'list'] as const,
+        list: (workspaceSlug: string) => [...queryKeys.projects.lists(), workspaceSlug] as const,
+        details: () => [...queryKeys.projects.all, 'detail'] as const,
+        detail: (workspaceSlug: string, projectId: string) =>
+            [...queryKeys.projects.details(), workspaceSlug, projectId] as const,
+        members: (workspaceSlug: string, projectId: string) =>
+            [...queryKeys.projects.detail(workspaceSlug, projectId), 'members'] as const,
     },
     states: {
         all: ['states'] as const,
@@ -37,24 +37,24 @@ export const queryKeys = {
     issues: {
         all: ['issues'] as const,
         lists: () => [...queryKeys.issues.all, 'list'] as const,
-        list: (workspaceSlug: string, companyId: string) =>
-            [...queryKeys.issues.lists(), workspaceSlug, companyId] as const,
+        list: (workspaceSlug: string, projectId: string) =>
+            [...queryKeys.issues.lists(), workspaceSlug, projectId] as const,
         details: () => [...queryKeys.issues.all, 'detail'] as const,
-        detail: (workspaceSlug: string, companyId: string, issueId: string) =>
-            [...queryKeys.issues.details(), workspaceSlug, companyId, issueId] as const,
-        archived: (workspaceSlug: string, companyId: string) =>
-            [...queryKeys.issues.all, 'archived', workspaceSlug, companyId] as const,
+        detail: (workspaceSlug: string, projectId: string, issueId: string) =>
+            [...queryKeys.issues.details(), workspaceSlug, projectId, issueId] as const,
+        archived: (workspaceSlug: string, projectId: string) =>
+            [...queryKeys.issues.all, 'archived', workspaceSlug, projectId] as const,
         activity: (issueId: string) => [...queryKeys.issues.all, 'activity', issueId] as const,
         subscribers: (issueId: string) => [...queryKeys.issues.all, 'subscribers', issueId] as const,
         relations: (issueId: string) => [...queryKeys.issues.all, 'relations', issueId] as const,
         links: (issueId: string) => [...queryKeys.issues.all, 'links', issueId] as const,
         versions: (issueId: string) => [...queryKeys.issues.all, 'versions', issueId] as const,
-        types: (workspaceSlug: string, companyId: string) =>
-            [...queryKeys.issues.all, 'types', workspaceSlug, companyId] as const,
-        views: (workspaceSlug: string, companyId: string) =>
-            [...queryKeys.issues.all, 'views', workspaceSlug, companyId] as const,
-        search: (workspaceSlug: string, companyId: string, query: string) =>
-            [...queryKeys.issues.all, 'search', workspaceSlug, companyId, query] as const,
+        types: (workspaceSlug: string, projectId: string) =>
+            [...queryKeys.issues.all, 'types', workspaceSlug, projectId] as const,
+        views: (workspaceSlug: string, projectId: string) =>
+            [...queryKeys.issues.all, 'views', workspaceSlug, projectId] as const,
+        search: (workspaceSlug: string, projectId: string, query: string) =>
+            [...queryKeys.issues.all, 'search', workspaceSlug, projectId, query] as const,
     },
     comments: {
         all: ['comments'] as const,
@@ -67,29 +67,29 @@ export const queryKeys = {
     cycles: {
         all: ['cycles'] as const,
         lists: () => [...queryKeys.cycles.all, 'list'] as const,
-        list: (workspaceSlug: string, companyId: string) =>
-            [...queryKeys.cycles.lists(), workspaceSlug, companyId] as const,
+        list: (workspaceSlug: string, projectId: string) =>
+            [...queryKeys.cycles.lists(), workspaceSlug, projectId] as const,
         details: () => [...queryKeys.cycles.all, 'detail'] as const,
-        detail: (workspaceSlug: string, companyId: string, cycleId: string) =>
-            [...queryKeys.cycles.details(), workspaceSlug, companyId, cycleId] as const,
-        issues: (workspaceSlug: string, companyId: string, cycleId: string) =>
-            [...queryKeys.cycles.detail(workspaceSlug, companyId, cycleId), 'issues'] as const,
+        detail: (workspaceSlug: string, projectId: string, cycleId: string) =>
+            [...queryKeys.cycles.details(), workspaceSlug, projectId, cycleId] as const,
+        issues: (workspaceSlug: string, projectId: string, cycleId: string) =>
+            [...queryKeys.cycles.detail(workspaceSlug, projectId, cycleId), 'issues'] as const,
     },
     modules: {
         all: ['modules'] as const,
         lists: () => [...queryKeys.modules.all, 'list'] as const,
-        list: (workspaceSlug: string, companyId: string) =>
-            [...queryKeys.modules.lists(), workspaceSlug, companyId] as const,
+        list: (workspaceSlug: string, projectId: string) =>
+            [...queryKeys.modules.lists(), workspaceSlug, projectId] as const,
         details: () => [...queryKeys.modules.all, 'detail'] as const,
-        detail: (workspaceSlug: string, companyId: string, moduleId: string) =>
-            [...queryKeys.modules.details(), workspaceSlug, companyId, moduleId] as const,
-        issues: (workspaceSlug: string, companyId: string, moduleId: string) =>
-            [...queryKeys.modules.detail(workspaceSlug, companyId, moduleId), 'issues'] as const,
+        detail: (workspaceSlug: string, projectId: string, moduleId: string) =>
+            [...queryKeys.modules.details(), workspaceSlug, projectId, moduleId] as const,
+        issues: (workspaceSlug: string, projectId: string, moduleId: string) =>
+            [...queryKeys.modules.detail(workspaceSlug, projectId, moduleId), 'issues'] as const,
     },
     labels: {
         all: ['labels'] as const,
-        list: (workspaceSlug: string, companyId: string) =>
-            [...queryKeys.labels.all, workspaceSlug, companyId] as const,
+        list: (workspaceSlug: string, projectId: string) =>
+            [...queryKeys.labels.all, workspaceSlug, projectId] as const,
     },
     notifications: {
         all: ['notifications'] as const,

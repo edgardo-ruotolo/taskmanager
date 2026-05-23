@@ -25,17 +25,17 @@ import { useDeleteIssue, useArchiveIssue, useDuplicateIssue } from '../../applic
 interface IssueActionsMenuProps {
     issue: Issue;
     workspaceSlug: string;
-    companyId: string;
+    projectId: string;
     onEdit: () => void;
 }
 
-export const IssueActionsMenu = ({ issue, workspaceSlug, companyId, onEdit }: IssueActionsMenuProps): React.ReactElement => {
+export const IssueActionsMenu = ({ issue, workspaceSlug, projectId, onEdit }: IssueActionsMenuProps): React.ReactElement => {
     const [deleteOpen, setDeleteOpen] = useState(false);
     const [dropdownOpen, setDropdownOpen] = useState(false);
 
-    const { mutate: deleteIssue, isPending: isDeleting } = useDeleteIssue(workspaceSlug, companyId);
-    const { mutate: archiveIssue, isPending: isArchiving } = useArchiveIssue(workspaceSlug, companyId);
-    const { mutate: duplicateIssue, isPending: isDuplicating } = useDuplicateIssue(workspaceSlug, companyId);
+    const { mutate: deleteIssue, isPending: isDeleting } = useDeleteIssue(workspaceSlug, projectId);
+    const { mutate: archiveIssue, isPending: isArchiving } = useArchiveIssue(workspaceSlug, projectId);
+    const { mutate: duplicateIssue, isPending: isDuplicating } = useDuplicateIssue(workspaceSlug, projectId);
 
     const issueUrl = `${window.location.origin}/${workspaceSlug}/issues/${issue.id}`;
 

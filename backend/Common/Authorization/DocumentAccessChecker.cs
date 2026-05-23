@@ -18,7 +18,7 @@ public class DocumentAccessChecker(AppDbContext db) : IDocumentAccessChecker
         return kind switch
         {
             "issue" => await HasIssueAccessAsync(reference, userId, ct),
-            "company" => await HasCompanyAccessAsync(reference, userId, ct),
+            "project" => await HasProjectAccessAsync(reference, userId, ct),
             "workspace" => await HasWorkspaceAccessAsync(reference, userId, ct),
             _ => false
         };
@@ -30,16 +30,16 @@ public class DocumentAccessChecker(AppDbContext db) : IDocumentAccessChecker
 
         return await db.Issues
             .Where(i => i.Id == issueId)
-            .AnyAsync(i => db.CompanyMembers
-                .Any(m => m.CompanyId == i.CompanyId && m.UserId == userId), ct);
+            .AnyAsync(i => db.ProjectMembers
+                .Any(m => m.ProjectId == i.ProjectId && m.UserId == userId), ct);
     }
 
-    private async Task<bool> HasCompanyAccessAsync(string reference, Guid userId, CancellationToken ct)
+    private async Task<bool> HasProjectAccessAsync(string reference, Guid userId, CancellationToken ct)
     {
-        if (!Guid.TryParse(reference, out var companyId)) return false;
+        if (!Guid.TryParse(reference, out var projectId)) return false;
 
-        return await db.CompanyMembers
-            .AnyAsync(m => m.CompanyId == companyId && m.UserId == userId, ct);
+        return await db.ProjectMembers
+            .AnyAsync(m => m.ProjectId == projectId && m.UserId == userId, ct);
     }
 
     private async Task<bool> HasWorkspaceAccessAsync(string reference, Guid userId, CancellationToken ct)

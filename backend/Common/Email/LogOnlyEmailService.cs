@@ -20,15 +20,9 @@ public class LogOnlyEmailService(ILogger<LogOnlyEmailService> logger) : IEmailSe
         return Task.CompletedTask;
     }
 
-    public Task SendWorkspaceInvitationAsync(string toEmail, string inviterName, string workspaceName, string inviteUrl, CancellationToken ct = default)
+    public Task SendProjectInvitationAsync(string toEmail, string projectName, string inviteUrl, CancellationToken ct = default)
     {
-        logger.LogInformation("[EMAIL STUB] WorkspaceInvitation → {Email} inviter={Inviter} workspace={Workspace} url={Url}", toEmail, inviterName, workspaceName, inviteUrl);
-        return Task.CompletedTask;
-    }
-
-    public Task SendCompanyInvitationAsync(string toEmail, string companyName, string inviteUrl, CancellationToken ct = default)
-    {
-        logger.LogInformation("[EMAIL STUB] CompanyInvitation → {Email} company={Company} url={Url}", toEmail, companyName, inviteUrl);
+        logger.LogInformation("[EMAIL STUB] ProjectInvitation → {Email} project={Project} url={Url}", toEmail, projectName, inviteUrl);
         return Task.CompletedTask;
     }
 

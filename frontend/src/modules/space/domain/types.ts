@@ -1,6 +1,6 @@
 export interface DeployBoard {
     id: string;
-    companyId: string;
+    projectId: string;
     workspaceSlug: string;
     token: string;
     title: string;

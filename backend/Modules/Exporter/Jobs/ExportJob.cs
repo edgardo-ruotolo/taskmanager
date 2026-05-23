@@ -28,7 +28,7 @@ public class ExportJob(AppDbContext db, IWebHostEnvironment env)
             var issues = await db.Issues
                 .Include(i => i.State)
                 .Include(i => i.Labels)
-                .Where(i => i.Company.WorkspaceId == export.WorkspaceId)
+                .Where(i => i.Project.WorkspaceId == export.WorkspaceId)
                 .OrderBy(i => i.SequenceId)
                 .ToListAsync(ct);
 

@@ -26,27 +26,27 @@ public class HomeController(AppDbContext db, ICurrentUser currentUser) : Control
         var todayUtc = DateTime.UtcNow.Date;
 
         var totalIssues = await db.Issues
-            .Where(i => i.Company.WorkspaceId == workspace.Id)
+            .Where(i => i.Project.WorkspaceId == workspace.Id)
             .CountAsync(ct);
 
         var unassignedIssues = await db.Issues
-            .Where(i => i.Company.WorkspaceId == workspace.Id
+            .Where(i => i.Project.WorkspaceId == workspace.Id
                 && !i.Assignees.Any())
             .CountAsync(ct);
 
         var completedToday = await db.Issues
-            .Where(i => i.Company.WorkspaceId == workspace.Id
+            .Where(i => i.Project.WorkspaceId == workspace.Id
                 && i.State.Category == StateCategory.Completed
                 && i.UpdatedAt >= todayUtc)
             .CountAsync(ct);
 
         var inProgress = await db.Issues
-            .Where(i => i.Company.WorkspaceId == workspace.Id
+            .Where(i => i.Project.WorkspaceId == workspace.Id
                 && i.State.Category == StateCategory.Started)
             .CountAsync(ct);
 
         var pending = await db.Issues
-            .Where(i => i.Company.WorkspaceId == workspace.Id
+            .Where(i => i.Project.WorkspaceId == workspace.Id
                 && (i.State.Category == StateCategory.Unstarted
                     || i.State.Category == StateCategory.Backlog))
             .CountAsync(ct);

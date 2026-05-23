@@ -24,9 +24,9 @@ public class IssueViewConfiguration : IEntityTypeConfiguration<IssueView>
             .HasForeignKey(v => v.OwnerId)
             .OnDelete(DeleteBehavior.Restrict);
 
-        builder.HasOne(v => v.Company)
+        builder.HasOne(v => v.Project)
             .WithMany()
-            .HasForeignKey(v => v.CompanyId)
+            .HasForeignKey(v => v.ProjectId)
             .IsRequired(false)
             .OnDelete(DeleteBehavior.Restrict);
     }

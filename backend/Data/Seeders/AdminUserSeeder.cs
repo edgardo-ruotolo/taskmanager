@@ -9,6 +9,7 @@ namespace TaskManager.Api.Data.Seeders;
 public static class AdminUserSeeder
 {
     public const string AdminRole = "SuperAdmin";
+    public const string WorkspaceAdminRole = "Administrador";
     private const string LegacyAdminRole = "Admin";
 
     public static async Task SeedAsync(IServiceProvider services)
@@ -29,6 +30,9 @@ public static class AdminUserSeeder
 
         if (!await roleManager.RoleExistsAsync(AdminRole))
             await roleManager.CreateAsync(new IdentityRole<Guid>(AdminRole));
+
+        if (!await roleManager.RoleExistsAsync(WorkspaceAdminRole))
+            await roleManager.CreateAsync(new IdentityRole<Guid>(WorkspaceAdminRole));
 
         // If users already exist, the admin bootstrap is irrelevant on subsequent starts.
         var hasAnyUser = await db.Users.IgnoreQueryFilters().AnyAsync();

@@ -73,34 +73,29 @@ public class WorkspacesController(IWorkspaceService workspaceService, ICurrentUs
         return Ok(member);
     }
 
-    // Invitations
+    // User search (workspace admin)
 
-    [HttpGet("{slug}/invitations")]
-    public async Task<ActionResult<IEnumerable<WorkspaceInvitationDto>>> GetPendingInvitations(string slug, CancellationToken ct)
+    [HttpGet("{slug}/users/search")]
+    public async Task<ActionResult<IEnumerable<WorkspaceUserSearchDto>>> SearchUsers(
+        string slug, [FromQuery] string q = "", [FromQuery] int limit = 10, CancellationToken ct = default)
     {
-        var invitations = await workspaceService.GetPendingInvitationsAsync(slug, ct);
-        return Ok(invitations);
+        var users = await workspaceService.SearchUsersAsync(slug, q, limit, currentUser.UserId, ct);
+        return Ok(users);
     }
 
-    [HttpPost("{slug}/invitations")]
-    public async Task<ActionResult<WorkspaceInvitationDto>> InviteMember(
-        string slug, [FromBody] CreateWorkspaceInvitationDto dto, CancellationToken ct)
+    [HttpPost("{slug}/members")]
+    public async Task<ActionResult<WorkspaceMemberDto>> AddMember(
+        string slug, [FromBody] AddWorkspaceMemberDto dto, CancellationToken ct)
     {
-        var invitation = await workspaceService.InviteMemberAsync(slug, dto, currentUser.UserId, ct);
-        return Ok(invitation);
+        var member = await workspaceService.AddMemberAsync(slug, dto, currentUser.UserId, ct);
+        return Ok(member);
     }
 
-    [HttpPost("{slug}/invitations/{token}/accept")]
-    public async Task<IActionResult> AcceptInvitation(string slug, string token, CancellationToken ct)
+    [HttpPost("{slug}/members/create-user")]
+    public async Task<ActionResult<WorkspaceMemberDto>> CreateUserAndAddMember(
+        string slug, [FromBody] CreateUserAndAddMemberDto dto, CancellationToken ct)
     {
-        await workspaceService.AcceptInvitationAsync(token, currentUser.UserId, ct);
-        return NoContent();
-    }
-
-    [HttpDelete("{slug}/invitations/{id:guid}")]
-    public async Task<IActionResult> RevokeInvitation(string slug, Guid id, CancellationToken ct)
-    {
-        await workspaceService.RevokeInvitationAsync(id, currentUser.UserId, ct);
-        return NoContent();
+        var member = await workspaceService.CreateUserAndAddMemberAsync(slug, dto, currentUser.UserId, ct);
+        return Ok(member);
     }
 }

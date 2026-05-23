@@ -42,7 +42,7 @@ public class IssueTemplateService(AppDbContext db) : IIssueTemplateService
             Name = dto.Name,
             Description = dto.Description,
             WorkspaceId = workspace.Id,
-            CompanyId = dto.CompanyId,
+            ProjectId = dto.ProjectId,
             TemplateJson = dto.TemplateJson
         };
 
@@ -62,7 +62,7 @@ public class IssueTemplateService(AppDbContext db) : IIssueTemplateService
 
         template.Name = dto.Name;
         if (dto.Description is not null) template.Description = dto.Description;
-        if (dto.CompanyId is not null) template.CompanyId = dto.CompanyId;
+        if (dto.ProjectId is not null) template.ProjectId = dto.ProjectId;
         if (dto.TemplateJson is not null) template.TemplateJson = dto.TemplateJson;
 
         await db.SaveChangesAsync(ct);
@@ -89,7 +89,7 @@ public class IssueTemplateService(AppDbContext db) : IIssueTemplateService
         Name = t.Name,
         Description = t.Description,
         WorkspaceId = t.WorkspaceId,
-        CompanyId = t.CompanyId,
+        ProjectId = t.ProjectId,
         TemplateJson = t.TemplateJson,
         CreatedAt = t.CreatedAt,
         UpdatedAt = t.UpdatedAt

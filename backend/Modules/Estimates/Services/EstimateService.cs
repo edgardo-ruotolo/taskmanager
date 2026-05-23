@@ -8,47 +8,47 @@ namespace TaskManager.Api.Modules.Estimates.Services;
 
 public class EstimateService(AppDbContext db) : IEstimateService
 {
-    public async Task<List<EstimateDto>> GetAllAsync(string workspaceSlug, Guid companyId, CancellationToken ct = default)
+    public async Task<List<EstimateDto>> GetAllAsync(string workspaceSlug, Guid projectId, CancellationToken ct = default)
     {
         var workspace = await db.Workspaces.FirstOrDefaultAsync(w => w.Slug == workspaceSlug, ct)
             ?? throw new NotFoundException($"Workspace '{workspaceSlug}' not found.");
 
         var estimates = await db.Estimates
             .Include(e => e.Points)
-            .Where(e => e.CompanyId == companyId && e.Company.WorkspaceId == workspace.Id)
+            .Where(e => e.ProjectId == projectId && e.Project.WorkspaceId == workspace.Id)
             .OrderByDescending(e => e.CreatedAt)
             .ToListAsync(ct);
 
         return estimates.Select(MapToDto).ToList();
     }
 
-    public async Task<EstimateDto> GetByIdAsync(string workspaceSlug, Guid companyId, Guid estimateId, CancellationToken ct = default)
+    public async Task<EstimateDto> GetByIdAsync(string workspaceSlug, Guid projectId, Guid estimateId, CancellationToken ct = default)
     {
         var workspace = await db.Workspaces.FirstOrDefaultAsync(w => w.Slug == workspaceSlug, ct)
             ?? throw new NotFoundException($"Workspace '{workspaceSlug}' not found.");
 
         var estimate = await db.Estimates
             .Include(e => e.Points)
-            .FirstOrDefaultAsync(e => e.Id == estimateId && e.CompanyId == companyId && e.Company.WorkspaceId == workspace.Id, ct)
+            .FirstOrDefaultAsync(e => e.Id == estimateId && e.ProjectId == projectId && e.Project.WorkspaceId == workspace.Id, ct)
             ?? throw new NotFoundException("Estimate not found.");
 
         return MapToDto(estimate);
     }
 
-    public async Task<EstimateDto> CreateAsync(string workspaceSlug, Guid companyId, CreateEstimateDto dto, CancellationToken ct = default)
+    public async Task<EstimateDto> CreateAsync(string workspaceSlug, Guid projectId, CreateEstimateDto dto, CancellationToken ct = default)
     {
         var workspace = await db.Workspaces.FirstOrDefaultAsync(w => w.Slug == workspaceSlug, ct)
             ?? throw new NotFoundException($"Workspace '{workspaceSlug}' not found.");
 
-        var company = await db.Companies.FirstOrDefaultAsync(c => c.Id == companyId && c.WorkspaceId == workspace.Id, ct)
-            ?? throw new NotFoundException("Company not found.");
+        var project = await db.Projects.FirstOrDefaultAsync(c => c.Id == projectId && c.WorkspaceId == workspace.Id, ct)
+            ?? throw new NotFoundException("Project not found.");
 
         var estimate = new Estimate
         {
             Name = dto.Name,
             Description = dto.Description,
             Type = dto.Type,
-            CompanyId = company.Id
+            ProjectId = project.Id
         };
 
         db.Estimates.Add(estimate);
@@ -57,14 +57,14 @@ public class EstimateService(AppDbContext db) : IEstimateService
         return MapToDto(estimate);
     }
 
-    public async Task<EstimateDto> UpdateAsync(string workspaceSlug, Guid companyId, Guid estimateId, UpdateEstimateDto dto, CancellationToken ct = default)
+    public async Task<EstimateDto> UpdateAsync(string workspaceSlug, Guid projectId, Guid estimateId, UpdateEstimateDto dto, CancellationToken ct = default)
     {
         var workspace = await db.Workspaces.FirstOrDefaultAsync(w => w.Slug == workspaceSlug, ct)
             ?? throw new NotFoundException($"Workspace '{workspaceSlug}' not found.");
 
         var estimate = await db.Estimates
             .Include(e => e.Points)
-            .FirstOrDefaultAsync(e => e.Id == estimateId && e.CompanyId == companyId && e.Company.WorkspaceId == workspace.Id, ct)
+            .FirstOrDefaultAsync(e => e.Id == estimateId && e.ProjectId == projectId && e.Project.WorkspaceId == workspace.Id, ct)
             ?? throw new NotFoundException("Estimate not found.");
 
         if (dto.Name is not null) estimate.Name = dto.Name;
@@ -75,13 +75,13 @@ public class EstimateService(AppDbContext db) : IEstimateService
         return MapToDto(estimate);
     }
 
-    public async Task DeleteAsync(string workspaceSlug, Guid companyId, Guid estimateId, CancellationToken ct = default)
+    public async Task DeleteAsync(string workspaceSlug, Guid projectId, Guid estimateId, CancellationToken ct = default)
     {
         var workspace = await db.Workspaces.FirstOrDefaultAsync(w => w.Slug == workspaceSlug, ct)
             ?? throw new NotFoundException($"Workspace '{workspaceSlug}' not found.");
 
         var estimate = await db.Estimates
-            .FirstOrDefaultAsync(e => e.Id == estimateId && e.CompanyId == companyId && e.Company.WorkspaceId == workspace.Id, ct)
+            .FirstOrDefaultAsync(e => e.Id == estimateId && e.ProjectId == projectId && e.Project.WorkspaceId == workspace.Id, ct)
             ?? throw new NotFoundException("Estimate not found.");
 
         estimate.IsDeleted = true;
@@ -89,13 +89,13 @@ public class EstimateService(AppDbContext db) : IEstimateService
         await db.SaveChangesAsync(ct);
     }
 
-    public async Task<EstimatePointDto> AddPointAsync(string workspaceSlug, Guid companyId, Guid estimateId, CreateEstimatePointDto dto, CancellationToken ct = default)
+    public async Task<EstimatePointDto> AddPointAsync(string workspaceSlug, Guid projectId, Guid estimateId, CreateEstimatePointDto dto, CancellationToken ct = default)
     {
         var workspace = await db.Workspaces.FirstOrDefaultAsync(w => w.Slug == workspaceSlug, ct)
             ?? throw new NotFoundException($"Workspace '{workspaceSlug}' not found.");
 
         _ = await db.Estimates
-            .FirstOrDefaultAsync(e => e.Id == estimateId && e.CompanyId == companyId && e.Company.WorkspaceId == workspace.Id, ct)
+            .FirstOrDefaultAsync(e => e.Id == estimateId && e.ProjectId == projectId && e.Project.WorkspaceId == workspace.Id, ct)
             ?? throw new NotFoundException("Estimate not found.");
 
         var point = new EstimatePoint
@@ -113,13 +113,13 @@ public class EstimateService(AppDbContext db) : IEstimateService
         return MapPointToDto(point);
     }
 
-    public async Task DeletePointAsync(string workspaceSlug, Guid companyId, Guid estimateId, Guid pointId, CancellationToken ct = default)
+    public async Task DeletePointAsync(string workspaceSlug, Guid projectId, Guid estimateId, Guid pointId, CancellationToken ct = default)
     {
         var workspace = await db.Workspaces.FirstOrDefaultAsync(w => w.Slug == workspaceSlug, ct)
             ?? throw new NotFoundException($"Workspace '{workspaceSlug}' not found.");
 
         _ = await db.Estimates
-            .FirstOrDefaultAsync(e => e.Id == estimateId && e.CompanyId == companyId && e.Company.WorkspaceId == workspace.Id, ct)
+            .FirstOrDefaultAsync(e => e.Id == estimateId && e.ProjectId == projectId && e.Project.WorkspaceId == workspace.Id, ct)
             ?? throw new NotFoundException("Estimate not found.");
 
         var point = await db.EstimatePoints.FindAsync([pointId], ct)
@@ -135,7 +135,7 @@ public class EstimateService(AppDbContext db) : IEstimateService
         Name = e.Name,
         Description = e.Description,
         Type = e.Type,
-        CompanyId = e.CompanyId,
+        ProjectId = e.ProjectId,
         CreatedAt = e.CreatedAt,
         Points = e.Points.OrderBy(p => p.SortOrder).Select(MapPointToDto).ToList()
     };

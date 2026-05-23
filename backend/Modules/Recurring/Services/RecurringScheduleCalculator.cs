@@ -1,4 +1,4 @@
-using TaskManager.Api.Modules.Recurring.Entities;
+﻿using TaskManager.Api.Modules.Recurring.Entities;
 
 namespace TaskManager.Api.Modules.Recurring.Services;
 
@@ -20,7 +20,8 @@ public static class RecurringScheduleCalculator
         {
             RecurringFrequency.Daily => ComputeDaily(template, dtStart, candidate),
             RecurringFrequency.Weekly => ComputeWeekly(template, dtStart, candidate),
-            RecurringFrequency.Monthly => ComputeMonthly(template, dtStart, candidate),
+            RecurringFrequency.Monthly => ComputeMonthly(template, dtStart, candidate, monthsPerCycle: 1),
+            RecurringFrequency.Quarterly => ComputeMonthly(template, dtStart, candidate, monthsPerCycle: 3),
             RecurringFrequency.Yearly => ComputeYearly(template, dtStart, candidate),
             _ => null
         };
@@ -44,6 +45,11 @@ public static class RecurringScheduleCalculator
         return current;
     }
 
+    /// <summary>
+    /// Calcula la próxima ejecución para cadencia semanal.
+    /// Convención de días: 0=Lun, 1=Mar, 2=Mié, 3=Jue, 4=Vie, 5=Sáb, 6=Dom.
+    /// El mapeo a <see cref="DayOfWeek"/> (Sun=0..Sat=6) se realiza internamente.
+    /// </summary>
     private static DateTime? ComputeWeekly(RecurringIssueTemplate t, DateTime dtStart, DateTime candidate)
     {
         if (t.DaysOfWeek.Length == 0) return null;
@@ -73,10 +79,16 @@ public static class RecurringScheduleCalculator
         return null;
     }
 
-    private static DateTime? ComputeMonthly(RecurringIssueTemplate t, DateTime dtStart, DateTime candidate)
+    /// <summary>
+    /// Cálculo mensual con multiplicador de meses por ciclo.
+    /// Monthly usa <c>monthsPerCycle=1</c>; Quarterly usa <c>monthsPerCycle=3</c>.
+    /// El intervalo configurado se multiplica por <paramref name="monthsPerCycle"/>.
+    /// </summary>
+    private static DateTime? ComputeMonthly(RecurringIssueTemplate t, DateTime dtStart, DateTime candidate, int monthsPerCycle)
     {
         var targetDay = t.DayOfMonth ?? dtStart.Day;
         var current = new DateTime(dtStart.Year, dtStart.Month, 1);
+        var step = Math.Max(1, t.Interval) * monthsPerCycle;
 
         while (true)
         {
@@ -86,7 +98,7 @@ public static class RecurringScheduleCalculator
 
             if (date > candidate) return date;
 
-            current = current.AddMonths(t.Interval);
+            current = current.AddMonths(step);
 
             if (current > candidate.AddYears(4)) break;
         }

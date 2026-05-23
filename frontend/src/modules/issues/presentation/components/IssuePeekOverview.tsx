@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils';
 import { IssuePriorityBadge } from './IssuePriorityBadge';
 import { IssueStateBadge } from './IssueStateBadge';
 import type { Issue } from '../../domain/types';
-import { useCompany } from '@/modules/companies/application/use-companies';
+import { useProject } from '@/modules/projects/application/use-projects';
 
 interface IssuePeekOverviewProps {
     issue: Issue | null;
@@ -28,9 +28,9 @@ function PeekPanel({
     hasNext,
 }: IssuePeekOverviewProps & { issue: Issue }): React.ReactElement {
     const navigate = useNavigate();
-    const { workspaceSlug = '', companyId = '' } = useParams<{ workspaceSlug: string; companyId: string }>();
-    const { data: company } = useCompany(workspaceSlug, companyId);
-    const issueId = `${company?.identifier ?? 'ISS'}-${issue.sequenceId}`;
+    const { workspaceSlug = '', projectId = '' } = useParams<{ workspaceSlug: string; projectId: string }>();
+    const { data: project } = useProject(workspaceSlug, projectId);
+    const issueId = `${project?.identifier ?? 'ISS'}-${issue.sequenceId}`;
     // useState with defaultValue resets when remounted via key={issue.id}
     const [activeTab, setActiveTab] = useState<TabId>('detail');
     const titleId = useId();
@@ -59,7 +59,7 @@ function PeekPanel({
     }, []);
 
     const openFull = (): void => {
-        void navigate(`/${workspaceSlug}/companies/${companyId}/issues/${issue.id}`);
+        void navigate(`/${workspaceSlug}/projects/${projectId}/issues/${issue.id}`);
         onClose();
     };
 

@@ -114,7 +114,7 @@ export const WorkspacesPage = (): React.ReactElement => {
                                     </div>
                                     <Button
                                         size="sm"
-                                        onClick={() => void navigate(`/${ws.slug}/companies`)}
+                                        onClick={() => void navigate(`/${ws.slug}/projects`)}
                                         className="bg-layer-2 hover:bg-layer-3 text-secondary text-xs h-7 px-3 gap-1"
                                     >
                                         Abrir

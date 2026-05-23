@@ -10,14 +10,14 @@ interface ApproveIssueVars {
     targetStateId: string;
 }
 
-export const useApproveIssue = (workspaceSlug: string, companyId: string) => {
+export const useApproveIssue = (workspaceSlug: string, projectId: string) => {
     const qc = useQueryClient();
     return useMutation<Issue, unknown, ApproveIssueVars>({
         mutationFn: ({ issueId, targetStateId }) =>
-            issueRepository.approve(workspaceSlug, companyId, issueId, targetStateId),
+            issueRepository.approve(workspaceSlug, projectId, issueId, targetStateId),
         onSuccess: (_data, { issueId }) => {
-            void qc.invalidateQueries({ queryKey: issuesKey(workspaceSlug, companyId) });
-            void qc.invalidateQueries({ queryKey: issueDetailKey(workspaceSlug, companyId, issueId) });
+            void qc.invalidateQueries({ queryKey: issuesKey(workspaceSlug, projectId) });
+            void qc.invalidateQueries({ queryKey: issueDetailKey(workspaceSlug, projectId, issueId) });
             toast.success('Tarea aprobada y movida');
         },
         onError: () => {

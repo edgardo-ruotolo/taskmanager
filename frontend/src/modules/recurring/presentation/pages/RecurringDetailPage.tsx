@@ -1,11 +1,12 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { Calendar, History, RefreshCw, Settings2 } from 'lucide-react';
+import { Calendar, History, Settings2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { Eyebrow } from '@/components/ui/eyebrow';
 import {
+    useRecurringPreview,
     useRecurringRuns,
     useRecurringTemplate,
     useUpdateRecurringTemplate,
@@ -36,6 +37,7 @@ const FREQUENCY_LABELS: Record<string, string> = {
     Daily: 'Diario',
     Weekly: 'Semanal',
     Monthly: 'Mensual',
+    Quarterly: 'Trimestral',
     Yearly: 'Anual',
 };
 
@@ -71,25 +73,39 @@ interface ConfigRow {
 }
 
 function buildConfigRows(template: RecurringTemplate): ConfigRow[] {
+    const projectsLabel =
+        template.projects.length > 0
+            ? template.projects
+                  .map((p) => (p.identifier ? `${p.identifier} ${p.name}` : p.name))
+                  .join(', ')
+            : '—';
+    const assigneesLabel =
+        template.assignees.length > 0 ? template.assignees.map((a) => a.displayName).join(', ') : '—';
+
     const rows: ConfigRow[] = [
         { key: 'Frecuencia', value: FREQUENCY_LABELS[template.frequency] ?? template.frequency },
         { key: 'Intervalo', value: String(template.interval) },
-        { key: 'Hora de ejecución', value: template.runAtTime ? `${template.runAtTime.slice(0, 5)} (${template.timezone})` : '—' },
+        {
+            key: 'Hora de ejecución',
+            value: template.runAtTime ? `${template.runAtTime.slice(0, 5)} (${template.timezone})` : '—',
+        },
         { key: 'Prioridad', value: template.priority },
         { key: 'Comienza el', value: template.startsOn ?? '—' },
+        { key: 'Proyectos', value: projectsLabel },
+        { key: 'Asignados', value: assigneesLabel },
     ];
     if (template.endsOn) rows.push({ key: 'Termina el', value: template.endsOn });
-    if (template.nextRunAt) rows.push({ key: 'Próxima ejecución', value: new Date(template.nextRunAt).toLocaleString('es-AR') });
-    if (template.lastRunAt) rows.push({ key: 'Última ejecución', value: new Date(template.lastRunAt).toLocaleString('es-AR') });
+    if (template.nextRunAt)
+        rows.push({
+            key: 'Próxima ejecución',
+            value: new Date(template.nextRunAt).toLocaleString('es-AR'),
+        });
+    if (template.lastRunAt)
+        rows.push({
+            key: 'Última ejecución',
+            value: new Date(template.lastRunAt).toLocaleString('es-AR'),
+        });
     return rows;
-}
-
-function getNextRunLabel(nextRunAt: string | null): string | null {
-    if (!nextRunAt) return null;
-    return new Date(nextRunAt).toLocaleString('es-AR', {
-        weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
-        hour: '2-digit', minute: '2-digit',
-    });
 }
 
 interface ConfigTabProps {
@@ -105,7 +121,7 @@ function ConfigTab({ rows }: ConfigTabProps): React.ReactElement {
                         <span className="text-[11px] font-medium text-[var(--neutral-600)] uppercase tracking-[0.08em] font-mono">
                             {row.key}
                         </span>
-                        <span className="text-[13px] text-[var(--neutral-1200)] font-medium">
+                        <span className="text-[13px] text-[var(--neutral-1200)] font-medium break-words">
                             {row.value}
                         </span>
                     </div>
@@ -132,10 +148,14 @@ function RunRow({ run, isFirst }: RunRowProps): React.ReactElement {
     const chipClass = RUN_STATUS_CHIP[run.status] ?? 'bg-[var(--neutral-200)] text-[var(--neutral-600)]';
     const statusLabel = RUN_STATUS_LABEL[run.status] ?? run.status;
     const scheduledDate = new Date(run.scheduledFor).toLocaleDateString('es-AR', {
-        weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
     });
     const scheduledTime = new Date(run.scheduledFor).toLocaleTimeString('es-AR', {
-        hour: '2-digit', minute: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
     });
     const executedTime = run.executedAt
         ? new Date(run.executedAt).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })
@@ -159,13 +179,17 @@ function RunRow({ run, isFirst }: RunRowProps): React.ReactElement {
                     )}
                     {run.generatedIssueIds.length > 0 && (
                         <span className="font-mono text-[11px] text-[var(--neutral-600)]">
-                            {run.generatedIssueIds.length} issue{run.generatedIssueIds.length !== 1 ? 's' : ''} generado{run.generatedIssueIds.length !== 1 ? 's' : ''}
+                            {run.generatedIssueIds.length} issue
+                            {run.generatedIssueIds.length !== 1 ? 's' : ''} generado
+                            {run.generatedIssueIds.length !== 1 ? 's' : ''}
                         </span>
                     )}
                 </div>
             </div>
             <span className="font-mono text-[11px] text-[var(--neutral-600)]">{scheduledTime}</span>
-            <span className={`inline-flex items-center px-2 py-0.5 rounded-full font-mono text-[10px] font-medium ${chipClass}`}>
+            <span
+                className={`inline-flex items-center px-2 py-0.5 rounded-full font-mono text-[10px] font-medium ${chipClass}`}
+            >
                 {statusLabel}
             </span>
         </div>
@@ -181,8 +205,8 @@ function HistoryTab({ runs, runsLoading }: HistoryTabProps): React.ReactElement 
     if (runsLoading) {
         return (
             <div className="mt-4 space-y-2">
-                {[1, 2, 3].map((i) => (
-                    <Skeleton key={i} className="h-12 w-full rounded-lg bg-[var(--neutral-200)]" />
+                {(['hl-0', 'hl-1', 'hl-2'] as const).map((k) => (
+                    <Skeleton key={k} className="h-12 w-full rounded-lg bg-[var(--neutral-200)]" />
                 ))}
             </div>
         );
@@ -203,74 +227,90 @@ function HistoryTab({ runs, runsLoading }: HistoryTabProps): React.ReactElement 
     );
 }
 
-interface PreviewTabProps {
-    nextRunLabel: string | null;
+interface PreviewItem {
+    iso: string;
+    headline: string;
+    sub: string;
 }
 
-function PreviewTab({ nextRunLabel }: PreviewTabProps): React.ReactElement {
-    if (!nextRunLabel) {
+const MONTH_ABBR = ['ENE', 'FEB', 'MAR', 'ABR', 'MAY', 'JUN', 'JUL', 'AGO', 'SEP', 'OCT', 'NOV', 'DIC'];
+
+function buildPreviewItem(iso: string): PreviewItem {
+    const date = new Date(iso);
+    const headline = `${date.getDate()} ${MONTH_ABBR[date.getMonth()]}`;
+    const now = new Date();
+    const startOfDay = (d: Date): Date => new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    const diffDays = Math.round(
+        (startOfDay(date).getTime() - startOfDay(now).getTime()) / (1000 * 60 * 60 * 24),
+    );
+    const time = date.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
+    let sub: string;
+    if (diffDays === 0) sub = `Hoy ${time}`;
+    else if (diffDays === 1) sub = `Mañana ${time}`;
+    else if (diffDays > 1) sub = `En ${diffDays} días`;
+    else sub = `Hace ${Math.abs(diffDays)} días`;
+    return { iso, headline, sub };
+}
+
+interface PreviewTabProps {
+    workspaceSlug: string;
+    recurringId: string;
+}
+
+function PreviewTab({ workspaceSlug, recurringId }: PreviewTabProps): React.ReactElement {
+    const { data, isLoading } = useRecurringPreview(workspaceSlug, recurringId, 5);
+
+    if (isLoading) {
+        return (
+            <div className="mt-4 grid grid-cols-5 gap-2">
+                {(['pv-0', 'pv-1', 'pv-2', 'pv-3', 'pv-4'] as const).map((k) => (
+                    <Skeleton key={k} className="h-[68px] rounded-md bg-[var(--neutral-200)]" />
+                ))}
+            </div>
+        );
+    }
+
+    const nextRuns = data?.nextRuns ?? [];
+    if (nextRuns.length === 0) {
         return (
             <div className="mt-4 text-center py-12 text-[13px] text-[var(--neutral-600)]">
                 No hay próximas ejecuciones calculadas
             </div>
         );
     }
+
+    const items = nextRuns.map(buildPreviewItem);
+
     return (
         <div className="mt-4 bg-white border border-[var(--neutral-400)] rounded-lg p-5">
             <div className="font-mono text-[11px] text-[var(--neutral-600)] uppercase tracking-[0.12em] mb-3">
-                Próximas ejecuciones programadas
+                Próximas {items.length} ejecuciones programadas
             </div>
-            <div className="flex items-center gap-3 p-4 bg-[var(--neutral-100)] rounded-lg border border-[var(--neutral-400)]">
-                <Calendar size={16} className="text-[var(--brand-700)] shrink-0" />
-                <span className="text-[14px] font-medium text-[var(--neutral-1200)]">
-                    {nextRunLabel}
-                </span>
-            </div>
-        </div>
-    );
-}
-
-interface ScheduleCardProps {
-    frequency: string;
-    interval: number;
-    runAtTime: string;
-    nextRunAt: string | null;
-}
-
-function ScheduleCard({ frequency, interval, runAtTime, nextRunAt }: ScheduleCardProps): React.ReactElement {
-    return (
-        <div className="bg-[var(--neutral-1200)] text-[#f0eadf] p-[22px] rounded-[10px]">
-            <Eyebrow className="text-[var(--brand-700)]">Schedule</Eyebrow>
-            <div className="flex items-center gap-4 flex-wrap mt-3">
-                <span className="inline-flex items-center gap-2 px-[14px] py-2 bg-[rgba(240,234,223,0.08)] rounded-md text-[13px]">
-                    <RefreshCw size={14} className="text-[var(--brand-700)]" />
-                    <span>{FREQUENCY_LABELS[frequency] ?? frequency}</span>
-                    {interval > 1 && (
-                        <span className="font-bold text-[var(--brand-700)]"> ×{interval}</span>
-                    )}
-                </span>
-                {runAtTime && (
-                    <>
-                        <span className="text-[14px] text-[rgba(240,234,223,0.5)]">·</span>
-                        <span className="inline-flex items-center gap-2 px-[14px] py-2 bg-[rgba(240,234,223,0.08)] rounded-md text-[13px]">
-                            <Calendar size={14} className="text-[var(--brand-700)]" />
-                            A las <span className="font-bold text-[var(--brand-700)]">{runAtTime.slice(0, 5)}</span>
-                        </span>
-                    </>
-                )}
-                {nextRunAt && (
-                    <>
-                        <span className="text-[14px] text-[rgba(240,234,223,0.5)]">·</span>
-                        <span className="inline-flex items-center gap-2 px-[14px] py-2 bg-[rgba(240,234,223,0.08)] rounded-md text-[13px]">
-                            Próxima:{' '}
-                            <span className="font-bold text-[var(--brand-700)]">
-                                {new Date(nextRunAt).toLocaleDateString('es-ES', {
-                                    day: '2-digit', month: 'short', year: 'numeric',
-                                })}
-                            </span>
-                        </span>
-                    </>
-                )}
+            <div className="grid grid-cols-5 gap-2">
+                {items.map((item, i) => {
+                    const isNext = i === 0;
+                    return (
+                        <div
+                            key={item.iso}
+                            className={cn(
+                                'p-3 rounded-md border',
+                                isNext
+                                    ? 'bg-[var(--brand-700)] text-white border-[var(--brand-700)]'
+                                    : 'bg-[var(--neutral-100)] text-[var(--neutral-1200)] border-[var(--neutral-400)]',
+                            )}
+                        >
+                            <div className="text-[15px] font-semibold tracking-[-0.02em]">{item.headline}</div>
+                            <div
+                                className={cn(
+                                    'font-mono text-[10px] mt-1 tracking-[0.05em]',
+                                    isNext ? 'text-white/80' : 'text-[var(--neutral-600)]',
+                                )}
+                            >
+                                {item.sub}
+                            </div>
+                        </div>
+                    );
+                })}
             </div>
         </div>
     );
@@ -312,7 +352,6 @@ export function RecurringDetailPage(): React.ReactElement {
     const { label: statusLabel, chip: statusChip } = getStatusInfo(template);
     const configRows = buildConfigRows(template);
     const descriptionText = template.descriptionHtml ? stripHtml(template.descriptionHtml) : null;
-    const nextRunLabel = getNextRunLabel(template.nextRunAt);
     const runs = runsData as RunItem[];
 
     return (
@@ -341,7 +380,9 @@ export function RecurringDetailPage(): React.ReactElement {
                             )}
                         </div>
                         <div className="flex items-center gap-2 shrink-0 mt-1">
-                            <span className={`inline-flex items-center px-2.5 py-1 rounded-full font-mono text-[11px] font-medium ${statusChip}`}>
+                            <span
+                                className={`inline-flex items-center px-2.5 py-1 rounded-full font-mono text-[11px] font-medium ${statusChip}`}
+                            >
                                 {statusLabel}
                             </span>
                             <Button
@@ -353,13 +394,6 @@ export function RecurringDetailPage(): React.ReactElement {
                             </Button>
                         </div>
                     </div>
-
-                    <ScheduleCard
-                        frequency={template.frequency}
-                        interval={template.interval}
-                        runAtTime={template.runAtTime}
-                        nextRunAt={template.nextRunAt}
-                    />
 
                     <div>
                         <div className="flex border-b border-[var(--neutral-400)]">
@@ -386,7 +420,9 @@ export function RecurringDetailPage(): React.ReactElement {
 
                         {activeTab === 'config' && <ConfigTab rows={configRows} />}
                         {activeTab === 'history' && <HistoryTab runs={runs} runsLoading={runsLoading} />}
-                        {activeTab === 'preview' && <PreviewTab nextRunLabel={nextRunLabel} />}
+                        {activeTab === 'preview' && (
+                            <PreviewTab workspaceSlug={workspaceSlug} recurringId={recurringId} />
+                        )}
                     </div>
                 </div>
             </div>

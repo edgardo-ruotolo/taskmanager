@@ -43,9 +43,9 @@ public class RecurringIssueRunIssueConfiguration : IEntityTypeConfiguration<Recu
             .HasForeignKey(x => x.IssueId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        builder.HasOne(x => x.Company)
+        builder.HasOne(x => x.Project)
             .WithMany()
-            .HasForeignKey(x => x.CompanyId)
+            .HasForeignKey(x => x.ProjectId)
             .OnDelete(DeleteBehavior.Restrict);
     }
 }

@@ -20,29 +20,39 @@ export interface UpdateWorkspaceData {
     logoUrl?: string;
 }
 
+export type WorkspaceRole = 'Admin' | 'Lead' | 'Member';
+
 export interface WorkspaceMember {
     userId: string;
     email: string;
     displayName?: string;
     avatarUrl?: string;
-    role: 'Admin' | 'Member';
+    role: WorkspaceRole;
     isActive: boolean;
 }
 
-export interface WorkspaceInvitation {
-    id: string;
+export interface WorkspaceUserSearchResult {
+    userId: string;
     email: string;
-    role: 'Admin' | 'Member';
-    expiresAt: string;
-    acceptedAt?: string;
+    displayName?: string;
+    avatarUrl?: string;
 }
 
-export interface CreateInvitationData {
-    email: string;
-    role: 'Admin' | 'Member';
+export interface AddMemberData {
+    userId: string;
+    role: WorkspaceRole;
 }
 
-export const WORKSPACE_ROLE_LABELS: Record<'Admin' | 'Member', string> = {
+export interface CreateUserAndAddMemberData {
+    email: string;
+    firstName: string;
+    lastName: string;
+    password: string;
+    role: WorkspaceRole;
+}
+
+export const WORKSPACE_ROLE_LABELS: Record<WorkspaceRole, string> = {
     Admin: 'Administrador',
+    Lead: 'Líder',
     Member: 'Usuario',
 };

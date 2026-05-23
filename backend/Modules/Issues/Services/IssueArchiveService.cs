@@ -2,7 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Npgsql;
 using TaskManager.Api.Common.Exceptions;
 using TaskManager.Api.Data;
-using TaskManager.Api.Modules.Companies.Entities;
+using TaskManager.Api.Modules.Projects.Entities;
 using TaskManager.Api.Modules.Issues.Dtos;
 using TaskManager.Api.Modules.Issues.Entities;
 
@@ -10,7 +10,7 @@ namespace TaskManager.Api.Modules.Issues.Services;
 
 public class IssueArchiveService(AppDbContext db, IConfiguration configuration) : IIssueArchiveService
 {
-    public async Task<IReadOnlyList<IssueDto>> GetArchivedAsync(string workspaceSlug, Guid companyId, CancellationToken ct = default)
+    public async Task<IReadOnlyList<IssueDto>> GetArchivedAsync(string workspaceSlug, Guid projectId, CancellationToken ct = default)
     {
         var workspace = await db.Workspaces.AsNoTracking().FirstOrDefaultAsync(w => w.Slug == workspaceSlug, ct)
             ?? throw new NotFoundException($"Workspace '{workspaceSlug}' not found.");
@@ -23,18 +23,18 @@ public class IssueArchiveService(AppDbContext db, IConfiguration configuration) 
             .Include(i => i.Labels)
             .Include(i => i.CycleIssues)
             .Include(i => i.ModuleIssues)
-            .Where(i => i.IsArchived && !i.IsDeleted && i.CompanyId == companyId && i.Company.WorkspaceId == workspace.Id)
+            .Where(i => i.IsArchived && !i.IsDeleted && i.ProjectId == projectId && i.Project.WorkspaceId == workspace.Id)
             .OrderByDescending(i => i.ArchivedAt)
             .ToListAsync(ct);
 
         return issues.Select(IssueMapper.MapToDto).ToList();
     }
 
-    public async Task ArchiveAsync(string workspaceSlug, Guid companyId, Guid issueId, CancellationToken ct = default)
+    public async Task ArchiveAsync(string workspaceSlug, Guid projectId, Guid issueId, CancellationToken ct = default)
     {
         var issue = await db.Issues
             .IgnoreQueryFilters()
-            .FirstOrDefaultAsync(i => i.Id == issueId && i.CompanyId == companyId && !i.IsDeleted, ct)
+            .FirstOrDefaultAsync(i => i.Id == issueId && i.ProjectId == projectId && !i.IsDeleted, ct)
             ?? throw new NotFoundException("Issue not found.");
 
         issue.IsArchived = true;
@@ -42,11 +42,11 @@ public class IssueArchiveService(AppDbContext db, IConfiguration configuration) 
         await db.SaveChangesAsync(ct);
     }
 
-    public async Task UnarchiveAsync(string workspaceSlug, Guid companyId, Guid issueId, CancellationToken ct = default)
+    public async Task UnarchiveAsync(string workspaceSlug, Guid projectId, Guid issueId, CancellationToken ct = default)
     {
         var issue = await db.Issues
             .IgnoreQueryFilters()
-            .FirstOrDefaultAsync(i => i.Id == issueId && i.CompanyId == companyId && !i.IsDeleted, ct)
+            .FirstOrDefaultAsync(i => i.Id == issueId && i.ProjectId == projectId && !i.IsDeleted, ct)
             ?? throw new NotFoundException("Issue not found.");
 
         issue.IsArchived = false;
@@ -54,11 +54,11 @@ public class IssueArchiveService(AppDbContext db, IConfiguration configuration) 
         await db.SaveChangesAsync(ct);
     }
 
-    public async Task BulkArchiveAsync(string workspaceSlug, Guid companyId, List<Guid> issueIds, CancellationToken ct = default)
+    public async Task BulkArchiveAsync(string workspaceSlug, Guid projectId, List<Guid> issueIds, CancellationToken ct = default)
     {
         var issues = await db.Issues
             .IgnoreQueryFilters()
-            .Where(i => issueIds.Contains(i.Id) && i.CompanyId == companyId && !i.IsDeleted)
+            .Where(i => issueIds.Contains(i.Id) && i.ProjectId == projectId && !i.IsDeleted)
             .ToListAsync(ct);
 
         var now = DateTime.UtcNow;
@@ -71,11 +71,11 @@ public class IssueArchiveService(AppDbContext db, IConfiguration configuration) 
         await db.SaveChangesAsync(ct);
     }
 
-    public async Task BulkDeleteAsync(string workspaceSlug, Guid companyId, List<Guid> issueIds, CancellationToken ct = default)
+    public async Task BulkDeleteAsync(string workspaceSlug, Guid projectId, List<Guid> issueIds, CancellationToken ct = default)
     {
         var issues = await db.Issues
             .IgnoreQueryFilters()
-            .Where(i => issueIds.Contains(i.Id) && i.CompanyId == companyId && !i.IsDeleted)
+            .Where(i => issueIds.Contains(i.Id) && i.ProjectId == projectId && !i.IsDeleted)
             .ToListAsync(ct);
 
         var now = DateTime.UtcNow;
@@ -88,15 +88,15 @@ public class IssueArchiveService(AppDbContext db, IConfiguration configuration) 
         await db.SaveChangesAsync(ct);
     }
 
-    public async Task BulkUpdateAsync(string workspaceSlug, Guid companyId, List<Guid> issueIds, BulkUpdateIssueDto dto, Guid currentUserId, CancellationToken ct = default)
+    public async Task BulkUpdateAsync(string workspaceSlug, Guid projectId, List<Guid> issueIds, BulkUpdateIssueDto dto, Guid currentUserId, CancellationToken ct = default)
     {
         var issues = await db.Issues
-            .Where(i => issueIds.Contains(i.Id) && i.CompanyId == companyId)
+            .Where(i => issueIds.Contains(i.Id) && i.ProjectId == projectId)
             .ToListAsync(ct);
 
-        CompanyMember? member = null;
+        ProjectMember? member = null;
         if (dto.StateId is not null)
-            member = await db.CompanyMembers.FirstOrDefaultAsync(m => m.UserId == currentUserId && m.CompanyId == companyId, ct);
+            member = await db.ProjectMembers.FirstOrDefaultAsync(m => m.UserId == currentUserId && m.ProjectId == projectId, ct);
 
         foreach (var issue in issues)
         {
@@ -104,7 +104,7 @@ public class IssueArchiveService(AppDbContext db, IConfiguration configuration) 
             {
                 if (issue.RequiresAdminApproval && issue.ApprovalRequiredStateIds.Contains(dto.StateId.Value))
                 {
-                    if (member == null || (member.Role != CompanyRole.Admin && member.Role != CompanyRole.Lead))
+                    if (member == null || (member.Role != ProjectRole.Admin && member.Role != ProjectRole.Lead))
                         throw new ForbiddenException($"Issue '{issue.Title}' requires Admin or Lead approval to move to this state.");
 
                     issue.ApprovedById = currentUserId;
@@ -119,11 +119,11 @@ public class IssueArchiveService(AppDbContext db, IConfiguration configuration) 
         await db.SaveChangesAsync(ct);
     }
 
-    public async Task<IssueDto> DuplicateAsync(string workspaceSlug, Guid companyId, Guid issueId, Guid currentUserId, CancellationToken ct = default)
+    public async Task<IssueDto> DuplicateAsync(string workspaceSlug, Guid projectId, Guid issueId, Guid currentUserId, CancellationToken ct = default)
     {
         var original = await db.Issues
             .Include(i => i.Labels)
-            .FirstOrDefaultAsync(i => i.Id == issueId && i.CompanyId == companyId, ct)
+            .FirstOrDefaultAsync(i => i.Id == issueId && i.ProjectId == projectId, ct)
             ?? throw new NotFoundException("Issue not found.");
 
         var connString = configuration.GetConnectionString("Postgres")!;
@@ -133,15 +133,15 @@ public class IssueArchiveService(AppDbContext db, IConfiguration configuration) 
         await conn.OpenAsync(ct);
         await using var tx = await conn.BeginTransactionAsync(ct);
 
-        var lockKey = BitConverter.ToInt64(companyId.ToByteArray(), 0);
+        var lockKey = BitConverter.ToInt64(projectId.ToByteArray(), 0);
         await using (var lockCmd = new NpgsqlCommand($"SELECT pg_advisory_xact_lock({lockKey})", conn, tx))
             await lockCmd.ExecuteNonQueryAsync(ct);
 
         await using (var seqCmd = new NpgsqlCommand(
-            "SELECT COALESCE(MAX(\"SequenceId\"), 0) + 1 FROM \"Issues\" WHERE \"CompanyId\" = @companyId",
+            "SELECT COALESCE(MAX(\"SequenceId\"), 0) + 1 FROM \"Issues\" WHERE \"ProjectId\" = @projectId",
             conn, tx))
         {
-            seqCmd.Parameters.AddWithValue("companyId", companyId);
+            seqCmd.Parameters.AddWithValue("projectId", projectId);
             sequenceId = Convert.ToInt32(await seqCmd.ExecuteScalarAsync(ct));
         }
 
@@ -156,7 +156,7 @@ public class IssueArchiveService(AppDbContext db, IConfiguration configuration) 
             DescriptionJson = original.DescriptionJson,
             Priority = original.Priority,
             StateId = original.StateId,
-            CompanyId = original.CompanyId,
+            ProjectId = original.ProjectId,
             CreatedById = currentUserId,
             SequenceId = sequenceId,
             AssigneeId = original.AssigneeId,

@@ -65,13 +65,13 @@ function formatRelative(dateStr: string): string {
 
 function CreateIntakeDialog({
     workspaceSlug,
-    companyId,
+    projectId,
 }: {
     workspaceSlug: string;
-    companyId: string;
+    projectId: string;
 }): React.ReactElement {
     const [open, setOpen] = useState(false);
-    const { mutate: create, isPending } = useCreateIntake(workspaceSlug, companyId);
+    const { mutate: create, isPending } = useCreateIntake(workspaceSlug, projectId);
 
     const {
         register,
@@ -369,17 +369,17 @@ function DetailEmptyState(): React.ReactElement {
 // --- Main page ---
 
 export const InboxPage = (): React.ReactElement => {
-    const { workspaceSlug = '', companyId = '' } = useParams<{
+    const { workspaceSlug = '', projectId = '' } = useParams<{
         workspaceSlug: string;
-        companyId: string;
+        projectId: string;
     }>();
     const [activeTab, setActiveTab] = useState<TabStatus>('Pending');
     const [selectedId, setSelectedId] = useState<string | null>(null);
 
     const statusParam = activeTab === 'all' ? undefined : activeTab;
-    const { data, isLoading } = useIntake(workspaceSlug, companyId, statusParam);
-    const { mutate: review, isPending: isReviewing } = useReviewIntake(workspaceSlug, companyId);
-    const { mutate: del, isPending: isDeleting } = useDeleteIntake(workspaceSlug, companyId);
+    const { data, isLoading } = useIntake(workspaceSlug, projectId, statusParam);
+    const { mutate: review, isPending: isReviewing } = useReviewIntake(workspaceSlug, projectId);
+    const { mutate: del, isPending: isDeleting } = useDeleteIntake(workspaceSlug, projectId);
 
     const items = data?.items ?? [];
     const selectedIssue = items.find((i) => i.id === selectedId) ?? null;
@@ -405,7 +405,7 @@ export const InboxPage = (): React.ReactElement => {
                         </span>
                     )}
                 </div>
-                <CreateIntakeDialog workspaceSlug={workspaceSlug} companyId={companyId} />
+                <CreateIntakeDialog workspaceSlug={workspaceSlug} projectId={projectId} />
             </div>
 
             {/* Tabs */}

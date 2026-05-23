@@ -2,48 +2,48 @@ import { apiClient } from '@/shared/lib/api-client';
 import type { Estimate, CreateEstimateData, EstimatePoint, CreateEstimatePointData } from '../domain/types';
 
 export const estimateRepository = {
-    getAll: (workspaceSlug: string, companyId: string): Promise<Estimate[]> =>
+    getAll: (workspaceSlug: string, projectId: string): Promise<Estimate[]> =>
         apiClient
-            .get<Estimate[]>(`/api/workspaces/${workspaceSlug}/companies/${companyId}/estimates`)
+            .get<Estimate[]>(`/api/workspaces/${workspaceSlug}/projects/${projectId}/estimates`)
             .then((r) => r.data),
 
-    getById: (workspaceSlug: string, companyId: string, estimateId: string): Promise<Estimate> =>
+    getById: (workspaceSlug: string, projectId: string, estimateId: string): Promise<Estimate> =>
         apiClient
-            .get<Estimate>(`/api/workspaces/${workspaceSlug}/companies/${companyId}/estimates/${estimateId}`)
+            .get<Estimate>(`/api/workspaces/${workspaceSlug}/projects/${projectId}/estimates/${estimateId}`)
             .then((r) => r.data),
 
-    create: (workspaceSlug: string, companyId: string, data: CreateEstimateData): Promise<Estimate> =>
+    create: (workspaceSlug: string, projectId: string, data: CreateEstimateData): Promise<Estimate> =>
         apiClient
-            .post<Estimate>(`/api/workspaces/${workspaceSlug}/companies/${companyId}/estimates`, data)
+            .post<Estimate>(`/api/workspaces/${workspaceSlug}/projects/${projectId}/estimates`, data)
             .then((r) => r.data),
 
-    delete: (workspaceSlug: string, companyId: string, estimateId: string): Promise<void> =>
+    delete: (workspaceSlug: string, projectId: string, estimateId: string): Promise<void> =>
         apiClient
-            .delete(`/api/workspaces/${workspaceSlug}/companies/${companyId}/estimates/${estimateId}`)
+            .delete(`/api/workspaces/${workspaceSlug}/projects/${projectId}/estimates/${estimateId}`)
             .then(() => undefined),
 
     addPoint: (
         workspaceSlug: string,
-        companyId: string,
+        projectId: string,
         estimateId: string,
         data: CreateEstimatePointData,
     ): Promise<EstimatePoint> =>
         apiClient
             .post<EstimatePoint>(
-                `/api/workspaces/${workspaceSlug}/companies/${companyId}/estimates/${estimateId}/points`,
+                `/api/workspaces/${workspaceSlug}/projects/${projectId}/estimates/${estimateId}/points`,
                 data,
             )
             .then((r) => r.data),
 
     deletePoint: (
         workspaceSlug: string,
-        companyId: string,
+        projectId: string,
         estimateId: string,
         pointId: string,
     ): Promise<void> =>
         apiClient
             .delete(
-                `/api/workspaces/${workspaceSlug}/companies/${companyId}/estimates/${estimateId}/points/${pointId}`,
+                `/api/workspaces/${workspaceSlug}/projects/${projectId}/estimates/${estimateId}/points/${pointId}`,
             )
             .then(() => undefined),
 };

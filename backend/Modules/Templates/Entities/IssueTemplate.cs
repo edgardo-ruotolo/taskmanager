@@ -9,6 +9,6 @@ public class IssueTemplate : AuditableEntity
     public string? Description { get; set; }
     public Guid WorkspaceId { get; set; }
     public Workspace Workspace { get; set; } = null!;
-    public Guid? CompanyId { get; set; }
+    public Guid? ProjectId { get; set; }
     public string? TemplateJson { get; set; }
 }

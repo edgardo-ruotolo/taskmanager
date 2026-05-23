@@ -15,9 +15,9 @@ function makeWrapper(qc: QueryClient) {
 }
 
 describe('useCycles', () => {
-    it('returns cycles for a company', async () => {
+    it('returns cycles for a project', async () => {
         const qc = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: 60_000 } } })
-        const { result } = renderHook(() => useCycles('test-ws', 'company-1'), {
+        const { result } = renderHook(() => useCycles('test-ws', 'project-1'), {
             wrapper: makeWrapper(qc),
         })
         await waitFor(() => expect(result.current.isSuccess).toBe(true))
@@ -31,10 +31,10 @@ describe('useAddCycleIssue (optimistic)', () => {
         const qc = new QueryClient({
             defaultOptions: { queries: { retry: false, gcTime: 60_000 }, mutations: { retry: false } },
         })
-        qc.setQueryData(cycleIssuesKey('test-ws', 'company-1', 'cycle-1'), [])
+        qc.setQueryData(cycleIssuesKey('test-ws', 'project-1', 'cycle-1'), [])
 
         // Seed issues cache so the optimistic synthesizer finds the issue.
-        qc.setQueryData(['issues', 'test-ws', 'company-1'], [
+        qc.setQueryData(['issues', 'test-ws', 'project-1'], [
             {
                 id: 'issue-1',
                 sequenceId: 1,
@@ -48,7 +48,7 @@ describe('useAddCycleIssue (optimistic)', () => {
         // Server takes time to respond — ensures the optimistic state is observable.
         server.use(
             http.post(
-                `${BASE_URL}/api/workspaces/:slug/companies/:companyId/cycles/:cycleId/issues`,
+                `${BASE_URL}/api/workspaces/:slug/projects/:projectId/cycles/:cycleId/issues`,
                 async () => {
                     await new Promise((r) => setTimeout(r, 50))
                     return new HttpResponse(null, { status: 204 })
@@ -57,7 +57,7 @@ describe('useAddCycleIssue (optimistic)', () => {
         )
 
         const { result } = renderHook(
-            () => useAddCycleIssue('test-ws', 'company-1', 'cycle-1'),
+            () => useAddCycleIssue('test-ws', 'project-1', 'cycle-1'),
             { wrapper: makeWrapper(qc) },
         )
 
@@ -66,7 +66,7 @@ describe('useAddCycleIssue (optimistic)', () => {
         })
 
         const optimisticList = qc.getQueryData(
-            cycleIssuesKey('test-ws', 'company-1', 'cycle-1'),
+            cycleIssuesKey('test-ws', 'project-1', 'cycle-1'),
         ) as Array<{ issueId: string }>
         expect(optimisticList.some((i) => i.issueId === 'issue-1')).toBe(true)
     })
@@ -75,8 +75,8 @@ describe('useAddCycleIssue (optimistic)', () => {
         const qc = new QueryClient({
             defaultOptions: { queries: { retry: false, gcTime: 60_000 }, mutations: { retry: false } },
         })
-        qc.setQueryData(cycleIssuesKey('test-ws', 'company-1', 'cycle-1'), [])
-        qc.setQueryData(['issues', 'test-ws', 'company-1'], [
+        qc.setQueryData(cycleIssuesKey('test-ws', 'project-1', 'cycle-1'), [])
+        qc.setQueryData(['issues', 'test-ws', 'project-1'], [
             {
                 id: 'issue-1',
                 sequenceId: 1,
@@ -89,13 +89,13 @@ describe('useAddCycleIssue (optimistic)', () => {
 
         server.use(
             http.post(
-                `${BASE_URL}/api/workspaces/:slug/companies/:companyId/cycles/:cycleId/issues`,
+                `${BASE_URL}/api/workspaces/:slug/projects/:projectId/cycles/:cycleId/issues`,
                 () => new HttpResponse(null, { status: 500 }),
             ),
         )
 
         const { result } = renderHook(
-            () => useAddCycleIssue('test-ws', 'company-1', 'cycle-1'),
+            () => useAddCycleIssue('test-ws', 'project-1', 'cycle-1'),
             { wrapper: makeWrapper(qc) },
         )
 
@@ -105,7 +105,7 @@ describe('useAddCycleIssue (optimistic)', () => {
 
         await waitFor(() => expect(result.current.isError).toBe(true))
         const finalList = qc.getQueryData(
-            cycleIssuesKey('test-ws', 'company-1', 'cycle-1'),
+            cycleIssuesKey('test-ws', 'project-1', 'cycle-1'),
         ) as unknown[]
         expect(finalList).toEqual([])
     })

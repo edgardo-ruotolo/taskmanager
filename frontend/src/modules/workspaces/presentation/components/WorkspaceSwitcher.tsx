@@ -56,7 +56,7 @@ export function WorkspaceSwitcher(): React.ReactElement {
                         <button
                             key={ws.id}
                             type="button"
-                            onClick={() => void navigate(`/${ws.slug}/companies`)}
+                            onClick={() => void navigate(`/${ws.slug}/projects`)}
                             className={cn(
                                 'flex items-center gap-2.5 w-full px-3 py-2 text-[13px] rounded-md transition-colors duration-150',
                                 ws.slug === workspaceSlug

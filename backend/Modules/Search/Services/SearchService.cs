@@ -20,26 +20,26 @@ public class SearchService(AppDbContext db) : ISearchService
 
         var issues = await db.Issues
             .AsNoTracking()
-            .Where(i => i.Company.WorkspaceId == workspace.Id && EF.Functions.ILike(i.Title, pattern))
+            .Where(i => i.Project.WorkspaceId == workspace.Id && EF.Functions.ILike(i.Title, pattern))
             .OrderBy(i => i.Title)
             .Take(ResultLimit)
-            .Select(i => new SearchHit(i.Id, i.Title, i.CompanyId, i.SequenceId, null))
+            .Select(i => new SearchHit(i.Id, i.Title, i.ProjectId, i.SequenceId, null))
             .ToListAsync(ct);
 
         var cycles = await db.Cycles
             .AsNoTracking()
-            .Where(c => c.Company.WorkspaceId == workspace.Id && EF.Functions.ILike(c.Name, pattern))
+            .Where(c => c.Project.WorkspaceId == workspace.Id && EF.Functions.ILike(c.Name, pattern))
             .OrderBy(c => c.Name)
             .Take(ResultLimit)
-            .Select(c => new SearchHit(c.Id, c.Name, c.CompanyId, null, null))
+            .Select(c => new SearchHit(c.Id, c.Name, c.ProjectId, null, null))
             .ToListAsync(ct);
 
-        var modules = await db.ProjectModules
+        var modules = await db.Modules
             .AsNoTracking()
-            .Where(m => m.Company.WorkspaceId == workspace.Id && EF.Functions.ILike(m.Name, pattern))
+            .Where(m => m.Project.WorkspaceId == workspace.Id && EF.Functions.ILike(m.Name, pattern))
             .OrderBy(m => m.Name)
             .Take(ResultLimit)
-            .Select(m => new SearchHit(m.Id, m.Name, m.CompanyId, null, null))
+            .Select(m => new SearchHit(m.Id, m.Name, m.ProjectId, null, null))
             .ToListAsync(ct);
 
         var views = await db.IssueViews
@@ -49,7 +49,7 @@ public class SearchService(AppDbContext db) : ISearchService
                 && EF.Functions.ILike(v.Name, pattern))
             .OrderBy(v => v.Name)
             .Take(ResultLimit)
-            .Select(v => new SearchHit(v.Id, v.Name, v.CompanyId, null, null))
+            .Select(v => new SearchHit(v.Id, v.Name, v.ProjectId, null, null))
             .ToListAsync(ct);
 
         var labels = await db.Labels

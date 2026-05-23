@@ -1,15 +1,16 @@
 using AutoMapper;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using TaskManager.Api.Common.Email;
 using TaskManager.Api.Common.Exceptions;
 using TaskManager.Api.Common.Pagination;
 using TaskManager.Api.Data;
+using TaskManager.Api.Modules.Auth.Entities;
 using TaskManager.Api.Modules.Workspaces.Dtos;
 using TaskManager.Api.Modules.Workspaces.Entities;
 
 namespace TaskManager.Api.Modules.Workspaces.Services;
 
-public class WorkspaceService(AppDbContext db, IMapper mapper, IEmailService emailService, IConfiguration configuration)
+public class WorkspaceService(AppDbContext db, IMapper mapper, UserManager<User> userManager)
     : IWorkspaceService
 {
     public async Task<WorkspaceDto> CreateAsync(Guid userId, CreateWorkspaceDto dto, CancellationToken ct = default)
@@ -129,6 +130,14 @@ public class WorkspaceService(AppDbContext db, IMapper mapper, IEmailService ema
             .FirstOrDefaultAsync(m => m.WorkspaceId == workspace.Id && m.UserId == userId, ct)
             ?? throw new NotFoundException("Member not found in this workspace.");
 
+        if (member.Role == WorkspaceRole.Admin)
+        {
+            var adminCount = await db.WorkspaceMembers
+                .CountAsync(m => m.WorkspaceId == workspace.Id && m.Role == WorkspaceRole.Admin, ct);
+            if (adminCount <= 1)
+                throw new ValidationException("Cannot remove the last admin of the workspace.");
+        }
+
         member.IsDeleted = true;
         member.DeletedAt = DateTime.UtcNow;
         await db.SaveChangesAsync(ct);
@@ -153,111 +162,150 @@ public class WorkspaceService(AppDbContext db, IMapper mapper, IEmailService ema
             .FirstOrDefaultAsync(m => m.WorkspaceId == workspace.Id && m.UserId == userId, ct)
             ?? throw new NotFoundException("Member not found in this workspace.");
 
+        if (member.Role == WorkspaceRole.Admin && dto.Role != WorkspaceRole.Admin)
+        {
+            var adminCount = await db.WorkspaceMembers
+                .CountAsync(m => m.WorkspaceId == workspace.Id && m.Role == WorkspaceRole.Admin, ct);
+            if (adminCount <= 1)
+                throw new ValidationException("Cannot demote the last admin of the workspace.");
+        }
+
         member.Role = dto.Role;
         await db.SaveChangesAsync(ct);
         return mapper.Map<WorkspaceMemberDto>(member);
     }
 
-    public async Task<WorkspaceInvitationDto> InviteMemberAsync(string slug, CreateWorkspaceInvitationDto dto, Guid invitedById, CancellationToken ct = default)
-    {
-        var workspace = await db.Workspaces.FirstOrDefaultAsync(w => w.Slug == slug, ct)
-            ?? throw new NotFoundException($"Workspace '{slug}' not found.");
-
-        var isRequesterAdmin = await db.WorkspaceMembers
-            .AnyAsync(m => m.WorkspaceId == workspace.Id && m.UserId == invitedById && m.Role == WorkspaceRole.Admin, ct);
-
-        if (workspace.OwnerId != invitedById && !isRequesterAdmin)
-            throw new ForbiddenException("Only workspace admins can invite members.");
-
-        var normalizedEmail = dto.Email.ToLowerInvariant();
-
-        var alreadyMember = await db.WorkspaceMembers
-            .Include(m => m.User)
-            .AnyAsync(m => m.WorkspaceId == workspace.Id && m.User.Email == normalizedEmail, ct);
-
-        if (alreadyMember)
-            throw new ValidationException($"User '{dto.Email}' is already a member of this workspace.");
-
-        var invitation = new WorkspaceInvitation
-        {
-            WorkspaceId = workspace.Id,
-            Email = normalizedEmail,
-            Token = Guid.NewGuid().ToString("N"),
-            Role = dto.Role,
-            InvitedById = invitedById,
-            ExpiresAt = DateTime.UtcNow.AddDays(7)
-        };
-
-        db.WorkspaceInvitations.Add(invitation);
-        await db.SaveChangesAsync(ct);
-
-        var frontendUrl = configuration["App:FrontendUrl"] ?? "http://localhost:5173";
-        var inviteLink = $"{frontendUrl}/invitations/workspace/{invitation.Token}";
-        await emailService.SendWorkspaceInvitationAsync(normalizedEmail, string.Empty, workspace.Name, inviteLink, ct);
-
-        return mapper.Map<WorkspaceInvitationDto>(invitation);
-    }
-
-    public async Task AcceptInvitationAsync(string token, Guid userId, CancellationToken ct = default)
-    {
-        var invitation = await db.WorkspaceInvitations
-            .FirstOrDefaultAsync(i => i.Token == token && i.AcceptedAt == null && i.ExpiresAt > DateTime.UtcNow, ct)
-            ?? throw new NotFoundException("Invitation not found, already accepted, or expired.");
-
-        var user = await db.Users.FirstOrDefaultAsync(u => u.Id == userId, ct)
-            ?? throw new NotFoundException("User not found.");
-
-        if (!string.Equals(user.Email, invitation.Email, StringComparison.OrdinalIgnoreCase))
-            throw new ValidationException("This invitation was sent to a different email address.");
-
-        var alreadyMember = await db.WorkspaceMembers
-            .AnyAsync(m => m.WorkspaceId == invitation.WorkspaceId && m.UserId == userId, ct);
-
-        if (alreadyMember)
-            throw new ValidationException("You are already a member of this workspace.");
-
-        db.WorkspaceMembers.Add(new WorkspaceMember
-        {
-            WorkspaceId = invitation.WorkspaceId,
-            UserId = userId,
-            Role = invitation.Role,
-            IsActive = true
-        });
-
-        invitation.AcceptedAt = DateTime.UtcNow;
-        await db.SaveChangesAsync(ct);
-    }
-
-    public async Task<IEnumerable<WorkspaceInvitationDto>> GetPendingInvitationsAsync(string slug, CancellationToken ct = default)
+    public async Task<IEnumerable<WorkspaceUserSearchDto>> SearchUsersAsync(string slug, string query, int limit, Guid requesterId, CancellationToken ct = default)
     {
         var workspace = await db.Workspaces.AsNoTracking()
             .FirstOrDefaultAsync(w => w.Slug == slug, ct)
             ?? throw new NotFoundException($"Workspace '{slug}' not found.");
 
-        var invitations = await db.WorkspaceInvitations
-            .AsNoTracking()
-            .Where(i => i.WorkspaceId == workspace.Id && i.AcceptedAt == null && i.ExpiresAt > DateTime.UtcNow)
-            .OrderByDescending(i => i.CreatedAt)
+        await EnsureRequesterIsAdminAsync(workspace.Id, workspace.OwnerId, requesterId, ct);
+
+        var safeLimit = limit <= 0 ? 10 : Math.Min(limit, 50);
+        var existingMemberIds = await db.WorkspaceMembers
+            .Where(m => m.WorkspaceId == workspace.Id)
+            .Select(m => m.UserId)
             .ToListAsync(ct);
 
-        return mapper.Map<IEnumerable<WorkspaceInvitationDto>>(invitations);
+        var usersQuery = db.Users.AsNoTracking()
+            .Where(u => u.IsActive && !existingMemberIds.Contains(u.Id));
+
+        if (!string.IsNullOrWhiteSpace(query))
+        {
+            var q = query.Trim().ToLower();
+            usersQuery = usersQuery.Where(u =>
+                (u.Email != null && u.Email.ToLower().Contains(q)) ||
+                (u.DisplayName != null && u.DisplayName.ToLower().Contains(q)));
+        }
+
+        var users = await usersQuery
+            .OrderBy(u => u.Email)
+            .Take(safeLimit)
+            .Select(u => new WorkspaceUserSearchDto
+            {
+                UserId = u.Id,
+                Email = u.Email ?? string.Empty,
+                DisplayName = u.DisplayName,
+                AvatarUrl = u.AvatarUrl
+            })
+            .ToListAsync(ct);
+
+        return users;
     }
 
-    public async Task RevokeInvitationAsync(Guid invitationId, Guid requesterId, CancellationToken ct = default)
+    public async Task<WorkspaceMemberDto> AddMemberAsync(string slug, AddWorkspaceMemberDto dto, Guid requesterId, CancellationToken ct = default)
     {
-        var invitation = await db.WorkspaceInvitations
-            .Include(i => i.Workspace)
-            .FirstOrDefaultAsync(i => i.Id == invitationId, ct)
-            ?? throw new NotFoundException("Invitation not found.");
+        var workspace = await db.Workspaces.FirstOrDefaultAsync(w => w.Slug == slug, ct)
+            ?? throw new NotFoundException($"Workspace '{slug}' not found.");
 
-        var isRequesterAdmin = await db.WorkspaceMembers
-            .AnyAsync(m => m.WorkspaceId == invitation.WorkspaceId && m.UserId == requesterId && m.Role == WorkspaceRole.Admin, ct);
+        await EnsureRequesterIsAdminAsync(workspace.Id, workspace.OwnerId, requesterId, ct);
 
-        if (invitation.Workspace.OwnerId != requesterId && !isRequesterAdmin)
-            throw new ForbiddenException("Only workspace admins can revoke invitations.");
+        var userExists = await db.Users.AnyAsync(u => u.Id == dto.UserId && u.IsActive, ct);
+        if (!userExists)
+            throw new NotFoundException($"User '{dto.UserId}' not found.");
 
-        invitation.IsDeleted = true;
-        invitation.DeletedAt = DateTime.UtcNow;
+        var alreadyMember = await db.WorkspaceMembers
+            .AnyAsync(m => m.WorkspaceId == workspace.Id && m.UserId == dto.UserId, ct);
+        if (alreadyMember)
+            throw new ValidationException("User is already a member of this workspace.");
+
+        var member = new WorkspaceMember
+        {
+            WorkspaceId = workspace.Id,
+            UserId = dto.UserId,
+            Role = dto.Role,
+            IsActive = true
+        };
+
+        db.WorkspaceMembers.Add(member);
         await db.SaveChangesAsync(ct);
+
+        var saved = await db.WorkspaceMembers
+            .AsNoTracking()
+            .Include(m => m.User)
+            .FirstAsync(m => m.Id == member.Id, ct);
+
+        return mapper.Map<WorkspaceMemberDto>(saved);
+    }
+
+    public async Task<WorkspaceMemberDto> CreateUserAndAddMemberAsync(string slug, CreateUserAndAddMemberDto dto, Guid requesterId, CancellationToken ct = default)
+    {
+        var workspace = await db.Workspaces.FirstOrDefaultAsync(w => w.Slug == slug, ct)
+            ?? throw new NotFoundException($"Workspace '{slug}' not found.");
+
+        await EnsureRequesterIsAdminAsync(workspace.Id, workspace.OwnerId, requesterId, ct);
+
+        var normalizedEmail = dto.Email.Trim().ToLowerInvariant();
+        var existingUser = await userManager.FindByEmailAsync(normalizedEmail);
+        if (existingUser is not null)
+            throw new ValidationException($"A user with email '{dto.Email}' already exists. Use the search flow to add an existing user.");
+
+        var user = new User
+        {
+            UserName = normalizedEmail,
+            Email = normalizedEmail,
+            FirstName = dto.FirstName.Trim(),
+            LastName = dto.LastName.Trim(),
+            DisplayName = $"{dto.FirstName.Trim()} {dto.LastName.Trim()}",
+            IsActive = true,
+            EmailConfirmed = true
+        };
+
+        var createResult = await userManager.CreateAsync(user, dto.Password);
+        if (!createResult.Succeeded)
+        {
+            var errors = string.Join(", ", createResult.Errors.Select(e => e.Description));
+            throw new ValidationException($"Failed to create user: {errors}");
+        }
+
+        var member = new WorkspaceMember
+        {
+            WorkspaceId = workspace.Id,
+            UserId = user.Id,
+            Role = dto.Role,
+            IsActive = true
+        };
+
+        db.WorkspaceMembers.Add(member);
+        await db.SaveChangesAsync(ct);
+
+        var saved = await db.WorkspaceMembers
+            .AsNoTracking()
+            .Include(m => m.User)
+            .FirstAsync(m => m.Id == member.Id, ct);
+
+        return mapper.Map<WorkspaceMemberDto>(saved);
+    }
+
+    private async Task EnsureRequesterIsAdminAsync(Guid workspaceId, Guid ownerId, Guid requesterId, CancellationToken ct)
+    {
+        if (ownerId == requesterId) return;
+
+        var isAdmin = await db.WorkspaceMembers
+            .AnyAsync(m => m.WorkspaceId == workspaceId && m.UserId == requesterId && m.Role == WorkspaceRole.Admin, ct);
+        if (!isAdmin)
+            throw new ForbiddenException("Only workspace admins can perform this action.");
     }
 }

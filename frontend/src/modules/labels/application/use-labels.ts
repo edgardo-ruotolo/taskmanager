@@ -32,6 +32,32 @@ export const useCreateLabel = <TFormValues extends FieldValues = FieldValues>(
     });
 };
 
+interface UpdateLabelVariables {
+    labelId: string;
+    data: CreateLabelData;
+}
+
+export const useUpdateLabel = <TFormValues extends FieldValues = FieldValues>(
+    workspaceSlug: string,
+    options?: { setError?: UseFormSetError<TFormValues> },
+) => {
+    const qc = useQueryClient();
+    return useServerMutation<unknown, UpdateLabelVariables, TFormValues>({
+        mutationFn: ({ labelId, data }) =>
+            labelRepository.update(workspaceSlug, labelId, data),
+        onSuccess: () => {
+            void qc.invalidateQueries({ queryKey: labelsKey(workspaceSlug) });
+            void qc.invalidateQueries({ queryKey: ['issues'] });
+            void qc.invalidateQueries({ queryKey: ['cycle-issues'] });
+            void qc.invalidateQueries({ queryKey: ['module-issues'] });
+            void qc.invalidateQueries({ queryKey: ['issue'] });
+            toast.success('Etiqueta actualizada');
+        },
+        setError: options?.setError,
+        fallbackMessage: 'Error al actualizar la etiqueta',
+    });
+};
+
 export const useDeleteLabel = (workspaceSlug: string) => {
     const qc = useQueryClient();
     return useMutation({

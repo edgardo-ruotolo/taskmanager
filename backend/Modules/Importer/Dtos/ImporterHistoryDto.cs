@@ -4,7 +4,7 @@ public class ImporterHistoryDto
 {
     public Guid Id { get; set; }
     public Guid WorkspaceId { get; set; }
-    public Guid CompanyId { get; set; }
+    public Guid ProjectId { get; set; }
     public string FileName { get; set; } = string.Empty;
     public int TotalRows { get; set; }
     public int SuccessRows { get; set; }

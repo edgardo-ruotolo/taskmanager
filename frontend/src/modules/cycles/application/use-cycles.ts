@@ -8,27 +8,27 @@ import { issuesKey } from '@/modules/issues/application/use-issues';
 import type { Issue } from '@/modules/issues/domain/types';
 import type { PagedResult } from '@/shared/types/pagination';
 
-export const cyclesKey = (workspaceSlug: string, companyId: string) =>
-    ['cycles', workspaceSlug, companyId] as const;
+export const cyclesKey = (workspaceSlug: string, projectId: string) =>
+    ['cycles', workspaceSlug, projectId] as const;
 
-export const useCycles = (workspaceSlug: string, companyId: string) =>
+export const useCycles = (workspaceSlug: string, projectId: string) =>
     useQuery({
-        queryKey: cyclesKey(workspaceSlug, companyId),
-        queryFn: () => cycleRepository.getAll(workspaceSlug, companyId),
-        enabled: !!workspaceSlug && !!companyId,
+        queryKey: cyclesKey(workspaceSlug, projectId),
+        queryFn: () => cycleRepository.getAll(workspaceSlug, projectId),
+        enabled: !!workspaceSlug && !!projectId,
     });
 
 export const useCreateCycle = <TFormValues extends FieldValues = FieldValues>(
     workspaceSlug: string,
-    companyId: string,
+    projectId: string,
     options?: { setError?: UseFormSetError<TFormValues> },
 ) => {
     const qc = useQueryClient();
     return useServerMutation<unknown, CreateCycleData, TFormValues>({
         mutationFn: (data) =>
-            cycleRepository.create(workspaceSlug, companyId, data),
+            cycleRepository.create(workspaceSlug, projectId, data),
         onSuccess: () => {
-            void qc.invalidateQueries({ queryKey: cyclesKey(workspaceSlug, companyId) });
+            void qc.invalidateQueries({ queryKey: cyclesKey(workspaceSlug, projectId) });
             toast.success('Ciclo creado');
         },
         setError: options?.setError,
@@ -36,15 +36,15 @@ export const useCreateCycle = <TFormValues extends FieldValues = FieldValues>(
     });
 };
 
-export const useDeleteCycle = (workspaceSlug: string, companyId: string) => {
+export const useDeleteCycle = (workspaceSlug: string, projectId: string) => {
     const qc = useQueryClient();
     return useMutation({
         mutationFn: (cycleId: string) =>
-            cycleRepository.delete(workspaceSlug, companyId, cycleId),
+            cycleRepository.delete(workspaceSlug, projectId, cycleId),
         onSuccess: (_, cycleId) => {
-            void qc.invalidateQueries({ queryKey: cyclesKey(workspaceSlug, companyId) });
-            qc.removeQueries({ queryKey: ['cycle-issues', workspaceSlug, companyId, cycleId] });
-            void qc.invalidateQueries({ queryKey: issuesKey(workspaceSlug, companyId) });
+            void qc.invalidateQueries({ queryKey: cyclesKey(workspaceSlug, projectId) });
+            qc.removeQueries({ queryKey: ['cycle-issues', workspaceSlug, projectId, cycleId] });
+            void qc.invalidateQueries({ queryKey: issuesKey(workspaceSlug, projectId) });
             void qc.invalidateQueries({ queryKey: ['analytics', 'overview', workspaceSlug] });
             toast.success('Ciclo eliminado');
         },
@@ -52,33 +52,33 @@ export const useDeleteCycle = (workspaceSlug: string, companyId: string) => {
     });
 };
 
-export const cycleIssuesKey = (workspaceSlug: string, companyId: string, cycleId: string) =>
-    ['cycle-issues', workspaceSlug, companyId, cycleId] as const;
+export const cycleIssuesKey = (workspaceSlug: string, projectId: string, cycleId: string) =>
+    ['cycle-issues', workspaceSlug, projectId, cycleId] as const;
 
-export const useCycleIssues = (workspaceSlug: string, companyId: string, cycleId: string) =>
+export const useCycleIssues = (workspaceSlug: string, projectId: string, cycleId: string) =>
     useQuery({
-        queryKey: cycleIssuesKey(workspaceSlug, companyId, cycleId),
-        queryFn: () => cycleRepository.getIssues(workspaceSlug, companyId, cycleId),
-        enabled: !!workspaceSlug && !!companyId && !!cycleId,
+        queryKey: cycleIssuesKey(workspaceSlug, projectId, cycleId),
+        queryFn: () => cycleRepository.getIssues(workspaceSlug, projectId, cycleId),
+        enabled: !!workspaceSlug && !!projectId && !!cycleId,
     });
 
 interface CycleMembershipContext {
     prevCycleIssues?: CycleIssueRef[];
 }
 
-export const useAddCycleIssue = (workspaceSlug: string, companyId: string, cycleId: string) => {
+export const useAddCycleIssue = (workspaceSlug: string, projectId: string, cycleId: string) => {
     const qc = useQueryClient();
     return useMutation({
         mutationFn: (issueId: string) =>
-            cycleRepository.addIssue(workspaceSlug, companyId, cycleId, issueId),
+            cycleRepository.addIssue(workspaceSlug, projectId, cycleId, issueId),
         onMutate: async (issueId): Promise<CycleMembershipContext> => {
-            await qc.cancelQueries({ queryKey: cycleIssuesKey(workspaceSlug, companyId, cycleId) });
+            await qc.cancelQueries({ queryKey: cycleIssuesKey(workspaceSlug, projectId, cycleId) });
             const prevCycleIssues = qc.getQueryData<CycleIssueRef[]>(
-                cycleIssuesKey(workspaceSlug, companyId, cycleId),
+                cycleIssuesKey(workspaceSlug, projectId, cycleId),
             );
 
             // Synthesize a CycleIssueRef from the global issues list.
-            const issuesData = qc.getQueryData<PagedResult<Issue> | Issue[]>(issuesKey(workspaceSlug, companyId));
+            const issuesData = qc.getQueryData<PagedResult<Issue> | Issue[]>(issuesKey(workspaceSlug, projectId));
             const issuesList = Array.isArray(issuesData) ? issuesData : issuesData?.items;
             const found = issuesList?.find((i) => i.id === issueId);
             if (prevCycleIssues && found) {
@@ -92,7 +92,7 @@ export const useAddCycleIssue = (workspaceSlug: string, companyId: string, cycle
                 };
                 if (!prevCycleIssues.some((r) => r.issueId === issueId)) {
                     qc.setQueryData<CycleIssueRef[]>(
-                        cycleIssuesKey(workspaceSlug, companyId, cycleId),
+                        cycleIssuesKey(workspaceSlug, projectId, cycleId),
                         [...prevCycleIssues, optimisticRef],
                     );
                 }
@@ -101,33 +101,33 @@ export const useAddCycleIssue = (workspaceSlug: string, companyId: string, cycle
         },
         onError: (_err, _issueId, ctx) => {
             if (ctx?.prevCycleIssues) {
-                qc.setQueryData(cycleIssuesKey(workspaceSlug, companyId, cycleId), ctx.prevCycleIssues);
+                qc.setQueryData(cycleIssuesKey(workspaceSlug, projectId, cycleId), ctx.prevCycleIssues);
             }
             toast.error('Error al agregar la tarea');
         },
         onSettled: () => {
-            void qc.invalidateQueries({ queryKey: cycleIssuesKey(workspaceSlug, companyId, cycleId) });
-            void qc.invalidateQueries({ queryKey: cyclesKey(workspaceSlug, companyId) });
-            void qc.invalidateQueries({ queryKey: issuesKey(workspaceSlug, companyId) });
-            void qc.invalidateQueries({ queryKey: ['module-issues', workspaceSlug, companyId] });
+            void qc.invalidateQueries({ queryKey: cycleIssuesKey(workspaceSlug, projectId, cycleId) });
+            void qc.invalidateQueries({ queryKey: cyclesKey(workspaceSlug, projectId) });
+            void qc.invalidateQueries({ queryKey: issuesKey(workspaceSlug, projectId) });
+            void qc.invalidateQueries({ queryKey: ['module-issues', workspaceSlug, projectId] });
         },
         onSuccess: () => toast.success('Tarea agregada al ciclo'),
     });
 };
 
-export const useRemoveCycleIssue = (workspaceSlug: string, companyId: string, cycleId: string) => {
+export const useRemoveCycleIssue = (workspaceSlug: string, projectId: string, cycleId: string) => {
     const qc = useQueryClient();
     return useMutation({
         mutationFn: (issueId: string) =>
-            cycleRepository.removeIssue(workspaceSlug, companyId, cycleId, issueId),
+            cycleRepository.removeIssue(workspaceSlug, projectId, cycleId, issueId),
         onMutate: async (issueId): Promise<CycleMembershipContext> => {
-            await qc.cancelQueries({ queryKey: cycleIssuesKey(workspaceSlug, companyId, cycleId) });
+            await qc.cancelQueries({ queryKey: cycleIssuesKey(workspaceSlug, projectId, cycleId) });
             const prevCycleIssues = qc.getQueryData<CycleIssueRef[]>(
-                cycleIssuesKey(workspaceSlug, companyId, cycleId),
+                cycleIssuesKey(workspaceSlug, projectId, cycleId),
             );
             if (prevCycleIssues) {
                 qc.setQueryData<CycleIssueRef[]>(
-                    cycleIssuesKey(workspaceSlug, companyId, cycleId),
+                    cycleIssuesKey(workspaceSlug, projectId, cycleId),
                     prevCycleIssues.filter((r) => r.issueId !== issueId),
                 );
             }
@@ -135,15 +135,15 @@ export const useRemoveCycleIssue = (workspaceSlug: string, companyId: string, cy
         },
         onError: (_err, _issueId, ctx) => {
             if (ctx?.prevCycleIssues) {
-                qc.setQueryData(cycleIssuesKey(workspaceSlug, companyId, cycleId), ctx.prevCycleIssues);
+                qc.setQueryData(cycleIssuesKey(workspaceSlug, projectId, cycleId), ctx.prevCycleIssues);
             }
             toast.error('Error al quitar la tarea');
         },
         onSettled: () => {
-            void qc.invalidateQueries({ queryKey: cycleIssuesKey(workspaceSlug, companyId, cycleId) });
-            void qc.invalidateQueries({ queryKey: cyclesKey(workspaceSlug, companyId) });
-            void qc.invalidateQueries({ queryKey: issuesKey(workspaceSlug, companyId) });
-            void qc.invalidateQueries({ queryKey: ['module-issues', workspaceSlug, companyId] });
+            void qc.invalidateQueries({ queryKey: cycleIssuesKey(workspaceSlug, projectId, cycleId) });
+            void qc.invalidateQueries({ queryKey: cyclesKey(workspaceSlug, projectId) });
+            void qc.invalidateQueries({ queryKey: issuesKey(workspaceSlug, projectId) });
+            void qc.invalidateQueries({ queryKey: ['module-issues', workspaceSlug, projectId] });
         },
         onSuccess: () => toast.success('Tarea quitada del ciclo'),
     });

@@ -24,7 +24,7 @@ export interface Issue {
     descriptionHtml?: string;
     descriptionJson?: string;
     priority: IssuePriority;
-    companyId: string;
+    projectId: string;
     stateId: string;
     stateName: string;
     stateColor: string;
@@ -256,7 +256,7 @@ export interface IssueTemplate {
     name: string;
     description?: string;
     workspaceId: string;
-    companyId?: string;
+    projectId?: string;
     templateJson?: string;
     createdAt: string;
     updatedAt: string;
@@ -265,7 +265,7 @@ export interface IssueTemplate {
 export interface CreateIssueTemplateData {
     name: string;
     description?: string;
-    companyId?: string;
+    projectId?: string;
     templateJson?: string;
 }
 

@@ -92,7 +92,7 @@ public class BrevoEmailService(HttpClient httpClient, IConfiguration configurati
         await SendAsync(payload, apiKey, ct);
     }
 
-    public async Task SendWorkspaceInvitationAsync(string toEmail, string inviterName, string workspaceName, string inviteUrl, CancellationToken ct = default)
+    public async Task SendProjectInvitationAsync(string toEmail, string projectName, string inviteUrl, CancellationToken ct = default)
     {
         if (!TryGetApiKey(out var apiKey)) return;
 
@@ -100,29 +100,9 @@ public class BrevoEmailService(HttpClient httpClient, IConfiguration configurati
         {
             sender = new { name = "TaskManager", email = "noreply@taskmanager.app" },
             to = new[] { new { email = toEmail } },
-            subject = $"You have been invited to {workspaceName}",
+            subject = $"You have been invited to {projectName}",
             htmlContent = $"""
-                <p>{inviterName} has invited you to join the workspace <strong>{workspaceName}</strong> on TaskManager.</p>
-                <p>Click the link below to accept the invitation:</p>
-                <p><a href="{inviteUrl}">Accept invitation</a></p>
-                <p>This link will expire in 7 days.</p>
-                """
-        };
-
-        await SendAsync(payload, apiKey, ct);
-    }
-
-    public async Task SendCompanyInvitationAsync(string toEmail, string companyName, string inviteUrl, CancellationToken ct = default)
-    {
-        if (!TryGetApiKey(out var apiKey)) return;
-
-        var payload = new
-        {
-            sender = new { name = "TaskManager", email = "noreply@taskmanager.app" },
-            to = new[] { new { email = toEmail } },
-            subject = $"You have been invited to {companyName}",
-            htmlContent = $"""
-                <p>You have been invited to join the company <strong>{companyName}</strong> on TaskManager.</p>
+                <p>You have been invited to join the project <strong>{projectName}</strong> on TaskManager.</p>
                 <p>Click the link below to accept the invitation:</p>
                 <p><a href="{inviteUrl}">Accept invitation</a></p>
                 <p>This link will expire in 7 days.</p>

@@ -6,15 +6,15 @@ interface SidebarState {
     collapsed: boolean;
     pinnedWorkspaceItems: string[];
     mobileSidebarOpen: boolean;
-    expandedCompanies: Record<string, boolean>;
+    expandedProjects: Record<string, boolean>;
     setPrimaryWidth: (width: number) => void;
     setCollapsed: (collapsed: boolean) => void;
     toggleCollapsed: () => void;
     togglePinnedItem: (id: string) => void;
     setMobileSidebarOpen: (open: boolean) => void;
     toggleMobileSidebar: () => void;
-    toggleCompanyExpanded: (companyId: string) => void;
-    expandCompany: (companyId: string) => void;
+    toggleProjectExpanded: (projectId: string) => void;
+    expandProject: (projectId: string) => void;
 }
 
 export const useSidebarStore = create<SidebarState>()(
@@ -24,7 +24,7 @@ export const useSidebarStore = create<SidebarState>()(
             collapsed: false,
             pinnedWorkspaceItems: ['views', 'analytics'],
             mobileSidebarOpen: false,
-            expandedCompanies: {},
+            expandedProjects: {},
             setPrimaryWidth: (width) => set({ primaryWidth: width }),
             setCollapsed: (collapsed) => set({ collapsed }),
             toggleCollapsed: () => set((s) => ({ collapsed: !s.collapsed })),
@@ -36,18 +36,18 @@ export const useSidebarStore = create<SidebarState>()(
                 })),
             setMobileSidebarOpen: (open) => set({ mobileSidebarOpen: open }),
             toggleMobileSidebar: () => set((s) => ({ mobileSidebarOpen: !s.mobileSidebarOpen })),
-            toggleCompanyExpanded: (companyId) =>
+            toggleProjectExpanded: (projectId) =>
                 set((s) => ({
-                    expandedCompanies: {
-                        ...s.expandedCompanies,
-                        [companyId]: !s.expandedCompanies[companyId],
+                    expandedProjects: {
+                        ...s.expandedProjects,
+                        [projectId]: !s.expandedProjects[projectId],
                     },
                 })),
-            expandCompany: (companyId) =>
+            expandProject: (projectId) =>
                 set((s) =>
-                    s.expandedCompanies[companyId]
+                    s.expandedProjects[projectId]
                         ? s
-                        : { expandedCompanies: { ...s.expandedCompanies, [companyId]: true } },
+                        : { expandedProjects: { ...s.expandedProjects, [projectId]: true } },
                 ),
         }),
         { name: 'tm-primary-sidebar' },

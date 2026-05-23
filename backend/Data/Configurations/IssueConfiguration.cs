@@ -11,25 +11,25 @@ public class IssueConfiguration : IEntityTypeConfiguration<Issue>
         builder.Property(i => i.Title).IsRequired().HasMaxLength(500);
         builder.Property(i => i.Priority).HasConversion<int>();
 
-        builder.HasIndex(i => new { i.CompanyId, i.SequenceId }).IsUnique();
+        builder.HasIndex(i => new { i.ProjectId, i.SequenceId }).IsUnique();
 
         // Performance indexes — support the global soft-delete + archive filter and
-        // the most common access patterns (sort, state, assignee scoped by company).
-        builder.HasIndex(i => new { i.CompanyId, i.IsDeleted, i.IsArchived })
-            .HasDatabaseName("IX_Issues_CompanyId_IsDeleted_IsArchived");
+        // the most common access patterns (sort, state, assignee scoped by project).
+        builder.HasIndex(i => new { i.ProjectId, i.IsDeleted, i.IsArchived })
+            .HasDatabaseName("IX_Issues_ProjectId_IsDeleted_IsArchived");
 
-        builder.HasIndex(i => new { i.CompanyId, i.SortOrder, i.CreatedAt })
-            .HasDatabaseName("IX_Issues_CompanyId_SortOrder_CreatedAt");
+        builder.HasIndex(i => new { i.ProjectId, i.SortOrder, i.CreatedAt })
+            .HasDatabaseName("IX_Issues_ProjectId_SortOrder_CreatedAt");
 
-        builder.HasIndex(i => new { i.CompanyId, i.StateId })
-            .HasDatabaseName("IX_Issues_CompanyId_StateId");
+        builder.HasIndex(i => new { i.ProjectId, i.StateId })
+            .HasDatabaseName("IX_Issues_ProjectId_StateId");
 
-        builder.HasIndex(i => new { i.CompanyId, i.AssigneeId })
-            .HasDatabaseName("IX_Issues_CompanyId_AssigneeId");
+        builder.HasIndex(i => new { i.ProjectId, i.AssigneeId })
+            .HasDatabaseName("IX_Issues_ProjectId_AssigneeId");
 
-        builder.HasOne(i => i.Company)
+        builder.HasOne(i => i.Project)
             .WithMany()
-            .HasForeignKey(i => i.CompanyId)
+            .HasForeignKey(i => i.ProjectId)
             .OnDelete(DeleteBehavior.Cascade);
 
         builder.HasOne(i => i.State)

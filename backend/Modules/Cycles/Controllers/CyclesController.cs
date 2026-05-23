@@ -9,105 +9,105 @@ using TaskManager.Api.Modules.Cycles.Services;
 namespace TaskManager.Api.Modules.Cycles.Controllers;
 
 [ApiController]
-[Route("api/workspaces/{workspaceSlug}/companies/{companyId:guid}/cycles")]
+[Route("api/workspaces/{workspaceSlug}/projects/{projectId:guid}/cycles")]
 [Authorize]
-[ServiceFilter(typeof(RequireCompanyMemberAttribute))]
+[ServiceFilter(typeof(RequireProjectMemberAttribute))]
 public class CyclesController(ICycleService cycleService, ICurrentUser currentUser) : ControllerBase
 {
 
     [HttpGet]
     public async Task<ActionResult<PagedResult<CycleDto>>> GetAll(
         string workspaceSlug,
-        Guid companyId,
+        Guid projectId,
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 20,
         CancellationToken ct = default)
     {
-        var result = await cycleService.GetAllAsync(workspaceSlug, companyId, page, pageSize, ct);
+        var result = await cycleService.GetAllAsync(workspaceSlug, projectId, page, pageSize, ct);
         return Ok(result);
     }
 
     [HttpGet("{cycleId:guid}")]
-    public async Task<ActionResult<CycleDto>> GetById(string workspaceSlug, Guid companyId, Guid cycleId, CancellationToken ct = default)
+    public async Task<ActionResult<CycleDto>> GetById(string workspaceSlug, Guid projectId, Guid cycleId, CancellationToken ct = default)
     {
-        var cycle = await cycleService.GetByIdAsync(workspaceSlug, companyId, cycleId, ct);
+        var cycle = await cycleService.GetByIdAsync(workspaceSlug, projectId, cycleId, ct);
         return Ok(cycle);
     }
 
     [HttpPost]
-    public async Task<ActionResult<CycleDto>> Create(string workspaceSlug, Guid companyId, [FromBody] CreateCycleDto dto, CancellationToken ct = default)
+    public async Task<ActionResult<CycleDto>> Create(string workspaceSlug, Guid projectId, [FromBody] CreateCycleDto dto, CancellationToken ct = default)
     {
-        var cycle = await cycleService.CreateAsync(workspaceSlug, companyId, currentUser.UserId, dto, ct);
-        return CreatedAtAction(nameof(GetById), new { workspaceSlug, companyId, cycleId = cycle.Id }, cycle);
+        var cycle = await cycleService.CreateAsync(workspaceSlug, projectId, currentUser.UserId, dto, ct);
+        return CreatedAtAction(nameof(GetById), new { workspaceSlug, projectId, cycleId = cycle.Id }, cycle);
     }
 
     [HttpPatch("{cycleId:guid}")]
-    public async Task<ActionResult<CycleDto>> Update(string workspaceSlug, Guid companyId, Guid cycleId, [FromBody] UpdateCycleDto dto, CancellationToken ct = default)
+    public async Task<ActionResult<CycleDto>> Update(string workspaceSlug, Guid projectId, Guid cycleId, [FromBody] UpdateCycleDto dto, CancellationToken ct = default)
     {
-        var cycle = await cycleService.UpdateAsync(workspaceSlug, companyId, cycleId, dto, ct);
+        var cycle = await cycleService.UpdateAsync(workspaceSlug, projectId, cycleId, dto, ct);
         return Ok(cycle);
     }
 
     [HttpDelete("{cycleId:guid}")]
-    public async Task<IActionResult> Delete(string workspaceSlug, Guid companyId, Guid cycleId, CancellationToken ct = default)
+    public async Task<IActionResult> Delete(string workspaceSlug, Guid projectId, Guid cycleId, CancellationToken ct = default)
     {
-        await cycleService.DeleteAsync(workspaceSlug, companyId, cycleId, ct);
+        await cycleService.DeleteAsync(workspaceSlug, projectId, cycleId, ct);
         return NoContent();
     }
 
     [HttpPost("{cycleId:guid}/issues")]
-    public async Task<IActionResult> AddIssue(string workspaceSlug, Guid companyId, Guid cycleId, [FromBody] AddCycleIssueDto dto, CancellationToken ct = default)
+    public async Task<IActionResult> AddIssue(string workspaceSlug, Guid projectId, Guid cycleId, [FromBody] AddCycleIssueDto dto, CancellationToken ct = default)
     {
-        await cycleService.AddIssueAsync(workspaceSlug, companyId, cycleId, dto.IssueId, currentUser.UserId, ct);
+        await cycleService.AddIssueAsync(workspaceSlug, projectId, cycleId, dto.IssueId, currentUser.UserId, ct);
         return NoContent();
     }
 
     [HttpDelete("{cycleId:guid}/issues/{issueId:guid}")]
-    public async Task<IActionResult> RemoveIssue(string workspaceSlug, Guid companyId, Guid cycleId, Guid issueId, CancellationToken ct = default)
+    public async Task<IActionResult> RemoveIssue(string workspaceSlug, Guid projectId, Guid cycleId, Guid issueId, CancellationToken ct = default)
     {
-        await cycleService.RemoveIssueAsync(workspaceSlug, companyId, cycleId, issueId, ct);
+        await cycleService.RemoveIssueAsync(workspaceSlug, projectId, cycleId, issueId, ct);
         return NoContent();
     }
 
     [HttpGet("archived")]
-    public async Task<ActionResult<List<CycleDto>>> GetArchived(string workspaceSlug, Guid companyId, CancellationToken ct = default)
+    public async Task<ActionResult<List<CycleDto>>> GetArchived(string workspaceSlug, Guid projectId, CancellationToken ct = default)
     {
-        var cycles = await cycleService.GetArchivedAsync(workspaceSlug, companyId, ct);
+        var cycles = await cycleService.GetArchivedAsync(workspaceSlug, projectId, ct);
         return Ok(cycles);
     }
 
     [HttpPost("{cycleId:guid}/archive")]
-    public async Task<IActionResult> Archive(string workspaceSlug, Guid companyId, Guid cycleId, CancellationToken ct = default)
+    public async Task<IActionResult> Archive(string workspaceSlug, Guid projectId, Guid cycleId, CancellationToken ct = default)
     {
-        await cycleService.ArchiveAsync(workspaceSlug, companyId, cycleId, ct);
+        await cycleService.ArchiveAsync(workspaceSlug, projectId, cycleId, ct);
         return NoContent();
     }
 
     [HttpPost("{cycleId:guid}/unarchive")]
-    public async Task<IActionResult> Unarchive(string workspaceSlug, Guid companyId, Guid cycleId, CancellationToken ct = default)
+    public async Task<IActionResult> Unarchive(string workspaceSlug, Guid projectId, Guid cycleId, CancellationToken ct = default)
     {
-        await cycleService.UnarchiveAsync(workspaceSlug, companyId, cycleId, ct);
+        await cycleService.UnarchiveAsync(workspaceSlug, projectId, cycleId, ct);
         return NoContent();
     }
 
     [HttpPost("{cycleId:guid}/transfer-issues")]
-    public async Task<IActionResult> TransferIssues(string workspaceSlug, Guid companyId, Guid cycleId, [FromBody] TransferCycleIssuesDto dto, CancellationToken ct = default)
+    public async Task<IActionResult> TransferIssues(string workspaceSlug, Guid projectId, Guid cycleId, [FromBody] TransferCycleIssuesDto dto, CancellationToken ct = default)
     {
-        await cycleService.TransferIssuesAsync(workspaceSlug, companyId, cycleId, dto.TargetCycleId, ct);
+        await cycleService.TransferIssuesAsync(workspaceSlug, projectId, cycleId, dto.TargetCycleId, ct);
         return NoContent();
     }
 
     [HttpGet("{cycleId:guid}/progress")]
-    public async Task<ActionResult<CycleProgressDto>> GetProgress(string workspaceSlug, Guid companyId, Guid cycleId, CancellationToken ct = default)
+    public async Task<ActionResult<CycleProgressDto>> GetProgress(string workspaceSlug, Guid projectId, Guid cycleId, CancellationToken ct = default)
     {
-        var result = await cycleService.GetProgressAsync(workspaceSlug, companyId, cycleId, ct);
+        var result = await cycleService.GetProgressAsync(workspaceSlug, projectId, cycleId, ct);
         return Ok(result);
     }
 
     [HttpGet("{cycleId:guid}/analytics")]
-    public async Task<ActionResult<CycleAnalyticsDto>> GetAnalytics(string workspaceSlug, Guid companyId, Guid cycleId, CancellationToken ct = default)
+    public async Task<ActionResult<CycleAnalyticsDto>> GetAnalytics(string workspaceSlug, Guid projectId, Guid cycleId, CancellationToken ct = default)
     {
-        var result = await cycleService.GetAnalyticsAsync(workspaceSlug, companyId, cycleId, ct);
+        var result = await cycleService.GetAnalyticsAsync(workspaceSlug, projectId, cycleId, ct);
         return Ok(result);
     }
 }

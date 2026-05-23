@@ -53,21 +53,21 @@ const TYPE_CLASSES: Record<EstimateType, string> = {
 
 interface EstimatePointsPanelProps {
     workspaceSlug: string;
-    companyId: string;
+    projectId: string;
     estimate: Estimate;
     onClose: () => void;
 }
 
 const EstimatePointsPanel = ({
     workspaceSlug,
-    companyId,
+    projectId,
     estimate,
     onClose,
 }: EstimatePointsPanelProps): React.ReactElement => {
     const [keyInput, setKeyInput] = useState('');
     const [valueInput, setValueInput] = useState('');
-    const { mutate: addPoint, isPending: isAdding } = useAddEstimatePoint(workspaceSlug, companyId, estimate.id);
-    const { mutate: deletePoint, isPending: isDeleting } = useDeleteEstimatePoint(workspaceSlug, companyId, estimate.id);
+    const { mutate: addPoint, isPending: isAdding } = useAddEstimatePoint(workspaceSlug, projectId, estimate.id);
+    const { mutate: deletePoint, isPending: isDeleting } = useDeleteEstimatePoint(workspaceSlug, projectId, estimate.id);
 
     const points = estimate.points ?? [];
 
@@ -169,15 +169,15 @@ const EstimatePointsPanel = ({
 
 interface CreateEstimateDialogProps {
     workspaceSlug: string;
-    companyId: string;
+    projectId: string;
 }
 
-const CreateEstimateDialog = ({ workspaceSlug, companyId }: CreateEstimateDialogProps): React.ReactElement => {
+const CreateEstimateDialog = ({ workspaceSlug, projectId }: CreateEstimateDialogProps): React.ReactElement => {
     const [open, setOpen] = useState(false);
     const [name, setName] = useState('');
     const [description, setDescription] = useState('');
     const [type, setType] = useState<EstimateType>('Points');
-    const { mutate: createEstimate, isPending } = useCreateEstimate(workspaceSlug, companyId);
+    const { mutate: createEstimate, isPending } = useCreateEstimate(workspaceSlug, projectId);
 
     const handleSubmit = (e: React.FormEvent): void => {
         e.preventDefault();
@@ -266,13 +266,13 @@ const CreateEstimateDialog = ({ workspaceSlug, companyId }: CreateEstimateDialog
 };
 
 export const EstimatesPage = (): React.ReactElement => {
-    const { workspaceSlug = '', companyId = '' } = useParams<{
+    const { workspaceSlug = '', projectId = '' } = useParams<{
         workspaceSlug: string;
-        companyId: string;
+        projectId: string;
     }>();
 
-    const { data: estimates, isLoading } = useEstimates(workspaceSlug, companyId);
-    const { mutate: deleteEstimate, isPending: isDeleting } = useDeleteEstimate(workspaceSlug, companyId);
+    const { data: estimates, isLoading } = useEstimates(workspaceSlug, projectId);
+    const { mutate: deleteEstimate, isPending: isDeleting } = useDeleteEstimate(workspaceSlug, projectId);
     const [selectedEstimate, setSelectedEstimate] = useState<Estimate | null>(null);
 
     const items = estimates ?? [];
@@ -287,7 +287,7 @@ export const EstimatesPage = (): React.ReactElement => {
                         </p>
                         <h1 className="text-2xl font-bold text-primary">Estimaciones</h1>
                     </div>
-                    <CreateEstimateDialog workspaceSlug={workspaceSlug} companyId={companyId} />
+                    <CreateEstimateDialog workspaceSlug={workspaceSlug} projectId={projectId} />
                 </div>
 
                 {isLoading && (
@@ -310,9 +310,9 @@ export const EstimatesPage = (): React.ReactElement => {
                         <BarChart2 size={48} className="text-placeholder mb-4" />
                         <h2 className="text-lg font-medium text-secondary mb-2">No hay estimaciones aún</h2>
                         <p className="text-sm text-placeholder mb-6">
-                            Crea la primera estimación para esta empresa
+                            Crea la primera estimación para esta proyecto
                         </p>
-                        <CreateEstimateDialog workspaceSlug={workspaceSlug} companyId={companyId} />
+                        <CreateEstimateDialog workspaceSlug={workspaceSlug} projectId={projectId} />
                     </div>
                 )}
 
@@ -393,7 +393,7 @@ export const EstimatesPage = (): React.ReactElement => {
                     {selectedEstimate && (
                         <EstimatePointsPanel
                             workspaceSlug={workspaceSlug}
-                            companyId={companyId}
+                            projectId={projectId}
                             estimate={selectedEstimate}
                             onClose={() => setSelectedEstimate(null)}
                         />

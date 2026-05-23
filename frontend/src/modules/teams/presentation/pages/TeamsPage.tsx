@@ -4,11 +4,14 @@ import { useParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Users, Plus, Trash2, Edit2 } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
+import { Users, Plus, Trash2, Edit2, UserX, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
     DialogContent,
+    DialogDescription,
     DialogHeader,
     DialogTitle,
     DialogFooter,
@@ -27,7 +30,22 @@ import {
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useTeams, useCreateTeam, useUpdateTeam, useDeleteTeam } from '../../application/use-teams';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Separator } from '@/components/ui/separator';
+import { cn } from '@/lib/utils';
+import { getErrorMessage } from '@/shared/lib/api-errors';
+import { useWorkspaceMembers } from '@/modules/workspaces/application/use-workspaces';
+import { WORKSPACE_ROLE_LABELS } from '@/modules/workspaces/domain/types';
+import type { WorkspaceRole } from '@/modules/workspaces/domain/types';
+import {
+    useTeams,
+    useCreateTeam,
+    useUpdateTeam,
+    useDeleteTeam,
+    useTeamMembers,
+    useRemoveTeamMember,
+} from '../../application/use-teams';
+import { teamsRepository } from '../../infrastructure/teams-repository';
 import type { Team, CreateTeamData, UpdateTeamData } from '../../domain/types';
 
 const teamSchema = z.object({
@@ -159,10 +177,262 @@ function TeamDialog({ open, onOpenChange, workspaceSlug, editingTeam }: TeamDial
     );
 }
 
+const ROLE_BADGE_CLASSES: Record<WorkspaceRole, string> = {
+    Admin: 'bg-blue-500/15 text-blue-400 border border-blue-500/20',
+    Lead: 'bg-amber-500/15 text-amber-400 border border-amber-500/20',
+    Member: 'bg-surface-1/50 text-secondary border border-subtle',
+};
+
+function MiniRoleBadge({ role }: { role: WorkspaceRole }): React.ReactElement {
+    return (
+        <span className={cn('text-[10px] px-2 py-0.5 rounded-full font-medium', ROLE_BADGE_CLASSES[role])}>
+            {WORKSPACE_ROLE_LABELS[role]}
+        </span>
+    );
+}
+
+interface ManageTeamMembersDialogProps {
+    team: Team | null;
+    workspaceSlug: string;
+    open: boolean;
+    onOpenChange: (open: boolean) => void;
+}
+
+function ManageTeamMembersDialog({
+    team,
+    workspaceSlug,
+    open,
+    onOpenChange,
+}: ManageTeamMembersDialogProps): React.ReactElement {
+    const qc = useQueryClient();
+    const teamId = team?.id ?? '';
+
+    const { data: teamMembers = [], isLoading: loadingTeamMembers } = useTeamMembers(workspaceSlug, teamId);
+    const { data: workspaceMembers = [], isLoading: loadingWorkspaceMembers } = useWorkspaceMembers(workspaceSlug);
+
+    const removeMember = useRemoveTeamMember(workspaceSlug, teamId);
+
+    const [selected, setSelected] = useState<Set<string>>(new Set());
+    const [bulkAdding, setBulkAdding] = useState(false);
+
+    const teamMemberIds = new Set(teamMembers.map((m) => m.userId));
+    const candidates = workspaceMembers.filter((m) => !teamMemberIds.has(m.userId));
+
+    const toggleSelected = (userId: string): void => {
+        setSelected((prev) => {
+            const next = new Set(prev);
+            if (next.has(userId)) {
+                next.delete(userId);
+            } else {
+                next.add(userId);
+            }
+            return next;
+        });
+    };
+
+    const handleAddSelected = async (): Promise<void> => {
+        if (!team || selected.size === 0) return;
+        setBulkAdding(true);
+        const ids = [...selected];
+        const results = await Promise.allSettled(
+            ids.map((uid) => teamsRepository.addMember(workspaceSlug, team.id, uid)),
+        );
+        const success = results.filter((r) => r.status === 'fulfilled').length;
+        const failed = results.length - success;
+
+        void qc.invalidateQueries({ queryKey: ['teams', workspaceSlug, team.id, 'members'] });
+        void qc.invalidateQueries({ queryKey: ['teams', workspaceSlug] });
+
+        if (success > 0 && failed === 0) {
+            toast.success(`${success} miembro(s) agregado(s)`);
+        } else if (success > 0 && failed > 0) {
+            toast.warning(`${success} agregado(s), ${failed} con error`);
+        } else {
+            const firstError = results.find((r) => r.status === 'rejected');
+            const msg = firstError && firstError.status === 'rejected'
+                ? getErrorMessage(firstError.reason) ?? 'Error al agregar miembros'
+                : 'Error al agregar miembros';
+            toast.error(msg);
+        }
+        setSelected(new Set());
+        setBulkAdding(false);
+    };
+
+    const handleClose = (next: boolean): void => {
+        if (!next) {
+            setSelected(new Set());
+        }
+        onOpenChange(next);
+    };
+
+    return (
+        <Dialog open={open} onOpenChange={handleClose}>
+            <DialogContent className="bg-surface-2 border-subtle max-w-2xl">
+                <DialogHeader>
+                    <DialogTitle className="text-primary">
+                        Miembros de {team?.name ?? ''}
+                    </DialogTitle>
+                    <DialogDescription className="text-placeholder">
+                        Asigna miembros del workspace a este equipo.
+                    </DialogDescription>
+                </DialogHeader>
+
+                <div className="space-y-4">
+                    {/* Section A: current team members */}
+                    <div>
+                        <p className="text-sm font-medium text-secondary mb-3">
+                            Miembros del equipo
+                            <span className="ml-2 text-xs font-normal text-placeholder">
+                                ({teamMembers.length})
+                            </span>
+                        </p>
+                        <div className="border border-subtle rounded-md max-h-[200px] overflow-y-auto">
+                            {loadingTeamMembers ? (
+                                <div className="p-3 space-y-2">
+                                    {(['sk0', 'sk1', 'sk2'] as const).map((k) => (
+                                        <Skeleton key={k} className="h-9 w-full bg-layer-1 rounded" />
+                                    ))}
+                                </div>
+                            ) : teamMembers.length === 0 ? (
+                                <p className="text-xs text-placeholder px-3 py-6 text-center">
+                                    Aún no hay miembros en este equipo.
+                                </p>
+                            ) : (
+                                <ul className="divide-y divide-subtle">
+                                    {teamMembers.map((m) => (
+                                        <li
+                                            key={m.userId}
+                                            className="flex items-center gap-3 px-3 py-2 hover:bg-layer-transparent-hover transition-colors"
+                                        >
+                                            <div className="w-7 h-7 rounded-full bg-layer-2 flex items-center justify-center text-xs font-medium text-secondary overflow-hidden shrink-0">
+                                                <User size={12} aria-hidden="true" />
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <p className="text-sm text-primary truncate">
+                                                    {m.userName || m.userEmail}
+                                                </p>
+                                                {m.userName && (
+                                                    <p className="text-xs text-placeholder truncate">
+                                                        {m.userEmail}
+                                                    </p>
+                                                )}
+                                            </div>
+                                            <button
+                                                type="button"
+                                                onClick={() => removeMember.mutate(m.userId)}
+                                                disabled={removeMember.isPending}
+                                                className="p-1 text-placeholder hover:text-red-400 transition-colors rounded disabled:opacity-40"
+                                                aria-label={`Quitar ${m.userName || m.userEmail} del equipo`}
+                                            >
+                                                <UserX size={14} aria-hidden="true" />
+                                            </button>
+                                        </li>
+                                    ))}
+                                </ul>
+                            )}
+                        </div>
+                    </div>
+
+                    <Separator className="bg-subtle" />
+
+                    {/* Section B: candidates from workspace */}
+                    <div>
+                        <p className="text-sm font-medium text-secondary mb-3">
+                            Disponibles del workspace
+                            <span className="ml-2 text-xs font-normal text-placeholder">
+                                ({candidates.length})
+                            </span>
+                        </p>
+                        <div className="border border-subtle rounded-md max-h-[260px] overflow-y-auto">
+                            {loadingWorkspaceMembers ? (
+                                <div className="p-3 space-y-2">
+                                    {(['sk0', 'sk1', 'sk2'] as const).map((k) => (
+                                        <Skeleton key={k} className="h-9 w-full bg-layer-1 rounded" />
+                                    ))}
+                                </div>
+                            ) : candidates.length === 0 ? (
+                                <p className="text-xs text-placeholder px-3 py-6 text-center">
+                                    Todos los miembros del workspace ya están en este equipo.
+                                </p>
+                            ) : (
+                                <ul className="divide-y divide-subtle">
+                                    {candidates.map((m) => {
+                                        const checked = selected.has(m.userId);
+                                        return (
+                                            <li key={m.userId}>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => toggleSelected(m.userId)}
+                                                    className={cn(
+                                                        'w-full flex items-center gap-3 px-3 py-2 text-left hover:bg-layer-transparent-hover transition-colors cursor-pointer',
+                                                        checked && 'bg-layer-transparent-hover',
+                                                    )}
+                                                >
+                                                    <Checkbox
+                                                        checked={checked}
+                                                        onCheckedChange={() => toggleSelected(m.userId)}
+                                                        onClick={(e) => e.stopPropagation()}
+                                                        aria-label={`Seleccionar ${m.displayName ?? m.email}`}
+                                                    />
+                                                    <div className="w-7 h-7 rounded-full bg-layer-2 flex items-center justify-center text-xs font-medium text-secondary overflow-hidden shrink-0">
+                                                        {m.avatarUrl ? (
+                                                            <img
+                                                                src={m.avatarUrl}
+                                                                alt={m.displayName ?? m.email}
+                                                                className="w-full h-full rounded-full object-cover"
+                                                            />
+                                                        ) : (
+                                                            <User size={12} aria-hidden="true" />
+                                                        )}
+                                                    </div>
+                                                    <div className="flex-1 min-w-0">
+                                                        <p className="text-sm text-primary truncate">
+                                                            {m.displayName ?? m.email}
+                                                        </p>
+                                                        {m.displayName && (
+                                                            <p className="text-xs text-placeholder truncate">
+                                                                {m.email}
+                                                            </p>
+                                                        )}
+                                                    </div>
+                                                    <MiniRoleBadge role={m.role} />
+                                                </button>
+                                            </li>
+                                        );
+                                    })}
+                                </ul>
+                            )}
+                        </div>
+                    </div>
+                </div>
+
+                <DialogFooter>
+                    <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => handleClose(false)}
+                    >
+                        Cerrar
+                    </Button>
+                    <Button
+                        type="button"
+                        onClick={() => { void handleAddSelected(); }}
+                        disabled={selected.size === 0 || bulkAdding}
+                        className="bg-accent-primary hover:bg-accent-primary-hover text-on-color"
+                    >
+                        {bulkAdding ? 'Agregando…' : `Agregar seleccionados (${selected.size})`}
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    );
+}
+
 export const TeamsPage = (): React.ReactElement => {
     const { workspaceSlug = '' } = useParams<{ workspaceSlug: string }>();
     const [dialogOpen, setDialogOpen] = useState(false);
     const [editingTeam, setEditingTeam] = useState<Team | null>(null);
+    const [manageMembersTeam, setManageMembersTeam] = useState<Team | null>(null);
 
     const { data: teams = [], isLoading } = useTeams(workspaceSlug);
     const deleteTeam = useDeleteTeam(workspaceSlug);
@@ -222,7 +492,7 @@ export const TeamsPage = (): React.ReactElement => {
                         <span className="flex-1 text-xs font-medium text-placeholder">Nombre</span>
                         <span className="text-xs font-medium text-placeholder w-24 text-center">Identificador</span>
                         <span className="text-xs font-medium text-placeholder w-20 text-center">Miembros</span>
-                        <span className="w-16" />
+                        <span className="w-24" />
                     </div>
                     <ul className="divide-y divide-subtle">
                         {teams.map((team) => (
@@ -242,7 +512,15 @@ export const TeamsPage = (): React.ReactElement => {
                                 <span className="w-20 text-center text-xs text-secondary">
                                     {team.memberCount}
                                 </span>
-                                <div className="w-16 flex items-center justify-end gap-1">
+                                <div className="w-24 flex items-center justify-end gap-1">
+                                    <button
+                                        type="button"
+                                        onClick={() => setManageMembersTeam(team)}
+                                        className="p-1 text-placeholder hover:text-primary transition-colors rounded"
+                                        aria-label={`Gestionar miembros de ${team.name}`}
+                                    >
+                                        <Users size={13} aria-hidden="true" />
+                                    </button>
                                     <button
                                         type="button"
                                         onClick={() => openEdit(team)}
@@ -295,6 +573,15 @@ export const TeamsPage = (): React.ReactElement => {
                 onOpenChange={setDialogOpen}
                 workspaceSlug={workspaceSlug}
                 editingTeam={editingTeam}
+            />
+
+            <ManageTeamMembersDialog
+                team={manageMembersTeam}
+                workspaceSlug={workspaceSlug}
+                open={!!manageMembersTeam}
+                onOpenChange={(next) => {
+                    if (!next) setManageMembersTeam(null);
+                }}
             />
         </div>
     );

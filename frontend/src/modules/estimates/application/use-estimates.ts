@@ -5,27 +5,27 @@ import { useServerMutation } from '@/shared/hooks/useServerMutation';
 import { estimateRepository } from '../infrastructure/estimate-repository';
 import type { CreateEstimateData, CreateEstimatePointData } from '../domain/types';
 
-export const estimatesKey = (workspaceSlug: string, companyId: string) =>
-    ['estimates', workspaceSlug, companyId] as const;
+export const estimatesKey = (workspaceSlug: string, projectId: string) =>
+    ['estimates', workspaceSlug, projectId] as const;
 
-export const useEstimates = (workspaceSlug: string, companyId: string) =>
+export const useEstimates = (workspaceSlug: string, projectId: string) =>
     useQuery({
-        queryKey: estimatesKey(workspaceSlug, companyId),
-        queryFn: () => estimateRepository.getAll(workspaceSlug, companyId),
-        enabled: !!workspaceSlug && !!companyId,
+        queryKey: estimatesKey(workspaceSlug, projectId),
+        queryFn: () => estimateRepository.getAll(workspaceSlug, projectId),
+        enabled: !!workspaceSlug && !!projectId,
     });
 
 export const useCreateEstimate = <TFormValues extends FieldValues = FieldValues>(
     workspaceSlug: string,
-    companyId: string,
+    projectId: string,
     options?: { setError?: UseFormSetError<TFormValues> },
 ) => {
     const qc = useQueryClient();
     return useServerMutation<unknown, CreateEstimateData, TFormValues>({
         mutationFn: (data) =>
-            estimateRepository.create(workspaceSlug, companyId, data),
+            estimateRepository.create(workspaceSlug, projectId, data),
         onSuccess: () => {
-            void qc.invalidateQueries({ queryKey: estimatesKey(workspaceSlug, companyId) });
+            void qc.invalidateQueries({ queryKey: estimatesKey(workspaceSlug, projectId) });
             toast.success('Estimación creada');
         },
         setError: options?.setError,
@@ -33,14 +33,14 @@ export const useCreateEstimate = <TFormValues extends FieldValues = FieldValues>
     });
 };
 
-export const useDeleteEstimate = (workspaceSlug: string, companyId: string) => {
+export const useDeleteEstimate = (workspaceSlug: string, projectId: string) => {
     const qc = useQueryClient();
     return useMutation({
         mutationFn: (estimateId: string) =>
-            estimateRepository.delete(workspaceSlug, companyId, estimateId),
+            estimateRepository.delete(workspaceSlug, projectId, estimateId),
         onSuccess: () => {
-            void qc.invalidateQueries({ queryKey: estimatesKey(workspaceSlug, companyId) });
-            void qc.invalidateQueries({ queryKey: ['issues', workspaceSlug, companyId] });
+            void qc.invalidateQueries({ queryKey: estimatesKey(workspaceSlug, projectId) });
+            void qc.invalidateQueries({ queryKey: ['issues', workspaceSlug, projectId] });
             void qc.invalidateQueries({ queryKey: ['issue'] });
             toast.success('Estimación eliminada');
         },
@@ -50,16 +50,16 @@ export const useDeleteEstimate = (workspaceSlug: string, companyId: string) => {
 
 export const useAddEstimatePoint = <TFormValues extends FieldValues = FieldValues>(
     workspaceSlug: string,
-    companyId: string,
+    projectId: string,
     estimateId: string,
     options?: { setError?: UseFormSetError<TFormValues> },
 ) => {
     const qc = useQueryClient();
     return useServerMutation<unknown, CreateEstimatePointData, TFormValues>({
         mutationFn: (data) =>
-            estimateRepository.addPoint(workspaceSlug, companyId, estimateId, data),
+            estimateRepository.addPoint(workspaceSlug, projectId, estimateId, data),
         onSuccess: () => {
-            void qc.invalidateQueries({ queryKey: estimatesKey(workspaceSlug, companyId) });
+            void qc.invalidateQueries({ queryKey: estimatesKey(workspaceSlug, projectId) });
             toast.success('Punto agregado');
         },
         setError: options?.setError,
@@ -67,14 +67,14 @@ export const useAddEstimatePoint = <TFormValues extends FieldValues = FieldValue
     });
 };
 
-export const useDeleteEstimatePoint = (workspaceSlug: string, companyId: string, estimateId: string) => {
+export const useDeleteEstimatePoint = (workspaceSlug: string, projectId: string, estimateId: string) => {
     const qc = useQueryClient();
     return useMutation({
         mutationFn: (pointId: string) =>
-            estimateRepository.deletePoint(workspaceSlug, companyId, estimateId, pointId),
+            estimateRepository.deletePoint(workspaceSlug, projectId, estimateId, pointId),
         onSuccess: () => {
-            void qc.invalidateQueries({ queryKey: estimatesKey(workspaceSlug, companyId) });
-            void qc.invalidateQueries({ queryKey: ['issues', workspaceSlug, companyId] });
+            void qc.invalidateQueries({ queryKey: estimatesKey(workspaceSlug, projectId) });
+            void qc.invalidateQueries({ queryKey: ['issues', workspaceSlug, projectId] });
             void qc.invalidateQueries({ queryKey: ['issue'] });
             toast.success('Punto eliminado');
         },

@@ -9,7 +9,7 @@ import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useCycles, useCycleIssues } from '../../application/use-cycles';
 import { useCycleProgress } from '../../application/use-cycle-analytics';
-import { useCompany } from '@/modules/companies/application/use-companies';
+import { useProject } from '@/modules/projects/application/use-projects';
 import { IssuePeekOverview } from '@/modules/issues/presentation/components/IssuePeekOverview';
 import type { Issue } from '@/modules/issues/domain/types';
 import type { Cycle, CycleIssueRef } from '../../domain/types';
@@ -50,13 +50,13 @@ function computeAnalytics(issues: CycleIssueRef[]): IssueAnalytics {
     return { totalIssues, completedIssues, progressPct, issuesByState };
 }
 
-function issueRefToIssue(ref: CycleIssueRef, companyId: string): Issue {
+function issueRefToIssue(ref: CycleIssueRef, projectId: string): Issue {
     return {
         id: ref.issueId,
         sequenceId: ref.issueSequenceId,
         title: ref.issueTitle,
         priority: ref.priority as IssuePriority,
-        companyId,
+        projectId,
         stateId: '',
         stateName: ref.stateName,
         stateColor: ref.stateColor,
@@ -343,23 +343,23 @@ function AnalyticsSidebar({ isLoading, analytics, description, cycle, serverProg
 }
 
 export const CycleDetailPage = (): React.ReactElement => {
-    const { workspaceSlug = '', companyId = '', cycleId = '' } = useParams<{
+    const { workspaceSlug = '', projectId = '', cycleId = '' } = useParams<{
         workspaceSlug: string;
-        companyId: string;
+        projectId: string;
         cycleId: string;
     }>();
     const navigate = useNavigate();
     const [peekIssue, setPeekIssue] = useState<Issue | null>(null);
 
-    const { data: cycles, isLoading: cyclesLoading } = useCycles(workspaceSlug, companyId);
-    const { data: issueRefs, isLoading: issuesLoading } = useCycleIssues(workspaceSlug, companyId, cycleId);
-    const { data: company } = useCompany(workspaceSlug, companyId);
-    const { data: cycleProgress } = useCycleProgress(workspaceSlug, companyId, cycleId);
+    const { data: cycles, isLoading: cyclesLoading } = useCycles(workspaceSlug, projectId);
+    const { data: issueRefs, isLoading: issuesLoading } = useCycleIssues(workspaceSlug, projectId, cycleId);
+    const { data: project } = useProject(workspaceSlug, projectId);
+    const { data: cycleProgress } = useCycleProgress(workspaceSlug, projectId, cycleId);
 
     const cycle = cycles?.find((c) => c.id === cycleId) ?? null;
     const issues = issueRefs ?? [];
     const isLoading = cyclesLoading || issuesLoading;
-    const companyIdentifier = company?.identifier ?? 'ISS';
+    const projectIdentifier = project?.identifier ?? 'ISS';
 
     const analytics = computeAnalytics(issues);
 
@@ -371,7 +371,7 @@ export const CycleDetailPage = (): React.ReactElement => {
                 <Button
                     variant="outline"
                     className="border-subtle text-secondary mt-4"
-                    onClick={() => void navigate(`/${workspaceSlug}/companies/${companyId}/cycles`)}
+                    onClick={() => void navigate(`/${workspaceSlug}/projects/${projectId}/cycles`)}
                 >
                     <ArrowLeft size={14} className="mr-2" />
                     Volver a ciclos
@@ -385,14 +385,14 @@ export const CycleDetailPage = (): React.ReactElement => {
             <div className="px-6 py-4 border-b border-subtle bg-canvas shrink-0">
                 <nav className="flex items-center gap-1.5 text-xs text-placeholder mb-3">
                     <Link
-                        to={`/${workspaceSlug}/companies`}
+                        to={`/${workspaceSlug}/projects`}
                         className="hover:text-secondary transition-colors"
                     >
                         {workspaceSlug}
                     </Link>
                     <ChevronRight size={12} />
                     <Link
-                        to={`/${workspaceSlug}/companies/${companyId}/cycles`}
+                        to={`/${workspaceSlug}/projects/${projectId}/cycles`}
                         className="hover:text-secondary transition-colors"
                     >
                         Ciclos
@@ -405,7 +405,7 @@ export const CycleDetailPage = (): React.ReactElement => {
                     <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => void navigate(`/${workspaceSlug}/companies/${companyId}/cycles`)}
+                        onClick={() => void navigate(`/${workspaceSlug}/projects/${projectId}/cycles`)}
                         className="h-7 px-2 text-secondary hover:text-primary -ml-2"
                     >
                         <ArrowLeft size={14} className="mr-1.5" />
@@ -457,7 +457,7 @@ export const CycleDetailPage = (): React.ReactElement => {
                                 <button
                                     key={ref.issueId}
                                     type="button"
-                                    onClick={() => setPeekIssue(issueRefToIssue(ref, companyId))}
+                                    onClick={() => setPeekIssue(issueRefToIssue(ref, projectId))}
                                     className="w-full flex items-center gap-3 px-4 h-12 border-b border-subtle last:border-b-0 hover:bg-surface-2 transition-colors text-left"
                                 >
                                     <span
@@ -466,7 +466,7 @@ export const CycleDetailPage = (): React.ReactElement => {
                                         aria-hidden="true"
                                     />
                                     <span className="text-xs font-mono text-placeholder w-16">
-                                        {companyIdentifier}-{ref.issueSequenceId}
+                                        {projectIdentifier}-{ref.issueSequenceId}
                                     </span>
                                     <span className="flex-1 text-sm text-primary truncate">{ref.issueTitle}</span>
                                     <span className="text-xs text-placeholder w-28 text-right">{ref.stateName}</span>

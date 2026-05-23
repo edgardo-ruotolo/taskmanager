@@ -6,8 +6,8 @@ export const stateRepository = {
         apiClient.get<State[]>('/api/states', { params: stateGroupId ? { stateGroupId } : undefined })
             .then((r) => r.data),
 
-    getCompanyStates: (workspaceSlug: string, companyId: string): Promise<State[]> =>
-        apiClient.get<State[]>(`/api/workspaces/${workspaceSlug}/companies/${companyId}/states`)
+    getProjectStates: (workspaceSlug: string, projectId: string): Promise<State[]> =>
+        apiClient.get<State[]>(`/api/workspaces/${workspaceSlug}/projects/${projectId}/states`)
             .then((r) => r.data),
 
     create: (data: CreateStateData): Promise<State> =>

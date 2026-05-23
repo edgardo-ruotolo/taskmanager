@@ -1,8 +1,10 @@
-using Hangfire;
+﻿using Hangfire;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using TaskManager.Api.Common.Auth;
+using TaskManager.Api.Common.Pagination;
 using TaskManager.Api.Modules.Recurring.Dtos;
+using TaskManager.Api.Modules.Recurring.Entities;
 using TaskManager.Api.Modules.Recurring.Services;
 
 namespace TaskManager.Api.Modules.Recurring.Controllers;
@@ -14,9 +16,24 @@ public class RecurringController(IRecurringService recurringService, IBackground
 {
 
     [HttpGet]
-    public async Task<ActionResult<List<RecurringTemplateDto>>> List(string workspaceSlug, CancellationToken ct)
+    public async Task<ActionResult<PagedResult<RecurringTemplateDto>>> List(
+        string workspaceSlug,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20,
+        [FromQuery] string? search = null,
+        [FromQuery] RecurringFrequency? frequency = null,
+        [FromQuery] string? status = null,
+        CancellationToken ct = default)
     {
-        var result = await recurringService.ListAsync(workspaceSlug, currentUser.UserId, ct);
+        var result = await recurringService.ListAsync(
+            workspaceSlug,
+            currentUser.UserId,
+            page,
+            pageSize,
+            search,
+            frequency,
+            status,
+            ct);
         return Ok(result);
     }
 
@@ -84,6 +101,13 @@ public class RecurringController(IRecurringService recurringService, IBackground
     {
         var result = await recurringService.SkipNextAsync(workspaceSlug, id, currentUser.UserId, ct);
         return Ok(result);
+    }
+
+    [HttpPost("{id:guid}/duplicate")]
+    public async Task<ActionResult<RecurringTemplateDto>> Duplicate(string workspaceSlug, Guid id, CancellationToken ct)
+    {
+        var result = await recurringService.DuplicateAsync(workspaceSlug, id, currentUser.UserId, ct);
+        return CreatedAtAction(nameof(GetById), new { workspaceSlug, id = result.Id }, result);
     }
 
     [HttpPost("{id:guid}/run-now")]

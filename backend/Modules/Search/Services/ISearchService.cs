@@ -1,6 +1,6 @@
 namespace TaskManager.Api.Modules.Search.Services;
 
-public record SearchHit(Guid Id, string Name, Guid? CompanyId, int? SequenceId, string? Color);
+public record SearchHit(Guid Id, string Name, Guid? ProjectId, int? SequenceId, string? Color);
 
 public record SearchResults(
     IReadOnlyList<SearchHit> Issues,

@@ -1,16 +1,18 @@
+using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using TaskManager.Api.Common.Auth;
 using TaskManager.Api.Common.Pagination;
 using TaskManager.Api.Data;
 using TaskManager.Api.Modules.Admin.Dtos;
 using TaskManager.Api.Modules.Admin.Services;
 using TaskManager.Api.Modules.Auth.Entities;
-using TaskManager.Api.Modules.Companies.Entities;
 using TaskManager.Api.Modules.States.Dtos;
 using TaskManager.Api.Modules.States.Services;
 using TaskManager.Api.Modules.Workspaces.Dtos;
+using TaskManager.Api.Modules.Workspaces.Entities;
 
 namespace TaskManager.Api.Modules.Admin.Controllers;
 
@@ -21,7 +23,8 @@ public class AdminController(
     IInstanceConfigService configService,
     AppDbContext db,
     UserManager<User> userManager,
-    IStateGroupService stateGroupService) : ControllerBase
+    IStateGroupService stateGroupService,
+    ICurrentUser currentUser) : ControllerBase
 {
     [HttpGet("config")]
     public async Task<ActionResult<InstanceConfigDto>> GetConfig(CancellationToken ct)
@@ -69,6 +72,173 @@ public class AdminController(
             Page = page,
             PageSize = pageSize
         });
+    }
+
+    [HttpPost("workspaces")]
+    public async Task<ActionResult<WorkspaceDto>> CreateWorkspace(
+        [FromBody] CreateWorkspaceDto dto,
+        CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(dto.Name))
+            return BadRequest(new { error = "El nombre del workspace es requerido." });
+
+        var slug = string.IsNullOrWhiteSpace(dto.Slug) ? Slugify(dto.Name) : Slugify(dto.Slug);
+        if (string.IsNullOrEmpty(slug))
+            return BadRequest(new { error = "El slug no puede estar vacío." });
+
+        var slugExists = await db.Workspaces.AnyAsync(w => w.Slug == slug, ct);
+        if (slugExists)
+            return Conflict(new { error = "Ya existe un workspace con ese slug." });
+
+        var workspace = new Workspace
+        {
+            Name = dto.Name.Trim(),
+            Slug = slug,
+            Description = dto.Description,
+            OwnerId = currentUser.UserId
+        };
+
+        db.Workspaces.Add(workspace);
+        await db.SaveChangesAsync(ct);
+
+        return Ok(new WorkspaceDto
+        {
+            Id = workspace.Id,
+            Name = workspace.Name,
+            Slug = workspace.Slug,
+            Description = workspace.Description,
+            LogoUrl = workspace.LogoUrl,
+            OwnerId = workspace.OwnerId,
+            CreatedAt = workspace.CreatedAt
+        });
+    }
+
+    [HttpPut("workspaces/{id:guid}")]
+    public async Task<ActionResult<WorkspaceDto>> UpdateWorkspace(
+        Guid id,
+        [FromBody] UpdateWorkspaceDto dto,
+        CancellationToken ct)
+    {
+        var workspace = await db.Workspaces.FirstOrDefaultAsync(w => w.Id == id, ct);
+        if (workspace is null) return NotFound();
+
+        if (dto.Name is not null) workspace.Name = dto.Name.Trim();
+        if (dto.Description is not null) workspace.Description = dto.Description;
+        if (dto.LogoUrl is not null) workspace.LogoUrl = dto.LogoUrl;
+
+        await db.SaveChangesAsync(ct);
+
+        return Ok(new WorkspaceDto
+        {
+            Id = workspace.Id,
+            Name = workspace.Name,
+            Slug = workspace.Slug,
+            Description = workspace.Description,
+            LogoUrl = workspace.LogoUrl,
+            OwnerId = workspace.OwnerId,
+            CreatedAt = workspace.CreatedAt
+        });
+    }
+
+    [HttpDelete("workspaces/{id:guid}")]
+    public async Task<IActionResult> DeleteWorkspace(Guid id, CancellationToken ct)
+    {
+        var workspace = await db.Workspaces.FirstOrDefaultAsync(w => w.Id == id, ct);
+        if (workspace is null) return NotFound();
+
+        workspace.IsDeleted = true;
+        workspace.DeletedAt = DateTime.UtcNow;
+        await db.SaveChangesAsync(ct);
+
+        return NoContent();
+    }
+
+    [HttpGet("workspaces/{id:guid}/members")]
+    public async Task<ActionResult<List<AdminWorkspaceMemberDto>>> GetWorkspaceMembers(
+        Guid id,
+        CancellationToken ct)
+    {
+        var workspaceExists = await db.Workspaces.AnyAsync(w => w.Id == id, ct);
+        if (!workspaceExists) return NotFound(new { error = "Workspace not found." });
+
+        var members = await db.WorkspaceMembers
+            .Where(m => m.WorkspaceId == id)
+            .Include(m => m.User)
+            .Select(m => new AdminWorkspaceMemberDto
+            {
+                UserId = m.UserId,
+                Email = m.User.Email ?? string.Empty,
+                DisplayName = m.User.DisplayName ?? m.User.UserName,
+                Role = m.Role.ToString()
+            })
+            .ToListAsync(ct);
+
+        return Ok(members);
+    }
+
+    [HttpPost("workspaces/{id:guid}/members")]
+    public async Task<ActionResult<AdminWorkspaceMemberDto>> AddWorkspaceMember(
+        Guid id,
+        [FromBody] AdminAddWorkspaceMemberDto dto,
+        CancellationToken ct)
+    {
+        var workspace = await db.Workspaces.FirstOrDefaultAsync(w => w.Id == id, ct);
+        if (workspace is null) return NotFound(new { error = "Workspace not found." });
+
+        var user = await userManager.FindByIdAsync(dto.UserId.ToString());
+        if (user is null) return NotFound(new { error = "User not found." });
+
+        var exists = await db.WorkspaceMembers.AnyAsync(
+            m => m.WorkspaceId == id && m.UserId == dto.UserId, ct);
+        if (exists) return Conflict(new { error = "El usuario ya es miembro de este workspace." });
+
+        if (!Enum.TryParse<WorkspaceRole>(dto.Role, ignoreCase: false, out var role)
+            || (role != WorkspaceRole.Admin && role != WorkspaceRole.Member))
+        {
+            return BadRequest(new { error = "Rol inválido. Valores permitidos: Admin, Member." });
+        }
+
+        var member = new WorkspaceMember
+        {
+            WorkspaceId = id,
+            UserId = dto.UserId,
+            Role = role
+        };
+
+        db.WorkspaceMembers.Add(member);
+        await db.SaveChangesAsync(ct);
+
+        return Ok(new AdminWorkspaceMemberDto
+        {
+            UserId = user.Id,
+            Email = user.Email ?? string.Empty,
+            DisplayName = user.DisplayName ?? user.UserName,
+            Role = role.ToString()
+        });
+    }
+
+    [HttpDelete("workspaces/{id:guid}/members/{userId:guid}")]
+    public async Task<IActionResult> RemoveWorkspaceMember(
+        Guid id,
+        Guid userId,
+        CancellationToken ct)
+    {
+        var member = await db.WorkspaceMembers
+            .FirstOrDefaultAsync(m => m.WorkspaceId == id && m.UserId == userId, ct);
+
+        if (member is null) return NotFound();
+
+        db.WorkspaceMembers.Remove(member);
+        await db.SaveChangesAsync(ct);
+
+        return NoContent();
+    }
+
+    private static string Slugify(string input)
+    {
+        var lower = input.Trim().ToLowerInvariant();
+        var normalized = Regex.Replace(lower, "[^a-z0-9]+", "-");
+        return normalized.Trim('-');
     }
 
     [HttpGet("users")]
@@ -134,6 +304,8 @@ public class AdminController(
 
         if (dto.Role == "SuperAdmin")
             await userManager.AddToRoleAsync(user, "SuperAdmin");
+        else if (dto.Role == "Administrador")
+            await userManager.AddToRoleAsync(user, "Administrador");
 
         var roles = await userManager.GetRolesAsync(user);
         return Ok(new AdminUserDto
@@ -174,6 +346,8 @@ public class AdminController(
             await userManager.RemoveFromRolesAsync(user, currentRoles);
             if (dto.Role == "SuperAdmin")
                 await userManager.AddToRoleAsync(user, "SuperAdmin");
+            else if (dto.Role == "Administrador")
+                await userManager.AddToRoleAsync(user, "Administrador");
         }
 
         var roles = await userManager.GetRolesAsync(user);
@@ -200,123 +374,6 @@ public class AdminController(
         var result = await userManager.DeleteAsync(user);
         if (!result.Succeeded)
             return BadRequest(new { error = string.Join(", ", result.Errors.Select(e => e.Description)) });
-
-        return NoContent();
-    }
-
-    [HttpGet("companies")]
-    public async Task<ActionResult<PagedResult<AdminCompanyDto>>> GetCompanies(
-        [FromQuery] int page = 1,
-        [FromQuery] int pageSize = 20,
-        CancellationToken ct = default)
-    {
-        var query = db.Companies
-            .Include(c => c.Workspace)
-            .Include(c => c.Members)
-            .Include(c => c.StateGroup)
-            .OrderBy(c => c.Name);
-
-        var total = await query.CountAsync(ct);
-        var items = await query
-            .Skip((page - 1) * pageSize)
-            .Take(pageSize)
-            .Select(c => new AdminCompanyDto
-            {
-                Id = c.Id,
-                Name = c.Name,
-                Identifier = c.Identifier,
-                Description = c.Description,
-                WorkspaceId = c.WorkspaceId,
-                WorkspaceName = c.Workspace.Name,
-                OwnerId = c.OwnerId,
-                MemberCount = c.Members.Count,
-                CreatedAt = c.CreatedAt,
-                StateGroupId = c.StateGroupId,
-                StateGroupName = c.StateGroup.Name
-            })
-            .ToListAsync(ct);
-
-        return Ok(new PagedResult<AdminCompanyDto>
-        {
-            Items = items,
-            TotalCount = total,
-            Page = page,
-            PageSize = pageSize
-        });
-    }
-
-    [HttpGet("companies/{companyId:guid}/members")]
-    public async Task<ActionResult<List<AdminCompanyMemberDto>>> GetCompanyMembers(
-        Guid companyId,
-        CancellationToken ct)
-    {
-        var members = await db.CompanyMembers
-            .Where(m => m.CompanyId == companyId)
-            .Include(m => m.User)
-            .Select(m => new AdminCompanyMemberDto
-            {
-                UserId = m.UserId,
-                Email = m.User.Email ?? string.Empty,
-                DisplayName = m.User.DisplayName ?? m.User.UserName,
-                Role = m.Role.ToString()
-            })
-            .ToListAsync(ct);
-
-        return Ok(members);
-    }
-
-    [HttpPost("companies/{companyId:guid}/members")]
-    public async Task<ActionResult<AdminCompanyMemberDto>> AddCompanyMember(
-        Guid companyId,
-        [FromBody] AdminAddCompanyMemberDto dto,
-        CancellationToken ct)
-    {
-        var company = await db.Companies.FindAsync([companyId], ct);
-        if (company is null) return NotFound(new { error = "Company not found." });
-
-        var user = await userManager.FindByIdAsync(dto.UserId.ToString());
-        if (user is null) return NotFound(new { error = "User not found." });
-
-        var exists = await db.CompanyMembers.AnyAsync(
-            m => m.CompanyId == companyId && m.UserId == dto.UserId, ct);
-        if (exists) return Conflict(new { error = "El usuario ya es miembro de esta empresa" });
-
-        var validRoles = new[] { "Member", "Lead", "Admin" };
-        var roleName = validRoles.Contains(dto.Role) ? dto.Role : "Member";
-        var role = Enum.Parse<CompanyRole>(roleName);
-
-        var member = new CompanyMember
-        {
-            CompanyId = companyId,
-            UserId = dto.UserId,
-            Role = role
-        };
-
-        db.CompanyMembers.Add(member);
-        await db.SaveChangesAsync(ct);
-
-        return Ok(new AdminCompanyMemberDto
-        {
-            UserId = user.Id,
-            Email = user.Email ?? string.Empty,
-            DisplayName = user.DisplayName ?? user.UserName,
-            Role = role.ToString()
-        });
-    }
-
-    [HttpDelete("companies/{companyId:guid}/members/{userId:guid}")]
-    public async Task<IActionResult> RemoveCompanyMember(
-        Guid companyId,
-        Guid userId,
-        CancellationToken ct)
-    {
-        var member = await db.CompanyMembers
-            .FirstOrDefaultAsync(m => m.CompanyId == companyId && m.UserId == userId, ct);
-
-        if (member is null) return NotFound();
-
-        db.CompanyMembers.Remove(member);
-        await db.SaveChangesAsync(ct);
 
         return NoContent();
     }
@@ -360,58 +417,4 @@ public class AdminController(
         return NoContent();
     }
 
-    // ─── Company update (with state group reassignment) ──────────────
-
-    [HttpPatch("companies/{companyId:guid}")]
-    public async Task<ActionResult<AdminCompanyDto>> UpdateCompany(
-        Guid companyId,
-        [FromBody] UpdateAdminCompanyDto dto,
-        CancellationToken ct)
-    {
-        var company = await db.Companies
-            .Include(c => c.StateGroup)
-            .Include(c => c.Workspace)
-            .FirstOrDefaultAsync(c => c.Id == companyId, ct);
-        if (company is null) return NotFound(new { error = "Company not found." });
-
-        if (dto.Name is not null) company.Name = dto.Name;
-        if (dto.Description is not null) company.Description = dto.Description;
-
-        if (dto.StateGroupId.HasValue && dto.StateGroupId.Value != company.StateGroupId)
-        {
-            var newGroup = await db.StateGroups
-                .Include(g => g.States)
-                .FirstOrDefaultAsync(g => g.Id == dto.StateGroupId.Value, ct);
-            if (newGroup is null)
-                return BadRequest(new { error = "State group not found." });
-
-            var defaultState = newGroup.States.FirstOrDefault(s => s.IsDefault && !s.IsDeleted);
-            if (defaultState is null)
-                return BadRequest(new { error = "El nuevo grupo no tiene un estado por defecto definido" });
-
-            await db.Issues
-                .Where(i => i.CompanyId == companyId)
-                .ExecuteUpdateAsync(s => s.SetProperty(i => i.StateId, defaultState.Id), ct);
-
-            company.StateGroupId = dto.StateGroupId.Value;
-            company.StateGroup = newGroup;
-        }
-
-        await db.SaveChangesAsync(ct);
-
-        return Ok(new AdminCompanyDto
-        {
-            Id = company.Id,
-            Name = company.Name,
-            Identifier = company.Identifier,
-            Description = company.Description,
-            WorkspaceId = company.WorkspaceId,
-            WorkspaceName = company.Workspace?.Name ?? string.Empty,
-            OwnerId = company.OwnerId,
-            MemberCount = await db.CompanyMembers.CountAsync(m => m.CompanyId == companyId, ct),
-            CreatedAt = company.CreatedAt,
-            StateGroupId = company.StateGroupId,
-            StateGroupName = company.StateGroup?.Name ?? string.Empty
-        });
-    }
 }

@@ -77,9 +77,9 @@ function ResultCard({ icon: Icon, id, kind, title, meta, query, onClick }: Resul
 }
 
 interface SearchResultsListProps {
-    issues: { id: string; title: string; sequenceId: number; companyId: string }[];
-    cycles: { id: string; name: string; companyId: string }[];
-    modules: { id: string; name: string; companyId: string }[];
+    issues: { id: string; title: string; sequenceId: number; projectId: string }[];
+    cycles: { id: string; name: string; projectId: string }[];
+    modules: { id: string; name: string; projectId: string }[];
     labels: { id: string; name: string; color: string }[];
     activeKind: ResultKind;
     query: string;
@@ -102,7 +102,7 @@ function SearchResultsList({ issues, cycles, modules, labels, activeKind, query,
                     kind="issue"
                     title={issue.title}
                     query={query}
-                    onClick={() => onNavigate(`/${workspaceSlug}/companies/${issue.companyId}/issues/${issue.id}`)}
+                    onClick={() => onNavigate(`/${workspaceSlug}/projects/${issue.projectId}/issues/${issue.id}`)}
                 />
             ))}
             {showCycles && cycles.map((cycle) => (
@@ -113,7 +113,7 @@ function SearchResultsList({ issues, cycles, modules, labels, activeKind, query,
                     kind="ciclo"
                     title={cycle.name}
                     query={query}
-                    onClick={() => onNavigate(`/${workspaceSlug}/companies/${cycle.companyId}/cycles/${cycle.id}`)}
+                    onClick={() => onNavigate(`/${workspaceSlug}/projects/${cycle.projectId}/cycles/${cycle.id}`)}
                 />
             ))}
             {showModules && modules.map((mod) => (
@@ -124,7 +124,7 @@ function SearchResultsList({ issues, cycles, modules, labels, activeKind, query,
                     kind="módulo"
                     title={mod.name}
                     query={query}
-                    onClick={() => onNavigate(`/${workspaceSlug}/companies/${mod.companyId}/modules/${mod.id}`)}
+                    onClick={() => onNavigate(`/${workspaceSlug}/projects/${mod.projectId}/modules/${mod.id}`)}
                 />
             ))}
             {showLabels && labels.map((label) => (

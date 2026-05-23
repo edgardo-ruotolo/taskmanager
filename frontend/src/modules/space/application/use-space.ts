@@ -3,27 +3,27 @@ import { toast } from 'sonner';
 import { spaceRepository } from '../infrastructure/space-repository';
 import type { CreateDeployBoardData } from '../domain/types';
 
-export const deployBoardsKey = (workspaceSlug: string, companyId: string) =>
-    ['deploy-boards', workspaceSlug, companyId] as const;
+export const deployBoardsKey = (workspaceSlug: string, projectId: string) =>
+    ['deploy-boards', workspaceSlug, projectId] as const;
 
 export const publicSpaceKey = (token: string) =>
     ['public-space', token] as const;
 
-export const useDeployBoards = (workspaceSlug: string, companyId: string) =>
+export const useDeployBoards = (workspaceSlug: string, projectId: string) =>
     useQuery({
-        queryKey: deployBoardsKey(workspaceSlug, companyId),
-        queryFn: () => spaceRepository.getBoards(workspaceSlug, companyId),
-        enabled: !!workspaceSlug && !!companyId,
+        queryKey: deployBoardsKey(workspaceSlug, projectId),
+        queryFn: () => spaceRepository.getBoards(workspaceSlug, projectId),
+        enabled: !!workspaceSlug && !!projectId,
     });
 
-export const useCreateDeployBoard = (workspaceSlug: string, companyId: string) => {
+export const useCreateDeployBoard = (workspaceSlug: string, projectId: string) => {
     const qc = useQueryClient();
     return useMutation({
         mutationFn: (data: CreateDeployBoardData) =>
-            spaceRepository.createBoard(workspaceSlug, companyId, data),
+            spaceRepository.createBoard(workspaceSlug, projectId, data),
         onSuccess: () => {
             void qc.invalidateQueries({
-                queryKey: deployBoardsKey(workspaceSlug, companyId),
+                queryKey: deployBoardsKey(workspaceSlug, projectId),
             });
             toast.success('Tablero publicado correctamente');
         },
@@ -31,14 +31,14 @@ export const useCreateDeployBoard = (workspaceSlug: string, companyId: string) =
     });
 };
 
-export const useDeleteDeployBoard = (workspaceSlug: string, companyId: string) => {
+export const useDeleteDeployBoard = (workspaceSlug: string, projectId: string) => {
     const qc = useQueryClient();
     return useMutation({
         mutationFn: (boardId: string) =>
-            spaceRepository.deleteBoard(workspaceSlug, companyId, boardId),
+            spaceRepository.deleteBoard(workspaceSlug, projectId, boardId),
         onSuccess: () => {
             void qc.invalidateQueries({
-                queryKey: deployBoardsKey(workspaceSlug, companyId),
+                queryKey: deployBoardsKey(workspaceSlug, projectId),
             });
             toast.success('Tablero eliminado');
         },

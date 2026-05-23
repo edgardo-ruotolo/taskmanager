@@ -15,9 +15,9 @@ function makeWrapper(qc: QueryClient) {
 }
 
 describe('useIssues', () => {
-    it('returns the issues page for a company', async () => {
+    it('returns the issues page for a project', async () => {
         const qc = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: 60_000 } } })
-        const { result } = renderHook(() => useIssues('test-ws', 'company-1'), {
+        const { result } = renderHook(() => useIssues('test-ws', 'project-1'), {
             wrapper: makeWrapper(qc),
         })
         await waitFor(() => expect(result.current.isSuccess).toBe(true))
@@ -31,14 +31,14 @@ describe('useDeleteIssue (optimistic)', () => {
             defaultOptions: { queries: { retry: false, gcTime: 60_000 }, mutations: { retry: false } },
         })
 
-        qc.setQueryData(issuesKey('test-ws', 'company-1'), [
+        qc.setQueryData(issuesKey('test-ws', 'project-1'), [
             { id: 'issue-1', title: 'A' },
             { id: 'issue-2', title: 'B' },
         ])
 
         server.use(
             http.delete(
-                `${BASE_URL}/api/workspaces/:slug/companies/:companyId/issues/:id`,
+                `${BASE_URL}/api/workspaces/:slug/projects/:projectId/issues/:id`,
                 async () => {
                     await new Promise((r) => setTimeout(r, 50))
                     return new HttpResponse(null, { status: 204 })
@@ -46,7 +46,7 @@ describe('useDeleteIssue (optimistic)', () => {
             ),
         )
 
-        const { result } = renderHook(() => useDeleteIssue('test-ws', 'company-1'), {
+        const { result } = renderHook(() => useDeleteIssue('test-ws', 'project-1'), {
             wrapper: makeWrapper(qc),
         })
 
@@ -54,7 +54,7 @@ describe('useDeleteIssue (optimistic)', () => {
             result.current.mutate('issue-1')
         })
 
-        const optimisticList = qc.getQueryData(issuesKey('test-ws', 'company-1')) as Array<{
+        const optimisticList = qc.getQueryData(issuesKey('test-ws', 'project-1')) as Array<{
             id: string
         }>
         expect(optimisticList.map((i) => i.id)).toEqual(['issue-2'])
@@ -69,16 +69,16 @@ describe('useDeleteIssue (optimistic)', () => {
             { id: 'issue-1', title: 'A' },
             { id: 'issue-2', title: 'B' },
         ]
-        qc.setQueryData(issuesKey('test-ws', 'company-1'), original)
+        qc.setQueryData(issuesKey('test-ws', 'project-1'), original)
 
         server.use(
             http.delete(
-                `${BASE_URL}/api/workspaces/:slug/companies/:companyId/issues/:id`,
+                `${BASE_URL}/api/workspaces/:slug/projects/:projectId/issues/:id`,
                 () => new HttpResponse(null, { status: 500 }),
             ),
         )
 
-        const { result } = renderHook(() => useDeleteIssue('test-ws', 'company-1'), {
+        const { result } = renderHook(() => useDeleteIssue('test-ws', 'project-1'), {
             wrapper: makeWrapper(qc),
         })
 
@@ -87,7 +87,7 @@ describe('useDeleteIssue (optimistic)', () => {
         })
 
         await waitFor(() => expect(result.current.isError).toBe(true))
-        const finalList = qc.getQueryData(issuesKey('test-ws', 'company-1')) as Array<{
+        const finalList = qc.getQueryData(issuesKey('test-ws', 'project-1')) as Array<{
             id: string
         }>
         expect(finalList.map((i) => i.id)).toEqual(['issue-1', 'issue-2'])

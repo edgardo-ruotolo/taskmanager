@@ -26,32 +26,20 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import {
-    Popover,
-    PopoverContent,
-    PopoverTrigger,
-} from '@/components/ui/popover';
-import {
-    Command,
-    CommandEmpty,
-    CommandGroup,
-    CommandInput,
-    CommandItem,
-    CommandList,
-} from '@/components/ui/command';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Switch } from '@/components/ui/switch';
-import { Badge } from '@/components/ui/badge';
+import { ThemedSwitch } from '@/shared/components/ThemedSwitch';
 import { Separator } from '@/components/ui/separator';
-import { Check, ChevronDown, ChevronsUpDown, ChevronRight, FileEdit, Lock } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { useCompanyStates } from '@/modules/states/application/use-states';
+import { ChevronDown, ChevronRight, FileEdit, Lock } from 'lucide-react';
+import { ThemedMultiSelect } from '@/shared/components/ThemedMultiSelect';
+import { useProjectStates } from '@/modules/states/application/use-states';
 import { useLabels } from '@/modules/labels/application/use-labels';
 import { useCycles } from '@/modules/cycles/application/use-cycles';
-import { useModules } from '@/modules/project-modules/application/use-modules';
+import { useModules } from '@/modules/modules/application/use-modules';
 import { useWorkspaceMembers } from '@/modules/workspaces/application/use-workspaces';
+import { useIssueTypes } from '../../application/use-issue-types';
+import { ThemedSelect } from '@/shared/components/ThemedSelect';
 import { RichTextEditor } from '@/shared/components/RichTextEditor';
 import { PRIORITY_LABELS } from '../../domain/types';
 import type { Issue } from '../../domain/types';
@@ -101,7 +89,7 @@ type IssueDialogFormData = z.infer<typeof issueDialogSchema>;
 
 interface CreateIssueDialogProps {
     workspaceSlug: string;
-    companyId: string;
+    projectId: string;
     trigger: React.ReactNode;
     issue?: Issue;
     open?: boolean;
@@ -111,7 +99,7 @@ interface CreateIssueDialogProps {
 
 export const CreateIssueDialog = ({
     workspaceSlug,
-    companyId,
+    projectId,
     trigger,
     issue,
     open: controlledOpen,
@@ -188,22 +176,23 @@ export const CreateIssueDialog = ({
 
     const { mutate: createMutate, isPending: isCreating } = useCreateIssue<IssueDialogFormData>(
         workspaceSlug,
-        companyId,
+        projectId,
         { setError: form.setError },
     );
     const { mutate: updateMutate, isPending: isUpdating } = useUpdateIssue<IssueDialogFormData>(
         workspaceSlug,
-        companyId,
+        projectId,
         { setError: form.setError },
     );
     const isPending = isEditMode ? isUpdating : isCreating;
 
-    const { data: states = [] } = useCompanyStates(workspaceSlug, companyId);
+    const { data: states = [] } = useProjectStates(workspaceSlug, projectId);
     const { data: labels = [] } = useLabels(workspaceSlug);
-    const { data: cycles = [] } = useCycles(workspaceSlug, companyId);
-    const { data: modules = [] } = useModules(workspaceSlug, companyId);
+    const { data: cycles = [] } = useCycles(workspaceSlug, projectId);
+    const { data: modules = [] } = useModules(workspaceSlug, projectId);
     const { data: members = [] } = useWorkspaceMembers(workspaceSlug);
-    const { data: similarIssues } = useSimilarIssues(workspaceSlug, companyId, watchedTitle, open && !dedupeDismissed && !isEditMode);
+    const { data: issueTypes = [] } = useIssueTypes(workspaceSlug);
+    const { data: similarIssues } = useSimilarIssues(workspaceSlug, projectId, watchedTitle, open && !dedupeDismissed && !isEditMode);
 
     const onSubmit = (data: IssueDialogFormData): void => {
         const payload = {
@@ -357,6 +346,27 @@ export const CreateIssueDialog = ({
                             />
                         </div>
 
+                        {/* Issue Type */}
+                        {issueTypes.length > 0 && (
+                            <FormField
+                                control={form.control}
+                                name="issueTypeId"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel className="text-secondary">Tipo de tarea</FormLabel>
+                                        <ThemedSelect
+                                            value={field.value ?? ''}
+                                            onValueChange={field.onChange}
+                                            options={issueTypes.map((t) => ({ value: t.id, label: t.name }))}
+                                            placeholder="Sin tipo"
+                                            ariaLabel="Tipo de tarea"
+                                        />
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                        )}
+
                         {/* Assignees multi-select */}
                         <FormField
                             control={form.control}
@@ -364,7 +374,7 @@ export const CreateIssueDialog = ({
                             render={({ field }) => (
                                 <FormItem>
                                     <FormLabel className="text-secondary">Asignados</FormLabel>
-                                    <MultiSelectPopover
+                                    <ThemedMultiSelect
                                         placeholder="Seleccionar miembros..."
                                         options={members.map((m) => ({ value: m.userId, label: m.displayName ?? m.email }))}
                                         selected={field.value ?? []}
@@ -382,7 +392,7 @@ export const CreateIssueDialog = ({
                             render={({ field }) => (
                                 <FormItem>
                                     <FormLabel className="text-secondary">Etiquetas</FormLabel>
-                                    <MultiSelectPopover
+                                    <ThemedMultiSelect
                                         placeholder="Seleccionar etiquetas..."
                                         options={labels.map((l) => ({ value: l.id, label: l.name, color: l.color }))}
                                         selected={field.value ?? []}
@@ -469,7 +479,7 @@ export const CreateIssueDialog = ({
                             render={({ field }) => (
                                 <FormItem>
                                     <FormLabel className="text-secondary">Módulos</FormLabel>
-                                    <MultiSelectPopover
+                                    <ThemedMultiSelect
                                         placeholder="Seleccionar módulos..."
                                         options={modules.map((m) => ({ value: m.id, label: m.name }))}
                                         selected={field.value ?? []}
@@ -496,9 +506,10 @@ export const CreateIssueDialog = ({
                                             </FormLabel>
                                         </div>
                                         <FormControl>
-                                            <Switch
+                                            <ThemedSwitch
                                                 checked={field.value}
                                                 onCheckedChange={field.onChange}
+                                                ariaLabel="Requiere aprobación de Admin/Lead"
                                             />
                                         </FormControl>
                                     </FormItem>
@@ -512,7 +523,7 @@ export const CreateIssueDialog = ({
                                     render={({ field }) => (
                                         <FormItem>
                                             <FormLabel className="text-secondary text-xs">Estados que requieren aprobación</FormLabel>
-                                            <MultiSelectPopover
+                                            <ThemedMultiSelect
                                                 placeholder="Seleccionar estados..."
                                                 options={states.map((s) => ({ value: s.id, label: s.name, color: s.color }))}
                                                 selected={field.value ?? []}
@@ -581,91 +592,3 @@ export const CreateIssueDialog = ({
     );
 };
 
-// — internal multi-select popover —
-
-interface MultiSelectOption {
-    value: string;
-    label: string;
-    color?: string;
-}
-
-interface MultiSelectPopoverProps {
-    options: MultiSelectOption[];
-    selected: string[];
-    onChange: (value: string[]) => void;
-    placeholder: string;
-}
-
-function MultiSelectPopover({ options, selected, onChange, placeholder }: MultiSelectPopoverProps): React.ReactElement {
-    const [popoverOpen, setPopoverOpen] = useState(false);
-
-    const toggle = (value: string): void => {
-        onChange(selected.includes(value) ? selected.filter((v) => v !== value) : [...selected, value]);
-    };
-
-    return (
-        <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
-            <PopoverTrigger asChild>
-                <Button
-                    type="button"
-                    variant="outline"
-                    role="combobox"
-                    className="w-full justify-between bg-layer-1 border-subtle text-primary hover:bg-layer-2 font-normal min-h-9"
-                >
-                    {selected.length === 0 ? (
-                        <span className="text-placeholder">{placeholder}</span>
-                    ) : (
-                        <div className="flex flex-wrap gap-1">
-                            {selected.slice(0, 3).map((v) => {
-                                const opt = options.find((o) => o.value === v);
-                                return (
-                                    <Badge key={v} variant="secondary" className="text-xs bg-layer-2 text-secondary border-subtle px-1.5 py-0">
-                                        {opt?.color && (
-                                            <span className="w-2 h-2 rounded-full mr-1 shrink-0 inline-block" style={{ backgroundColor: opt.color }} />
-                                        )}
-                                        {opt?.label ?? v}
-                                    </Badge>
-                                );
-                            })}
-                            {selected.length > 3 && (
-                                <Badge variant="secondary" className="text-xs bg-layer-2 text-secondary border-subtle px-1.5 py-0">
-                                    +{selected.length - 3}
-                                </Badge>
-                            )}
-                        </div>
-                    )}
-                    <ChevronsUpDown size={14} className="ml-2 shrink-0 opacity-50" />
-                </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-64 p-0 bg-layer-1 border-subtle" align="start">
-                <Command className="bg-transparent">
-                    <CommandInput placeholder="Buscar..." className="text-primary placeholder:text-placeholder border-b border-subtle" />
-                    <CommandList>
-                        <CommandEmpty className="py-3 text-center text-sm text-secondary">Sin resultados</CommandEmpty>
-                        <CommandGroup>
-                            {options.map((opt) => (
-                                <CommandItem
-                                    key={opt.value}
-                                    value={opt.label}
-                                    onSelect={() => toggle(opt.value)}
-                                    className="text-primary data-[selected=true]:bg-layer-2 cursor-pointer"
-                                >
-                                    <div className="flex items-center gap-2 flex-1">
-                                        {opt.color && (
-                                            <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: opt.color }} />
-                                        )}
-                                        <span className="truncate">{opt.label}</span>
-                                    </div>
-                                    <Check
-                                        size={13}
-                                        className={cn('ml-auto', selected.includes(opt.value) ? 'opacity-100' : 'opacity-0')}
-                                    />
-                                </CommandItem>
-                            ))}
-                        </CommandGroup>
-                    </CommandList>
-                </Command>
-            </PopoverContent>
-        </Popover>
-    );
-}

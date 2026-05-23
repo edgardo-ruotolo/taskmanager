@@ -8,15 +8,15 @@ using TaskManager.Api.Modules.Issues.Services;
 namespace TaskManager.Api.Modules.Issues.Controllers;
 
 [ApiController]
-[Route("api/workspaces/{workspaceSlug}/companies/{companyId:guid}/issues/{issueId:guid}/comments")]
+[Route("api/workspaces/{workspaceSlug}/projects/{projectId:guid}/issues/{issueId:guid}/comments")]
 [Authorize]
-[ServiceFilter(typeof(RequireCompanyMemberAttribute))]
+[ServiceFilter(typeof(RequireProjectMemberAttribute))]
 public class IssueCommentsController(IIssueCommentService commentService, ICurrentUser currentUser) : ControllerBase
 {
 
     [HttpGet]
     public async Task<ActionResult<List<IssueCommentDto>>> GetComments(
-        string workspaceSlug, Guid companyId, Guid issueId, CancellationToken ct)
+        string workspaceSlug, Guid projectId, Guid issueId, CancellationToken ct)
     {
         var comments = await commentService.GetCommentsAsync(issueId, ct);
         return Ok(comments);
@@ -25,17 +25,17 @@ public class IssueCommentsController(IIssueCommentService commentService, ICurre
     [HttpPost]
     [Authorize]
     public async Task<ActionResult<IssueCommentDto>> CreateComment(
-        string workspaceSlug, Guid companyId, Guid issueId,
+        string workspaceSlug, Guid projectId, Guid issueId,
         [FromBody] CreateCommentDto dto, CancellationToken ct)
     {
         var comment = await commentService.CreateCommentAsync(issueId, currentUser.UserId, dto, ct);
-        return CreatedAtAction(nameof(GetComments), new { workspaceSlug, companyId, issueId }, comment);
+        return CreatedAtAction(nameof(GetComments), new { workspaceSlug, projectId, issueId }, comment);
     }
 
     [HttpDelete("{commentId:guid}")]
     [Authorize]
     public async Task<IActionResult> DeleteComment(
-        string workspaceSlug, Guid companyId, Guid issueId, Guid commentId, CancellationToken ct)
+        string workspaceSlug, Guid projectId, Guid issueId, Guid commentId, CancellationToken ct)
     {
         await commentService.DeleteCommentAsync(commentId, currentUser.UserId, ct);
         return NoContent();

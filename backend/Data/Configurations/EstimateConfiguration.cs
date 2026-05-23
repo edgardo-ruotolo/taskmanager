@@ -11,9 +11,9 @@ public class EstimateConfiguration : IEntityTypeConfiguration<Estimate>
         builder.Property(e => e.Name).IsRequired().HasMaxLength(255);
         builder.Property(e => e.Type).HasConversion<string>();
 
-        builder.HasOne(e => e.Company)
+        builder.HasOne(e => e.Project)
             .WithMany()
-            .HasForeignKey(e => e.CompanyId)
+            .HasForeignKey(e => e.ProjectId)
             .OnDelete(DeleteBehavior.Cascade);
 
         builder.HasMany(e => e.Points)

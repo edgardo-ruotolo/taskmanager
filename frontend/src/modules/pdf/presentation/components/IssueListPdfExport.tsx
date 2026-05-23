@@ -14,10 +14,10 @@ const PRIORITY_NAMES: Record<number, string> = {
 
 interface IssueListPdfExportProps {
     issues: PdfIssueData[];
-    companyIdentifier?: string;
+    projectIdentifier?: string;
 }
 
-export function IssueListPdfExport({ issues, companyIdentifier }: IssueListPdfExportProps): React.ReactElement {
+export function IssueListPdfExport({ issues, projectIdentifier }: IssueListPdfExportProps): React.ReactElement {
     const handleExport = async (): Promise<void> => {
         if (issues.length === 0) {
             toast.warning('No hay tareas para exportar');
@@ -46,7 +46,7 @@ export function IssueListPdfExport({ issues, companyIdentifier }: IssueListPdfEx
                 startY: 28,
                 head: [['ID', 'Título', 'Estado', 'Prioridad', 'Fecha de creación']],
                 body: issues.map((issue) => [
-                    `${companyIdentifier ?? 'ISS'}-${issue.sequenceId}`,
+                    `${projectIdentifier ?? 'ISS'}-${issue.sequenceId}`,
                     issue.title.length > 80 ? `${issue.title.slice(0, 77)}...` : issue.title,
                     issue.stateName,
                     PRIORITY_NAMES[issue.priority] ?? 'Desconocida',

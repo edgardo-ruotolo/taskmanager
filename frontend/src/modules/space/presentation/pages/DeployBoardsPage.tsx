@@ -41,18 +41,18 @@ const createBoardSchema = z.object({
 type CreateBoardFormData = z.infer<typeof createBoardSchema>;
 
 export const DeployBoardsPage = (): React.ReactElement => {
-    const { workspaceSlug = '', companyId = '' } = useParams<{
+    const { workspaceSlug = '', projectId = '' } = useParams<{
         workspaceSlug: string;
-        companyId: string;
+        projectId: string;
     }>();
     const [dialogOpen, setDialogOpen] = useState(false);
 
-    const { data: boards, isLoading } = useDeployBoards(workspaceSlug, companyId);
+    const { data: boards, isLoading } = useDeployBoards(workspaceSlug, projectId);
     const { mutate: createBoard, isPending: isCreating } = useCreateDeployBoard(
         workspaceSlug,
-        companyId,
+        projectId,
     );
-    const { mutate: deleteBoard } = useDeleteDeployBoard(workspaceSlug, companyId);
+    const { mutate: deleteBoard } = useDeleteDeployBoard(workspaceSlug, projectId);
 
     const form = useForm<CreateBoardFormData>({
         resolver: zodResolver(createBoardSchema),

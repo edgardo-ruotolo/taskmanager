@@ -10,7 +10,7 @@ public class CycleDto
     public CycleStatus Status { get; set; }
     public DateTime? StartDate { get; set; }
     public DateTime? EndDate { get; set; }
-    public Guid CompanyId { get; set; }
+    public Guid ProjectId { get; set; }
     public Guid OwnerId { get; set; }
     public int IssueCount { get; set; }
     public bool IsArchived { get; set; }

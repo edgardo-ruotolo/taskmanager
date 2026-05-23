@@ -44,34 +44,36 @@ export interface UpdateAdminUserData {
     role?: string;
 }
 
-export interface AdminCompanyDto {
+export interface AdminWorkspaceDto {
     id: string;
     name: string;
-    identifier: string;
+    slug: string;
     description?: string;
-    workspaceId: string;
-    workspaceName: string;
+    logoUrl?: string;
     ownerId: string;
-    memberCount: number;
     createdAt: string;
-    stateGroupId: string;
-    stateGroupName: string;
 }
 
-export interface AdminCompanyMemberDto {
+export interface AdminWorkspaceMemberDto {
     userId: string;
     email: string;
     displayName?: string;
     role: string;
 }
 
-export interface AdminAddCompanyMemberData {
+export interface AdminAddWorkspaceMemberData {
     userId: string;
-    role: string;
+    role: 'Admin' | 'Member';
 }
 
-export interface UpdateAdminCompanyData {
+export interface CreateAdminWorkspaceData {
+    name: string;
+    slug?: string;
+    description?: string;
+}
+
+export interface UpdateAdminWorkspaceData {
     name?: string;
     description?: string;
-    stateGroupId?: string;
+    logoUrl?: string;
 }

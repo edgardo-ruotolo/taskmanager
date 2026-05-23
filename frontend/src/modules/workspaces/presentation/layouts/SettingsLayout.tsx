@@ -1,14 +1,15 @@
 import type React from 'react';
 import { NavLink, useParams, useLocation, Outlet, } from 'react-router-dom';
-import { 
-    Settings, 
-    Users, 
-    Palette, 
-    Layers, 
-    Tag, 
+import {
+    Settings,
+    Users,
+    Palette,
+    Layers,
+    Tag,
     LayoutList,
     Shield,
-    Building2
+    Building2,
+    RotateCcw
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -23,13 +24,14 @@ const WORKSPACE_TABS: SettingsTab[] = [
     { to: 'members', label: 'Miembros', icon: Users },
     { to: 'theme', label: 'Tema', icon: Palette },
     { to: 'teams', label: 'Equipos', icon: Users },
-    { to: 'companies', label: 'Empresas', icon: Building2 },
+    { to: 'projects', label: 'Proyectos', icon: Building2 },
+    { to: 'recurring', label: 'Recurrentes', icon: RotateCcw },
 ];
 
 const SYSTEM_TABS: SettingsTab[] = [
     { to: 'states', label: 'Estados', icon: Shield },
     { to: 'labels', label: 'Etiquetas', icon: Tag },
-    { to: 'issue-types', label: 'Tipos de Issue', icon: Layers },
+    { to: 'issue-types', label: 'Tipos de Tarea', icon: Layers },
     { to: 'views', label: 'Vistas', icon: LayoutList },
 ];
 

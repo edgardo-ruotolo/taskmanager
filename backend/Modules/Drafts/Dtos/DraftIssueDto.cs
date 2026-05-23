@@ -8,7 +8,7 @@ public class DraftIssueDto
     public string Title { get; set; } = string.Empty;
     public string? Description { get; set; }
     public IssuePriority Priority { get; set; }
-    public Guid CompanyId { get; set; }
+    public Guid ProjectId { get; set; }
     public Guid? StateId { get; set; }
     public string? StateName { get; set; }
     public Guid OwnedById { get; set; }

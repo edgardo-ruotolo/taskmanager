@@ -26,13 +26,13 @@ import { useCreateCycle } from '../../application/use-cycles';
 
 interface CreateCycleDialogProps {
     workspaceSlug: string;
-    companyId: string;
+    projectId: string;
     trigger: React.ReactNode;
 }
 
 export const CreateCycleDialog = ({
     workspaceSlug,
-    companyId,
+    projectId,
     trigger,
 }: CreateCycleDialogProps): React.ReactElement => {
     const [open, setOpen] = useState(false);
@@ -42,7 +42,7 @@ export const CreateCycleDialog = ({
         defaultValues: { name: '', description: '', startDate: '', endDate: '' },
     });
 
-    const { mutate, isPending } = useCreateCycle<CreateCycleFormData>(workspaceSlug, companyId, {
+    const { mutate, isPending } = useCreateCycle<CreateCycleFormData>(workspaceSlug, projectId, {
         setError: form.setError,
     });
 

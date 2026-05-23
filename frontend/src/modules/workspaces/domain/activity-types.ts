@@ -19,7 +19,7 @@ export const ACTION_LABELS: Record<string, string> = {
     cycle_created: 'creó el ciclo',
     cycle_updated: 'actualizó el ciclo',
     module_created: 'creó el módulo',
-    company_created: 'creó la empresa',
+    project_created: 'creó la proyecto',
     member_invited: 'invitó a un miembro',
     member_removed: 'eliminó a un miembro',
 };

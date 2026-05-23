@@ -1,22 +1,20 @@
 import { useEffect } from 'react';
 import type React from 'react';
-import { Outlet, useParams, useLocation } from 'react-router-dom';
+import { Outlet, useParams } from 'react-router-dom';
 import { useWorkspaceStore } from '@/modules/workspaces/application/workspace-store';
 import { useWorkspaces } from '@/modules/workspaces/application/use-workspaces';
 import { useSidebarStore } from '@/modules/workspaces/application/sidebar-store';
 import { CommandPalette } from '@/shared/components/CommandPalette';
 import { TopNavigation } from '../components/TopNavigation';
 import { PrimarySidebar } from '../components/PrimarySidebar';
-import { ExtendedSidebar } from '../components/ExtendedSidebar';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
 
 export const WorkspaceLayout = (): React.ReactElement => {
-    const { workspaceSlug, companyId } = useParams<{
+    const { workspaceSlug, projectId } = useParams<{
         workspaceSlug: string;
-        companyId?: string;
+        projectId?: string;
     }>();
-    const location = useLocation();
-    const { setActiveWorkspace, setActiveCompanyId } = useWorkspaceStore();
+    const { setActiveWorkspace, setActiveProjectId } = useWorkspaceStore();
     const { data: workspaces } = useWorkspaces();
 
     useEffect(() => {
@@ -27,12 +25,8 @@ export const WorkspaceLayout = (): React.ReactElement => {
     }, [workspaces, workspaceSlug, setActiveWorkspace]);
 
     useEffect(() => {
-        setActiveCompanyId(companyId ?? null);
-    }, [companyId, setActiveCompanyId]);
-
-    const isSettings = location.pathname.includes('/settings');
-    const resolvedCompanyId = companyId ?? null;
-    const showExtended = isSettings;
+        setActiveProjectId(projectId ?? null);
+    }, [projectId, setActiveProjectId]);
 
     const { mobileSidebarOpen, setMobileSidebarOpen } = useSidebarStore();
 
@@ -64,15 +58,6 @@ export const WorkspaceLayout = (): React.ReactElement => {
 
                 {/* Content area */}
                 <div className="relative flex flex-1 overflow-hidden">
-                    {/* Extended sidebar (company or settings) */}
-                    {showExtended && (
-                        <ExtendedSidebar
-                            workspaceSlug={workspaceSlug ?? ''}
-                            companyId={resolvedCompanyId}
-                            isSettings={isSettings}
-                        />
-                    )}
-
                     {/* Main content */}
                     <main
                         id="main"

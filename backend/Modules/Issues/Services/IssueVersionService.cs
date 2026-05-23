@@ -8,12 +8,12 @@ namespace TaskManager.Api.Modules.Issues.Services;
 
 public class IssueVersionService(AppDbContext db) : IIssueVersionService
 {
-    public async Task<List<IssueVersionDto>> GetVersionsAsync(string workspaceSlug, Guid companyId, Guid issueId, CancellationToken ct = default)
+    public async Task<List<IssueVersionDto>> GetVersionsAsync(string workspaceSlug, Guid projectId, Guid issueId, CancellationToken ct = default)
     {
         var workspace = await db.Workspaces.FirstOrDefaultAsync(w => w.Slug == workspaceSlug, ct)
             ?? throw new NotFoundException($"Workspace '{workspaceSlug}' not found.");
 
-        _ = await db.Issues.FirstOrDefaultAsync(i => i.Id == issueId && i.CompanyId == companyId && i.Company.WorkspaceId == workspace.Id, ct)
+        _ = await db.Issues.FirstOrDefaultAsync(i => i.Id == issueId && i.ProjectId == projectId && i.Project.WorkspaceId == workspace.Id, ct)
             ?? throw new NotFoundException("Issue not found.");
 
         return await db.IssueVersions
@@ -33,12 +33,12 @@ public class IssueVersionService(AppDbContext db) : IIssueVersionService
             .ToListAsync(ct);
     }
 
-    public async Task<IssueVersionDto> SaveVersionAsync(string workspaceSlug, Guid companyId, Guid issueId, Guid userId, CreateIssueVersionDto dto, CancellationToken ct = default)
+    public async Task<IssueVersionDto> SaveVersionAsync(string workspaceSlug, Guid projectId, Guid issueId, Guid userId, CreateIssueVersionDto dto, CancellationToken ct = default)
     {
         var workspace = await db.Workspaces.FirstOrDefaultAsync(w => w.Slug == workspaceSlug, ct)
             ?? throw new NotFoundException($"Workspace '{workspaceSlug}' not found.");
 
-        _ = await db.Issues.FirstOrDefaultAsync(i => i.Id == issueId && i.CompanyId == companyId && i.Company.WorkspaceId == workspace.Id, ct)
+        _ = await db.Issues.FirstOrDefaultAsync(i => i.Id == issueId && i.ProjectId == projectId && i.Project.WorkspaceId == workspace.Id, ct)
             ?? throw new NotFoundException("Issue not found.");
 
         var version = new IssueVersion

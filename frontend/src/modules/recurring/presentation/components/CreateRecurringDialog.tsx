@@ -1,4 +1,4 @@
-import { Dialog, DialogContent } from '@/components/ui/dialog';
+﻿import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { RecurringForm } from './RecurringForm';
 import { useCreateRecurringTemplate } from '../../application/use-recurring';
 import type { RecurringTemplate, RecurringFromIssuePrefill } from '../../domain/types';
@@ -23,7 +23,7 @@ export function CreateRecurringDialog({
 }: Props): React.ReactElement {
     const createMutation = useCreateRecurringTemplate(workspaceSlug);
 
-    const handleSubmit = async (values: RecurringTemplateFormValues) => {
+    const handleSubmit = async (values: RecurringTemplateFormValues): Promise<void> => {
         if (data && onUpdated) {
             await onUpdated(values);
         } else {
@@ -45,7 +45,8 @@ export function CreateRecurringDialog({
                 startDateOffsetDays: values.startDateOffsetDays,
                 targetDateOffsetDays: values.targetDateOffsetDays,
                 blockPolicy: values.blockPolicy,
-                companyIds: values.companyIds,
+                issueTypeId: values.issueTypeId ?? null,
+                projectIds: values.projectIds,
                 assigneeIds: values.assigneeIds,
                 labelIds: values.labelIds,
             });

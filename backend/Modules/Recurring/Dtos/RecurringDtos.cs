@@ -1,4 +1,4 @@
-using TaskManager.Api.Modules.Recurring.Entities;
+﻿using TaskManager.Api.Modules.Recurring.Entities;
 
 namespace TaskManager.Api.Modules.Recurring.Dtos;
 
@@ -11,7 +11,16 @@ public class RecurringTemplateDto
     public string DescriptionHtml { get; set; } = string.Empty;
     public string Frequency { get; set; } = string.Empty;
     public int Interval { get; set; }
+
+    /// <summary>
+    /// Convención de días de la semana usada por el motor de recurrencia:
+    /// 0 = Lunes, 1 = Martes, 2 = Miércoles, 3 = Jueves, 4 = Viernes, 5 = Sábado, 6 = Domingo.
+    /// El frontend DEBE alinear su selector con esta convención (Lun=0..Dom=6).
+    /// NOTA: difiere del estándar .NET <see cref="System.DayOfWeek"/> (Sun=0..Sat=6); el
+    /// <see cref="Services.RecurringScheduleCalculator"/> realiza el mapeo internamente.
+    /// </summary>
     public int[] DaysOfWeek { get; set; } = [];
+
     public int? DayOfMonth { get; set; }
     public int? MonthOfYear { get; set; }
     public string RunAtTime { get; set; } = string.Empty;
@@ -29,12 +38,33 @@ public class RecurringTemplateDto
     public int StartDateOffsetDays { get; set; }
     public int TargetDateOffsetDays { get; set; }
     public string BlockPolicy { get; set; } = string.Empty;
+    public Guid? IssueTypeId { get; set; }
     public Guid CreatedById { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
-    public List<Guid> CompanyIds { get; set; } = [];
+
+    // IDs planos (compatibilidad con clientes que sólo necesitan referencias)
+    public List<Guid> ProjectIds { get; set; } = [];
     public List<Guid> AssigneeIds { get; set; } = [];
     public List<Guid> LabelIds { get; set; } = [];
+
+    // Resúmenes enriquecidos para renderizado directo en UI
+    public List<RecurringTemplateProjectSummaryDto> Projects { get; set; } = [];
+    public List<RecurringTemplateAssigneeSummaryDto> Assignees { get; set; } = [];
+}
+
+public class RecurringTemplateProjectSummaryDto
+{
+    public Guid Id { get; set; }
+    public string Identifier { get; set; } = string.Empty;
+    public string Name { get; set; } = string.Empty;
+}
+
+public class RecurringTemplateAssigneeSummaryDto
+{
+    public Guid Id { get; set; }
+    public string DisplayName { get; set; } = string.Empty;
+    public string? AvatarUrl { get; set; }
 }
 
 public class CreateRecurringTemplateDto
@@ -43,7 +73,12 @@ public class CreateRecurringTemplateDto
     public string DescriptionHtml { get; set; } = string.Empty;
     public RecurringFrequency Frequency { get; set; }
     public int Interval { get; set; } = 1;
+
+    /// <summary>
+    /// Días de la semana (convención: 0=Lun..6=Dom). Requerido cuando Frequency = Weekly.
+    /// </summary>
     public int[] DaysOfWeek { get; set; } = [];
+
     public int? DayOfMonth { get; set; }
     public int? MonthOfYear { get; set; }
     public string RunAtTime { get; set; } = "06:00:00";
@@ -56,7 +91,8 @@ public class CreateRecurringTemplateDto
     public int StartDateOffsetDays { get; set; } = 0;
     public int TargetDateOffsetDays { get; set; } = 7;
     public BlockPolicy BlockPolicy { get; set; } = BlockPolicy.SkipAndNotify;
-    public List<Guid> CompanyIds { get; set; } = [];
+    public Guid? IssueTypeId { get; set; }
+    public List<Guid> ProjectIds { get; set; } = [];
     public List<Guid> AssigneeIds { get; set; } = [];
     public List<Guid> LabelIds { get; set; } = [];
 }
@@ -67,7 +103,12 @@ public class UpdateRecurringTemplateDto
     public string? DescriptionHtml { get; set; }
     public RecurringFrequency? Frequency { get; set; }
     public int? Interval { get; set; }
+
+    /// <summary>
+    /// Días de la semana (convención: 0=Lun..6=Dom).
+    /// </summary>
     public int[]? DaysOfWeek { get; set; }
+
     public int? DayOfMonth { get; set; }
     public int? MonthOfYear { get; set; }
     public string? RunAtTime { get; set; }
@@ -80,7 +121,8 @@ public class UpdateRecurringTemplateDto
     public int? StartDateOffsetDays { get; set; }
     public int? TargetDateOffsetDays { get; set; }
     public BlockPolicy? BlockPolicy { get; set; }
-    public List<Guid>? CompanyIds { get; set; }
+    public Guid? IssueTypeId { get; set; }
+    public List<Guid>? ProjectIds { get; set; }
     public List<Guid>? AssigneeIds { get; set; }
     public List<Guid>? LabelIds { get; set; }
 }
@@ -88,7 +130,7 @@ public class UpdateRecurringTemplateDto
 public class RecurringRunIssueRefDto
 {
     public Guid IssueId { get; set; }
-    public Guid CompanyId { get; set; }
+    public Guid ProjectId { get; set; }
 }
 
 public class RecurringRunDto
@@ -115,7 +157,8 @@ public class RecurringFromIssuePrefillDto
     public string DescriptionHtml { get; set; } = string.Empty;
     public string Priority { get; set; } = string.Empty;
     public string StateGroup { get; set; } = string.Empty;
-    public List<Guid> CompanyIds { get; set; } = [];
+    public Guid? IssueTypeId { get; set; }
+    public List<Guid> ProjectIds { get; set; } = [];
     public List<Guid> AssigneeIds { get; set; } = [];
     public List<Guid> LabelIds { get; set; } = [];
 }

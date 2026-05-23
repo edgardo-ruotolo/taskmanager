@@ -20,10 +20,10 @@ public class IssueViewsController(IIssueViewService viewService, AppDbContext db
     [HttpGet]
     public async Task<ActionResult<IEnumerable<IssueViewDto>>> GetViews(
         string workspaceSlug,
-        [FromQuery] Guid? companyId,
+        [FromQuery] Guid? projectId,
         CancellationToken ct)
     {
-        var views = await viewService.GetAllAsync(workspaceSlug, companyId, currentUser.UserId, ct);
+        var views = await viewService.GetAllAsync(workspaceSlug, projectId, currentUser.UserId, ct);
         return Ok(views);
     }
 
@@ -79,10 +79,10 @@ public class IssueViewsController(IIssueViewService viewService, AppDbContext db
             .Include(i => i.State)
             .Include(i => i.Assignees)
             .Include(i => i.Labels)
-            .Where(i => i.Company.WorkspaceId == workspace.Id);
+            .Where(i => i.Project.WorkspaceId == workspace.Id);
 
-        if (view.CompanyId.HasValue)
-            query = query.Where(i => i.CompanyId == view.CompanyId.Value);
+        if (view.ProjectId.HasValue)
+            query = query.Where(i => i.ProjectId == view.ProjectId.Value);
 
         // Apply filters stored in FiltersJson
         if (!string.IsNullOrWhiteSpace(view.FiltersJson) && view.FiltersJson != "{}")
@@ -138,7 +138,7 @@ public class IssueViewsController(IIssueViewService viewService, AppDbContext db
                 DescriptionHtml = i.DescriptionHtml,
                 DescriptionJson = i.DescriptionJson,
                 Priority = i.Priority,
-                CompanyId = i.CompanyId,
+                ProjectId = i.ProjectId,
                 StateId = i.StateId,
                 StateName = i.State.Name,
                 StateColor = i.State.Color,

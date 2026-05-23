@@ -14,9 +14,9 @@ using TaskManager.Api.Modules.Issues.Entities;
 namespace TaskManager.Api.Modules.Importer.Controllers;
 
 [ApiController]
-[Route("api/workspaces/{workspaceSlug}/companies/{companyId:guid}/importer")]
+[Route("api/workspaces/{workspaceSlug}/projects/{projectId:guid}/importer")]
 [Authorize]
-[ServiceFilter(typeof(RequireCompanyMemberAttribute))]
+[ServiceFilter(typeof(RequireProjectMemberAttribute))]
 public class ImporterController(AppDbContext db, IConfiguration configuration, ICurrentUser currentUser) : ControllerBase
 {
 
@@ -24,7 +24,7 @@ public class ImporterController(AppDbContext db, IConfiguration configuration, I
     [Consumes("multipart/form-data")]
     public async Task<ActionResult<ImporterHistoryDto>> UploadCsv(
         string workspaceSlug,
-        Guid companyId,
+        Guid projectId,
         IFormFile file,
         CancellationToken ct)
     {
@@ -34,8 +34,8 @@ public class ImporterController(AppDbContext db, IConfiguration configuration, I
         var workspace = await db.Workspaces.FirstOrDefaultAsync(w => w.Slug == workspaceSlug, ct);
         if (workspace is null) return NotFound(new { message = "Workspace not found." });
 
-        var company = await db.Companies.FirstOrDefaultAsync(c => c.Id == companyId && c.WorkspaceId == workspace.Id, ct);
-        if (company is null) return NotFound(new { message = "Company not found." });
+        var project = await db.Projects.FirstOrDefaultAsync(c => c.Id == projectId && c.WorkspaceId == workspace.Id, ct);
+        if (project is null) return NotFound(new { message = "Project not found." });
 
         // Read all lines from the uploaded CSV
         List<string> lines;
@@ -67,7 +67,7 @@ public class ImporterController(AppDbContext db, IConfiguration configuration, I
         var history = new ImporterHistory
         {
             WorkspaceId = workspace.Id,
-            CompanyId = company.Id,
+            ProjectId = project.Id,
             FileName = file.FileName,
             TotalRows = lines.Count - 1,
             Status = "processing"
@@ -76,7 +76,7 @@ public class ImporterController(AppDbContext db, IConfiguration configuration, I
         db.ImporterHistories.Add(history);
         await db.SaveChangesAsync(ct);
 
-        // Get default state for the company
+        // Get default state for the project
         var defaultState = await db.States.FirstOrDefaultAsync(s => s.IsDefault, ct)
             ?? await db.States.FirstOrDefaultAsync(ct);
 
@@ -147,15 +147,15 @@ public class ImporterController(AppDbContext db, IConfiguration configuration, I
                 await conn.OpenAsync(ct);
                 await using var tx = await conn.BeginTransactionAsync(ct);
 
-                var lockKey = BitConverter.ToInt64(companyId.ToByteArray(), 0);
+                var lockKey = BitConverter.ToInt64(projectId.ToByteArray(), 0);
                 await using (var lockCmd = new NpgsqlCommand($"SELECT pg_advisory_xact_lock({lockKey})", conn, tx))
                     await lockCmd.ExecuteNonQueryAsync(ct);
 
                 await using (var seqCmd = new NpgsqlCommand(
-                    "SELECT COALESCE(MAX(\"SequenceId\"), 0) + 1 FROM \"Issues\" WHERE \"CompanyId\" = @companyId",
+                    "SELECT COALESCE(MAX(\"SequenceId\"), 0) + 1 FROM \"Issues\" WHERE \"ProjectId\" = @projectId",
                     conn, tx))
                 {
-                    seqCmd.Parameters.AddWithValue("companyId", companyId);
+                    seqCmd.Parameters.AddWithValue("projectId", projectId);
                     sequenceId = Convert.ToInt32(await seqCmd.ExecuteScalarAsync(ct));
                 }
 
@@ -168,7 +168,7 @@ public class ImporterController(AppDbContext db, IConfiguration configuration, I
                     Description = description,
                     Priority = priority,
                     StateId = state.Id,
-                    CompanyId = company.Id,
+                    ProjectId = project.Id,
                     CreatedById = userId,
                     SequenceId = sequenceId
                 };
@@ -197,14 +197,14 @@ public class ImporterController(AppDbContext db, IConfiguration configuration, I
     [HttpGet]
     public async Task<ActionResult<List<ImporterHistoryDto>>> GetHistory(
         string workspaceSlug,
-        Guid companyId,
+        Guid projectId,
         CancellationToken ct)
     {
         var workspace = await db.Workspaces.FirstOrDefaultAsync(w => w.Slug == workspaceSlug, ct);
         if (workspace is null) return NotFound(new { message = "Workspace not found." });
 
         var histories = await db.ImporterHistories
-            .Where(h => h.CompanyId == companyId && h.WorkspaceId == workspace.Id)
+            .Where(h => h.ProjectId == projectId && h.WorkspaceId == workspace.Id)
             .OrderByDescending(h => h.CreatedAt)
             .ToListAsync(ct);
 
@@ -214,7 +214,7 @@ public class ImporterController(AppDbContext db, IConfiguration configuration, I
     [HttpGet("{id:guid}")]
     public async Task<ActionResult<ImporterHistoryDto>> GetById(
         string workspaceSlug,
-        Guid companyId,
+        Guid projectId,
         Guid id,
         CancellationToken ct)
     {
@@ -222,7 +222,7 @@ public class ImporterController(AppDbContext db, IConfiguration configuration, I
         if (workspace is null) return NotFound(new { message = "Workspace not found." });
 
         var history = await db.ImporterHistories
-            .FirstOrDefaultAsync(h => h.Id == id && h.CompanyId == companyId && h.WorkspaceId == workspace.Id, ct);
+            .FirstOrDefaultAsync(h => h.Id == id && h.ProjectId == projectId && h.WorkspaceId == workspace.Id, ct);
 
         if (history is null) return NotFound(new { message = "Import history not found." });
 
@@ -233,7 +233,7 @@ public class ImporterController(AppDbContext db, IConfiguration configuration, I
     {
         Id = h.Id,
         WorkspaceId = h.WorkspaceId,
-        CompanyId = h.CompanyId,
+        ProjectId = h.ProjectId,
         FileName = h.FileName,
         TotalRows = h.TotalRows,
         SuccessRows = h.SuccessRows,

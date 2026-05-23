@@ -7,7 +7,7 @@ interface ApprovalRequiredDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     workspaceSlug: string;
-    companyId: string;
+    projectId: string;
     issueId: string;
     targetStateId: string;
     targetStateName: string;
@@ -19,14 +19,14 @@ export const ApprovalRequiredDialog = ({
     open,
     onOpenChange,
     workspaceSlug,
-    companyId,
+    projectId,
     issueId,
     targetStateId,
     targetStateName,
     canApprove,
     onApproved,
 }: ApprovalRequiredDialogProps): React.ReactElement => {
-    const { mutate: approve, isPending } = useApproveIssue(workspaceSlug, companyId);
+    const { mutate: approve, isPending } = useApproveIssue(workspaceSlug, projectId);
 
     const handleApprove = (): void => {
         approve(
