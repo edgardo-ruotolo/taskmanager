@@ -1,6 +1,8 @@
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using TaskManager.Api.Common.Auth;
+using TaskManager.Api.Common.Authorization;
+using TaskManager.Api.Common.Pagination;
 using TaskManager.Api.Modules.Analytics.Dtos;
 using TaskManager.Api.Modules.Analytics.Services;
 
@@ -61,5 +63,69 @@ public class AnalyticsController(IAnalyticsService analyticsService, ICurrentUse
     {
         var deleted = await analyticsService.DeleteViewAsync(viewId, currentUser.UserId, ct);
         return deleted ? NoContent() : NotFound();
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // Admin analytics — filterable views for reports & dashboards
+    // ─────────────────────────────────────────────────────────────────────
+
+    [HttpGet("gantt")]
+    [RequireWorkspaceAdmin]
+    public async Task<ActionResult<IReadOnlyList<IssueGanttDto>>> GetGantt(
+        string workspaceSlug,
+        [FromQuery] AnalyticsFiltersQuery query,
+        CancellationToken ct)
+    {
+        var data = await analyticsService.GetGanttAsync(workspaceSlug, query.ToFilters(), ct);
+        return Ok(data);
+    }
+
+    [HttpGet("burndown")]
+    [RequireWorkspaceAdmin]
+    public async Task<ActionResult<IReadOnlyList<BurndownPoint>>> GetBurndown(
+        string workspaceSlug,
+        [FromQuery] AnalyticsFiltersQuery query,
+        CancellationToken ct)
+    {
+        var data = await analyticsService.GetBurndownAsync(workspaceSlug, query.ToFilters(), ct);
+        return Ok(data);
+    }
+
+    [HttpGet("drilldown")]
+    [RequireWorkspaceAdmin]
+    public async Task<ActionResult<PagedResult<IssueRowDto>>> GetDrilldown(
+        string workspaceSlug,
+        [FromQuery] AnalyticsFiltersQuery query,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 50,
+        [FromQuery] string? sortBy = null,
+        [FromQuery] bool sortDesc = true,
+        CancellationToken ct = default)
+    {
+        var data = await analyticsService.GetDrilldownAsync(
+            workspaceSlug, query.ToFilters(), page, pageSize, sortBy, sortDesc, ct);
+        return Ok(data);
+    }
+
+    [HttpGet("users-ranking")]
+    [RequireWorkspaceAdmin]
+    public async Task<ActionResult<IReadOnlyList<UserRankingDto>>> GetUsersRanking(
+        string workspaceSlug,
+        [FromQuery] AnalyticsFiltersQuery query,
+        CancellationToken ct)
+    {
+        var data = await analyticsService.GetUserRankingAsync(workspaceSlug, query.ToFilters(), ct);
+        return Ok(data);
+    }
+
+    [HttpGet("clients")]
+    [RequireWorkspaceAdmin]
+    public async Task<ActionResult<IReadOnlyList<ClientComparisonDto>>> GetClientsComparison(
+        string workspaceSlug,
+        [FromQuery] AnalyticsFiltersQuery query,
+        CancellationToken ct)
+    {
+        var data = await analyticsService.GetClientComparisonAsync(workspaceSlug, query.ToFilters(), ct);
+        return Ok(data);
     }
 }

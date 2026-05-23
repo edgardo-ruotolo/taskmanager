@@ -1,3 +1,4 @@
+﻿using TaskManager.Api.Common.Pagination;
 using TaskManager.Api.Modules.Analytics.Dtos;
 
 namespace TaskManager.Api.Modules.Analytics.Services;
@@ -22,4 +23,11 @@ public interface IAnalyticsService
     Task<AnalyticViewDto> CreateViewAsync(string workspaceSlug, Guid userId, CreateAnalyticViewDto dto, CancellationToken ct = default);
     Task<AnalyticViewDto?> UpdateViewAsync(Guid viewId, Guid userId, UpdateAnalyticViewDto dto, CancellationToken ct = default);
     Task<bool> DeleteViewAsync(Guid viewId, Guid userId, CancellationToken ct = default);
+
+    // Admin analytics with filters
+    Task<IReadOnlyList<IssueGanttDto>> GetGanttAsync(string workspaceSlug, AnalyticsFilters filters, CancellationToken ct = default);
+    Task<IReadOnlyList<BurndownPoint>> GetBurndownAsync(string workspaceSlug, AnalyticsFilters filters, CancellationToken ct = default);
+    Task<PagedResult<IssueRowDto>> GetDrilldownAsync(string workspaceSlug, AnalyticsFilters filters, int page, int pageSize, string? sortBy, bool sortDesc, CancellationToken ct = default);
+    Task<IReadOnlyList<UserRankingDto>> GetUserRankingAsync(string workspaceSlug, AnalyticsFilters filters, CancellationToken ct = default);
+    Task<IReadOnlyList<ClientComparisonDto>> GetClientComparisonAsync(string workspaceSlug, AnalyticsFilters filters, CancellationToken ct = default);
 }
