@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { getIssueTypes, createIssueType, deleteIssueType } from '../infrastructure/issue-repository';
 import type { CreateIssueTypeData } from '../domain/types';
+import { realtimeQueryOptions } from './query-options';
 
 export const issueTypesKey = (workspaceSlug: string) =>
     ['issue-types', workspaceSlug] as const;
@@ -11,6 +12,7 @@ export const useIssueTypes = (workspaceSlug: string) =>
         queryKey: issueTypesKey(workspaceSlug),
         queryFn: () => getIssueTypes(workspaceSlug),
         enabled: !!workspaceSlug,
+        ...realtimeQueryOptions,
     });
 
 export const useCreateIssueType = (workspaceSlug: string) => {

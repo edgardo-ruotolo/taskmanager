@@ -3,11 +3,20 @@ using TaskManager.Api.Common.Exceptions;
 using TaskManager.Api.Data;
 using TaskManager.Api.Modules.Issues.Dtos;
 using TaskManager.Api.Modules.Issues.Entities;
+using TaskManager.Api.Modules.Realtime;
+using TaskManager.Api.Modules.Realtime.Contracts;
 
 namespace TaskManager.Api.Modules.Issues.Services;
 
-public class IssueSubscriberService(AppDbContext db) : IIssueSubscriberService
+public class IssueSubscriberService(AppDbContext db, IRealtimePublisher realtime) : IIssueSubscriberService
 {
+    private async Task EmitSubscriberChangedAsync(string workspaceSlug, Guid projectId, Guid issueId, Guid actorId, CancellationToken ct)
+    {
+        var evt = new RealtimeEvent("subscriber.changed", workspaceSlug, projectId, issueId, actorId, DateTimeOffset.UtcNow);
+        await realtime.PublishToProjectAsync(projectId, evt, ct);
+        await realtime.PublishToIssueAsync(issueId, evt, ct);
+    }
+
     public async Task<List<IssueSubscriberDto>> GetSubscribersAsync(string workspaceSlug, Guid projectId, Guid issueId, CancellationToken ct = default)
     {
         var workspace = await db.Workspaces.FirstOrDefaultAsync(w => w.Slug == workspaceSlug, ct)
@@ -41,6 +50,8 @@ public class IssueSubscriberService(AppDbContext db) : IIssueSubscriberService
 
         db.IssueSubscribers.Add(new IssueSubscriber { IssueId = issueId, UserId = userId });
         await db.SaveChangesAsync(ct);
+
+        await EmitSubscriberChangedAsync(workspaceSlug, projectId, issueId, userId, ct);
     }
 
     public async Task UnsubscribeAsync(string workspaceSlug, Guid projectId, Guid issueId, Guid userId, CancellationToken ct = default)
@@ -52,5 +63,7 @@ public class IssueSubscriberService(AppDbContext db) : IIssueSubscriberService
 
         db.IssueSubscribers.Remove(subscriber);
         await db.SaveChangesAsync(ct);
+
+        await EmitSubscriberChangedAsync(workspaceSlug, projectId, issueId, userId, ct);
     }
 }

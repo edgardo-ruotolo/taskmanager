@@ -44,6 +44,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { cn } from '@/lib/utils';
 import { useAuthMe } from '@/modules/auth/application/use-auth-me';
+import { useRealtimeIssue } from '@/modules/realtime/application/use-realtime-issue';
 import { RichTextEditor } from '@/shared/components/RichTextEditor';
 import { useDocumentCollaboration } from '@/shared/hooks/useDocumentCollaboration';
 import type { IssueRelationType } from '../../domain/types';
@@ -880,6 +881,8 @@ export const IssueDetailPage = (): React.ReactElement => {
     const { data: user } = useAuthMe();
     const currentUserId = user?.id ?? '';
 
+    useRealtimeIssue(workspaceSlug, projectId, issueId);
+
     const { data: issue, isLoading: issueLoading } = useIssueDetail(
         workspaceSlug,
         projectId,
@@ -975,7 +978,7 @@ export const IssueDetailPage = (): React.ReactElement => {
     return (
         <div className="animate-fade-in">
             {/* ── Sticky header ── */}
-            <div className="sticky top-0 z-10 bg-background border-b border-subtle px-6 md:px-8 py-3">
+            <div className="sticky top-0 z-10 bg-canvas border-b border-subtle px-6 md:px-8 py-3">
                 <div className="max-w-6xl mx-auto flex items-center justify-between gap-4">
                     {/* Left: back + breadcrumb */}
                     <div className="flex items-center gap-3 min-w-0">

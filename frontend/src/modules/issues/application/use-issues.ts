@@ -14,6 +14,7 @@ import {
     linksKey,
     relationsKey,
 } from './use-issue-detail';
+import { realtimeQueryOptions } from './query-options';
 
 export const issuesKey = (workspaceSlug: string, projectId: string) =>
     ['issues', workspaceSlug, projectId] as const;
@@ -23,6 +24,7 @@ export const useIssues = (workspaceSlug: string, projectId: string) =>
         queryKey: issuesKey(workspaceSlug, projectId),
         queryFn: () => issueRepository.getAll(workspaceSlug, projectId),
         enabled: !!workspaceSlug && !!projectId,
+        ...realtimeQueryOptions,
     });
 
 export const useCreateIssue = <TFormValues extends FieldValues = FieldValues>(

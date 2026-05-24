@@ -166,6 +166,18 @@ public class RecurringExecutor(AppDbContext db, ILogger<RecurringExecutor> logge
             return false;
         }
 
+        await using var tx = await db.Database.BeginTransactionAsync(ct);
+        var lockKey = BitConverter.ToInt64(project.Id.ToByteArray(), 0);
+        await db.Database.ExecuteSqlInterpolatedAsync($"SELECT pg_advisory_xact_lock({lockKey})", ct);
+
+        var maxSeq = await db.Issues
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .Where(i => i.ProjectId == project.Id)
+            .Select(i => (int?)i.SequenceId)
+            .MaxAsync(ct) ?? 0;
+        var sequenceId = maxSeq + 1;
+
         var today = DateOnly.FromDateTime(nowUtc);
         var issue = new Issue
         {
@@ -174,6 +186,7 @@ public class RecurringExecutor(AppDbContext db, ILogger<RecurringExecutor> logge
             Priority = ParsePriority(template.Priority),
             StateId = state.Id,
             ProjectId = project.Id,
+            SequenceId = sequenceId,
             IssueTypeId = template.IssueTypeId,
             CreatedById = template.CreatedById,
             DueDate = today.AddDays(template.TargetDateOffsetDays).ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc)
@@ -227,6 +240,7 @@ public class RecurringExecutor(AppDbContext db, ILogger<RecurringExecutor> logge
         });
 
         await db.SaveChangesAsync(ct);
+        await tx.CommitAsync(ct);
         return false;
     }
 

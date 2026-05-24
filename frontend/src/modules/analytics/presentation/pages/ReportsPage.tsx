@@ -1,7 +1,7 @@
 ﻿import type React from 'react';
 import { useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { Download, FileText, Plus } from 'lucide-react';
+import { Download, FileText, Plus, Trash2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -21,7 +21,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { cn } from '@/lib/utils';
 import { analyticsRepository } from '../../infrastructure/analytics-repository';
 import { useAnalyticsFiltersStore } from '../../application/filters-store';
-import { useCreateReport, useExports } from '../../application/use-analytics';
+import { useCreateReport, useDeleteExport, useExports } from '../../application/use-analytics';
 import type { ExporterHistory } from '../../domain/types';
 
 type ReportFormat = 'pdf' | 'xlsx' | 'csv';
@@ -146,13 +146,25 @@ const ReportRow = ({ workspaceSlug, report }: ReportRowProps): React.ReactElemen
     const status = report.status;
     const isCompleted = status === 'Completed';
     const downloadUrl = analyticsRepository.getExportDownloadUrl(workspaceSlug, report.id);
+    const deleteMutation = useDeleteExport(workspaceSlug);
+
+    const handleDelete = (): void => {
+        const confirmed = window.confirm(
+            '¿Eliminar este reporte? Esta acción no se puede deshacer.',
+        );
+        if (!confirmed) return;
+        deleteMutation.mutate(report.id);
+    };
 
     return (
         <tr className="border-b border-[var(--neutral-100)] hover:bg-[var(--neutral-50)]">
-            <td className="px-3 py-2">
-                <div className="flex items-center gap-2">
-                    <FileText className="h-3.5 w-3.5 text-[var(--neutral-500)]" />
-                    <span className="text-[12.5px] text-[var(--neutral-1200)] truncate">
+            <td className="px-3 py-2 max-w-[260px]">
+                <div className="flex items-center gap-2 min-w-0">
+                    <FileText className="h-3.5 w-3.5 shrink-0 text-[var(--neutral-500)]" />
+                    <span
+                        className="text-[12.5px] text-[var(--neutral-1200)] truncate"
+                        title={report.fileName ?? undefined}
+                    >
                         {report.fileName ?? '—'}
                     </span>
                 </div>
@@ -177,14 +189,27 @@ const ReportRow = ({ workspaceSlug, report }: ReportRowProps): React.ReactElemen
                 {report.completedAt ? formatDate(report.completedAt) : '—'}
             </td>
             <td className="px-3 py-2 text-right">
-                {isCompleted && (
-                    <Button asChild size="sm" variant="outline" className="gap-1.5 h-7">
-                        <a href={downloadUrl} download>
-                            <Download className="h-3 w-3" />
-                            Descargar
-                        </a>
+                <div className="flex items-center justify-end gap-1.5">
+                    {isCompleted && (
+                        <Button asChild size="sm" variant="outline" className="gap-1.5 h-7">
+                            <a href={downloadUrl} download>
+                                <Download className="h-3 w-3" />
+                                Descargar
+                            </a>
+                        </Button>
+                    )}
+                    <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        aria-label="Eliminar reporte"
+                        className="h-7 w-7 p-0 text-red-600 hover:bg-red-50 hover:text-red-700"
+                        disabled={deleteMutation.isPending}
+                        onClick={handleDelete}
+                    >
+                        <Trash2 className="h-3.5 w-3.5" />
                     </Button>
-                )}
+                </div>
             </td>
         </tr>
     );

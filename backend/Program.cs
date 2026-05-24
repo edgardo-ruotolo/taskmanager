@@ -120,7 +120,16 @@ builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUser, CurrentUser>();
 builder.Services.AddScoped<ICurrentProjectContext, CurrentProjectContext>();
 
-builder.Services.AddSignalR();
+var redisSignalRConnection = builder.Configuration.GetConnectionString("Redis");
+var signalRBuilder = builder.Services.AddSignalR();
+if (!string.IsNullOrWhiteSpace(redisSignalRConnection))
+{
+    signalRBuilder.AddStackExchangeRedis(redisSignalRConnection, options =>
+    {
+        options.Configuration.ChannelPrefix = StackExchange.Redis.RedisChannel.Literal("taskmanager:signalr:");
+    });
+}
+builder.Services.AddSingleton<TaskManager.Api.Modules.Realtime.IRealtimePublisher, TaskManager.Api.Modules.Realtime.SignalRRealtimePublisher>();
 
 builder.Services.AddAutoMapper(typeof(Program).Assembly);
 

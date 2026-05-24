@@ -4,6 +4,7 @@ import { Outlet, useParams } from 'react-router-dom';
 import { useWorkspaceStore } from '@/modules/workspaces/application/workspace-store';
 import { useWorkspaces } from '@/modules/workspaces/application/use-workspaces';
 import { useSidebarStore } from '@/modules/workspaces/application/sidebar-store';
+import { useRealtimeProject } from '@/modules/realtime/application/use-realtime-project';
 import { CommandPalette } from '@/shared/components/CommandPalette';
 import { TopNavigation } from '../components/TopNavigation';
 import { PrimarySidebar } from '../components/PrimarySidebar';
@@ -27,6 +28,8 @@ export const WorkspaceLayout = (): React.ReactElement => {
     useEffect(() => {
         setActiveProjectId(projectId ?? null);
     }, [projectId, setActiveProjectId]);
+
+    useRealtimeProject(workspaceSlug ?? '', projectId ?? '');
 
     const { mobileSidebarOpen, setMobileSidebarOpen } = useSidebarStore();
 

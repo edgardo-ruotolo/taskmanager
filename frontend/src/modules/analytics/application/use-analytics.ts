@@ -92,6 +92,20 @@ export const useExports = (workspaceSlug: string, refetchInterval: number | fals
         refetchInterval,
     });
 
+export const useDeleteExport = (workspaceSlug: string) => {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: (exportId: string) => analyticsRepository.deleteExport(workspaceSlug, exportId),
+        onSuccess: () => {
+            void qc.invalidateQueries({ queryKey: ['exports', workspaceSlug] });
+            toast.success('Reporte eliminado');
+        },
+        onError: () => {
+            toast.error('No se pudo eliminar el reporte');
+        },
+    });
+};
+
 export const useCreateExport = (workspaceSlug: string) => {
     const qc = useQueryClient();
     return useMutation({

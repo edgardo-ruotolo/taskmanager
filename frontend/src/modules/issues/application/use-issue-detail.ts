@@ -7,6 +7,7 @@ import type {
     CreateIssueLinkData,
     CreateIssueRelationData,
 } from '@/modules/issues/domain/types';
+import { realtimeQueryOptions } from './query-options';
 
 export const commentsKey = (workspaceSlug: string, projectId: string, issueId: string) =>
     ['comments', workspaceSlug, projectId, issueId] as const;
@@ -25,6 +26,7 @@ export const useIssueDetail = (workspaceSlug: string, projectId: string, issueId
         queryKey: issueDetailKey(workspaceSlug, projectId, issueId),
         queryFn: () => issueRepo.issueRepository.getById(workspaceSlug, projectId, issueId),
         enabled: !!workspaceSlug && !!projectId && !!issueId,
+        ...realtimeQueryOptions,
     });
 
 export const useComments = (workspaceSlug: string, projectId: string, issueId: string) =>
@@ -32,6 +34,7 @@ export const useComments = (workspaceSlug: string, projectId: string, issueId: s
         queryKey: commentsKey(workspaceSlug, projectId, issueId),
         queryFn: () => issueRepo.getComments(workspaceSlug, projectId, issueId),
         enabled: !!workspaceSlug && !!projectId && !!issueId,
+        ...realtimeQueryOptions,
     });
 
 export const useCreateComment = (workspaceSlug: string, projectId: string, issueId: string) => {
@@ -80,6 +83,7 @@ export const useReactions = (workspaceSlug: string, projectId: string, issueId: 
         queryKey: reactionsKey(workspaceSlug, projectId, issueId),
         queryFn: () => issueRepo.getReactions(workspaceSlug, projectId, issueId),
         enabled: !!workspaceSlug && !!projectId && !!issueId,
+        ...realtimeQueryOptions,
     });
 
 export const useAddReaction = (workspaceSlug: string, projectId: string, issueId: string) => {
@@ -113,6 +117,7 @@ export const useActivities = (workspaceSlug: string, projectId: string, issueId:
         queryKey: activitiesKey(workspaceSlug, projectId, issueId),
         queryFn: () => issueRepo.getActivities(workspaceSlug, projectId, issueId),
         enabled: !!workspaceSlug && !!projectId && !!issueId,
+        ...realtimeQueryOptions,
     });
 
 // Subscribers
@@ -124,6 +129,7 @@ export const useSubscribers = (workspaceSlug: string, projectId: string, issueId
         queryKey: subscribersKey(workspaceSlug, projectId, issueId),
         queryFn: () => issueRepo.getSubscribers(workspaceSlug, projectId, issueId),
         enabled: !!workspaceSlug && !!projectId && !!issueId,
+        ...realtimeQueryOptions,
     });
 
 export const useSubscribe = (workspaceSlug: string, projectId: string, issueId: string) => {
@@ -163,6 +169,7 @@ export const useIssueLinks = (workspaceSlug: string, projectId: string, issueId:
         queryKey: linksKey(workspaceSlug, projectId, issueId),
         queryFn: () => issueRepo.getLinks(workspaceSlug, projectId, issueId),
         enabled: !!workspaceSlug && !!projectId && !!issueId,
+        ...realtimeQueryOptions,
     });
 
 export const useCreateIssueLink = (workspaceSlug: string, projectId: string, issueId: string) => {
@@ -204,6 +211,7 @@ export const useIssueRelations = (workspaceSlug: string, projectId: string, issu
         queryKey: relationsKey(workspaceSlug, projectId, issueId),
         queryFn: () => issueRepo.getRelations(workspaceSlug, projectId, issueId),
         enabled: !!workspaceSlug && !!projectId && !!issueId,
+        ...realtimeQueryOptions,
     });
 
 export const useCreateIssueRelation = (workspaceSlug: string, projectId: string, issueId: string) => {

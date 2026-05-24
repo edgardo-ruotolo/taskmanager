@@ -9,6 +9,8 @@ using TaskManager.Api.Modules.Cycles.Entities;
 using TaskManager.Api.Modules.Issues.Dtos;
 using TaskManager.Api.Modules.Issues.Entities;
 using TaskManager.Api.Modules.Modules.Entities;
+using TaskManager.Api.Modules.Realtime;
+using TaskManager.Api.Modules.Realtime.Contracts;
 using TaskManager.Api.Modules.States.Entities;
 
 namespace TaskManager.Api.Modules.Issues.Services;
@@ -17,10 +19,18 @@ public class IssueService(
     AppDbContext db,
     IIssueActivityService activityService,
     IHtmlSanitizer htmlSanitizer,
-    ICurrentUser currentUser) : IIssueService
+    ICurrentUser currentUser,
+    IRealtimePublisher realtime) : IIssueService
 {
     private string? Sanitize(string? html) =>
         string.IsNullOrEmpty(html) ? html : htmlSanitizer.Sanitize(html);
+
+    private async Task EmitIssueEventAsync(string type, string workspaceSlug, Guid projectId, Guid issueId, CancellationToken ct)
+    {
+        var evt = new RealtimeEvent(type, workspaceSlug, projectId, issueId, currentUser.UserId, DateTimeOffset.UtcNow);
+        await realtime.PublishToProjectAsync(projectId, evt, ct);
+        await realtime.PublishToIssueAsync(issueId, evt, ct);
+    }
 
     private async Task<bool> CanApproveAsync(Guid userId, Guid projectId, CancellationToken ct)
     {
@@ -81,7 +91,9 @@ public class IssueService(
             SortOrder = dto.SortOrder,
             IsDraft = dto.IsDraft,
             StartDate = dto.StartDate.HasValue ? DateTime.SpecifyKind(dto.StartDate.Value, DateTimeKind.Utc) : null,
-            DueDate = dto.DueDate.HasValue ? DateTime.SpecifyKind(dto.DueDate.Value, DateTimeKind.Utc) : null
+            DueDate = dto.DueDate.HasValue ? DateTime.SpecifyKind(dto.DueDate.Value, DateTimeKind.Utc) : null,
+            RequiresAdminApproval = dto.RequiresAdminApproval,
+            ApprovalRequiredStateIds = dto.ApprovalRequiredStateIds
         };
 
         db.Issues.Add(issue);
@@ -111,6 +123,8 @@ public class IssueService(
 
         await db.SaveChangesAsync(ct);
         await tx.CommitAsync(ct);
+
+        await EmitIssueEventAsync("issue.created", workspaceSlug, project.Id, issue.Id, ct);
 
         // Re-load with full graph for the response DTO.
         var created = await db.Issues
@@ -327,6 +341,8 @@ public class IssueService(
         if (dto.Title is not null && issue.Title != oldTitle)
             await activityService.LogActivityAsync(issue.Id, actorId, "name", oldTitle, issue.Title, ct);
 
+        await EmitIssueEventAsync("issue.updated", workspaceSlug, projectId, issue.Id, ct);
+
         return IssueMapper.MapToDto(issue);
     }
 
@@ -367,6 +383,8 @@ public class IssueService(
         if (state.Name != oldStateName)
             await activityService.LogActivityAsync(issue.Id, currentUserId, "state", oldStateName, state.Name, ct);
 
+        await EmitIssueEventAsync("issue.updated", workspaceSlug, projectId, issue.Id, ct);
+
         return IssueMapper.MapToDto(issue);
     }
 
@@ -378,6 +396,8 @@ public class IssueService(
         issue.IsDeleted = true;
         issue.DeletedAt = DateTime.UtcNow;
         await db.SaveChangesAsync(ct);
+
+        await EmitIssueEventAsync("issue.deleted", workspaceSlug, projectId, issueId, ct);
     }
 
     public async Task AddAssigneeAsync(string workspaceSlug, Guid projectId, Guid issueId, Guid userId, CancellationToken ct = default)
@@ -392,6 +412,8 @@ public class IssueService(
 
         db.IssueAssignees.Add(new IssueAssignee { IssueId = issueId, UserId = userId });
         await db.SaveChangesAsync(ct);
+
+        await EmitIssueEventAsync("issue.updated", workspaceSlug, projectId, issueId, ct);
     }
 
     public async Task RemoveAssigneeAsync(string workspaceSlug, Guid projectId, Guid issueId, Guid userId, CancellationToken ct = default)
@@ -402,6 +424,8 @@ public class IssueService(
 
         db.IssueAssignees.Remove(assignee);
         await db.SaveChangesAsync(ct);
+
+        await EmitIssueEventAsync("issue.updated", workspaceSlug, projectId, issueId, ct);
     }
 
     public async Task AddLabelAsync(string workspaceSlug, Guid projectId, Guid issueId, Guid labelId, CancellationToken ct = default)
@@ -416,6 +440,8 @@ public class IssueService(
 
         db.IssueLabels.Add(new IssueLabel { IssueId = issueId, LabelId = labelId });
         await db.SaveChangesAsync(ct);
+
+        await EmitIssueEventAsync("issue.updated", workspaceSlug, projectId, issueId, ct);
     }
 
     public async Task RemoveLabelAsync(string workspaceSlug, Guid projectId, Guid issueId, Guid labelId, CancellationToken ct = default)
@@ -426,6 +452,8 @@ public class IssueService(
 
         db.IssueLabels.Remove(label);
         await db.SaveChangesAsync(ct);
+
+        await EmitIssueEventAsync("issue.updated", workspaceSlug, projectId, issueId, ct);
     }
 
     public async Task AttachCycleAsync(Guid projectId, Guid issueId, Guid cycleId, Guid userId, CancellationToken ct = default)
@@ -442,6 +470,8 @@ public class IssueService(
 
         db.CycleIssues.Add(new CycleIssue { CycleId = cycleId, IssueId = issueId, AddedById = userId });
         await db.SaveChangesAsync(ct);
+
+        await EmitIssueEventAsync("issue.updated", string.Empty, projectId, issueId, ct);
     }
 
     public async Task DetachCycleAsync(Guid projectId, Guid issueId, CancellationToken ct = default)
@@ -450,6 +480,8 @@ public class IssueService(
         if (existing == null) return;
         db.CycleIssues.Remove(existing);
         await db.SaveChangesAsync(ct);
+
+        await EmitIssueEventAsync("issue.updated", string.Empty, projectId, issueId, ct);
     }
 
     public async Task AttachModulesAsync(Guid projectId, Guid issueId, List<Guid> moduleIds, Guid userId, CancellationToken ct = default)
@@ -463,6 +495,8 @@ public class IssueService(
 
         db.ModuleIssues.AddRange(toAdd.Select(mid => new ModuleIssue { ModuleId = mid, IssueId = issueId, AddedById = userId }));
         await db.SaveChangesAsync(ct);
+
+        await EmitIssueEventAsync("issue.updated", string.Empty, projectId, issueId, ct);
     }
 
     public async Task DetachModuleAsync(Guid projectId, Guid issueId, Guid moduleId, CancellationToken ct = default)
@@ -471,6 +505,8 @@ public class IssueService(
             ?? throw new NotFoundException("Module not attached to this issue.");
         db.ModuleIssues.Remove(existing);
         await db.SaveChangesAsync(ct);
+
+        await EmitIssueEventAsync("issue.updated", string.Empty, projectId, issueId, ct);
     }
 
     public async Task<List<IssueDto>> SearchSimilarAsync(string workspaceSlug, Guid projectId, string title, double threshold = 0.3, CancellationToken ct = default)

@@ -7,6 +7,7 @@ import {
     deleteTemplate,
 } from '../infrastructure/issue-repository';
 import type { CreateIssueTemplateData } from '../domain/types';
+import { realtimeQueryOptions } from './query-options';
 
 export const templatesKey = (workspaceSlug: string) =>
     ['issue-templates', workspaceSlug] as const;
@@ -16,6 +17,7 @@ export const useTemplates = (workspaceSlug: string) =>
         queryKey: templatesKey(workspaceSlug),
         queryFn: () => getTemplates(workspaceSlug),
         enabled: !!workspaceSlug,
+        ...realtimeQueryOptions,
     });
 
 export const useCreateTemplate = (workspaceSlug: string) => {

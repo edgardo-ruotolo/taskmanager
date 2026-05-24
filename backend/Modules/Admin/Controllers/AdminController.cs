@@ -380,26 +380,12 @@ public class AdminController(
 
     // ─── State Groups ────────────────────────────────────────────────
 
-    [HttpGet("state-groups")]
-    public async Task<ActionResult<IEnumerable<StateGroupDto>>> GetStateGroups(CancellationToken ct)
-    {
-        var groups = await stateGroupService.GetAllAsync(ct);
-        return Ok(groups);
-    }
-
-    [HttpGet("state-groups/{id:guid}")]
-    public async Task<ActionResult<StateGroupDto>> GetStateGroup(Guid id, CancellationToken ct)
-    {
-        var group = await stateGroupService.GetByIdAsync(id, ct);
-        return Ok(group);
-    }
-
     [HttpPost("state-groups")]
     public async Task<ActionResult<StateGroupDto>> CreateStateGroup(
         [FromBody] CreateStateGroupDto dto, CancellationToken ct)
     {
         var group = await stateGroupService.CreateAsync(dto, ct);
-        return CreatedAtAction(nameof(GetStateGroup), new { id = group.Id }, group);
+        return CreatedAtAction(nameof(CreateStateGroup), new { id = group.Id }, group);
     }
 
     [HttpPatch("state-groups/{id:guid}")]

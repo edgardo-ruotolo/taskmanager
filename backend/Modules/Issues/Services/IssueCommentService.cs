@@ -5,10 +5,12 @@ using TaskManager.Api.Common.Exceptions;
 using TaskManager.Api.Data;
 using TaskManager.Api.Modules.Issues.Dtos;
 using TaskManager.Api.Modules.Issues.Entities;
+using TaskManager.Api.Modules.Realtime;
+using TaskManager.Api.Modules.Realtime.Contracts;
 
 namespace TaskManager.Api.Modules.Issues.Services;
 
-public class IssueCommentService(AppDbContext db, IMapper mapper, IHtmlSanitizer htmlSanitizer) : IIssueCommentService
+public class IssueCommentService(AppDbContext db, IMapper mapper, IHtmlSanitizer htmlSanitizer, IRealtimePublisher realtime) : IIssueCommentService
 {
     public async Task<List<IssueCommentDto>> GetCommentsAsync(Guid issueId, CancellationToken ct = default)
     {
@@ -23,6 +25,11 @@ public class IssueCommentService(AppDbContext db, IMapper mapper, IHtmlSanitizer
 
     public async Task<IssueCommentDto> CreateCommentAsync(Guid issueId, Guid authorId, CreateCommentDto dto, CancellationToken ct = default)
     {
+        var projectId = await db.Issues.AsNoTracking()
+            .Where(i => i.Id == issueId)
+            .Select(i => i.ProjectId)
+            .FirstOrDefaultAsync(ct);
+
         var comment = mapper.Map<IssueComment>(dto);
         comment.IssueId = issueId;
         comment.AuthorId = authorId;
@@ -35,6 +42,13 @@ public class IssueCommentService(AppDbContext db, IMapper mapper, IHtmlSanitizer
 
         await db.Entry(comment).Reference(c => c.Author).LoadAsync(ct);
 
+        if (projectId != Guid.Empty)
+        {
+            var evt = new RealtimeEvent("comment.created", string.Empty, projectId, issueId, authorId, DateTimeOffset.UtcNow);
+            await realtime.PublishToProjectAsync(projectId, evt, ct);
+            await realtime.PublishToIssueAsync(issueId, evt, ct);
+        }
+
         return mapper.Map<IssueCommentDto>(comment);
     }
 
@@ -46,8 +60,21 @@ public class IssueCommentService(AppDbContext db, IMapper mapper, IHtmlSanitizer
         if (comment.AuthorId != requesterId)
             throw new ForbiddenException("You are not allowed to delete this comment.");
 
+        var issueId = comment.IssueId;
+        var projectId = await db.Issues.AsNoTracking()
+            .Where(i => i.Id == issueId)
+            .Select(i => i.ProjectId)
+            .FirstOrDefaultAsync(ct);
+
         comment.IsDeleted = true;
         comment.DeletedAt = DateTime.UtcNow;
         await db.SaveChangesAsync(ct);
+
+        if (projectId != Guid.Empty)
+        {
+            var evt = new RealtimeEvent("comment.deleted", string.Empty, projectId, issueId, requesterId, DateTimeOffset.UtcNow);
+            await realtime.PublishToProjectAsync(projectId, evt, ct);
+            await realtime.PublishToIssueAsync(issueId, evt, ct);
+        }
     }
 }

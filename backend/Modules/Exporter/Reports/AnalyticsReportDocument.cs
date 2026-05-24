@@ -196,7 +196,7 @@ public class AnalyticsReportDocument : IDocument
             {
                 barBox.Height(8).Background(Neutral100).Row(barRow =>
                 {
-                    var filled = (float)Math.Max(0.001, pct / 100d);
+                    var filled = (float)Math.Clamp(pct / 100d, 0.001, 0.999);
                     barRow.RelativeItem(filled).Background(Brand);
                     barRow.RelativeItem(1 - filled).Background(Colors.White);
                 });
@@ -253,7 +253,7 @@ public class AnalyticsReportDocument : IDocument
                                 : Brand;
 
                             if (leftFrac > 0) timeline.RelativeItem(leftFrac);
-                            timeline.RelativeItem(spanFrac).Background(color);
+                            timeline.RelativeItem(Math.Max(0.001f, spanFrac)).Background(color);
                             if (rightFrac > 0) timeline.RelativeItem(rightFrac);
                         });
                     });
@@ -285,7 +285,7 @@ public class AnalyticsReportDocument : IDocument
                 {
                     foreach (var p in points)
                     {
-                        var hReal = (float)(p.Remaining / (double)maxValue);
+                        var hReal = (float)Math.Clamp(p.Remaining / (double)maxValue, 0.001, 0.999);
                         var hIdeal = (float)(p.Ideal / maxValue);
                         chart.RelativeItem().Column(c =>
                         {

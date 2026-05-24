@@ -95,6 +95,11 @@ export const analyticsRepository = {
     getExportDownloadUrl: (workspaceSlug: string, exportId: string): string =>
         `/api/workspaces/${workspaceSlug}/exports/${exportId}/download`,
 
+    deleteExport: (workspaceSlug: string, exportId: string): Promise<void> =>
+        apiClient
+            .delete(`/api/workspaces/${workspaceSlug}/exports/${exportId}`)
+            .then(() => undefined),
+
     // ── Admin analytics (filtered) ───────────────────────────────────────
 
     getGantt: (workspaceSlug: string, query: string): Promise<IssueGanttDto[]> =>

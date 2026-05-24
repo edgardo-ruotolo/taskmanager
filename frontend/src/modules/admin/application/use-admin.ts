@@ -162,6 +162,7 @@ export const useAddWorkspaceMember = (workspaceId: string) => {
         onSuccess: () => {
             void queryClient.invalidateQueries({ queryKey: adminWorkspaceMembersKey(workspaceId) });
             void queryClient.invalidateQueries({ queryKey: ['workspace-members'] });
+            void queryClient.invalidateQueries({ queryKey: ['workspaces'] });
             toast.success('Miembro agregado');
         },
         onError: (error: unknown) => {
@@ -178,6 +179,7 @@ export const useRemoveWorkspaceMember = (workspaceId: string) => {
         onSuccess: () => {
             void queryClient.invalidateQueries({ queryKey: adminWorkspaceMembersKey(workspaceId) });
             void queryClient.invalidateQueries({ queryKey: ['workspace-members'] });
+            void queryClient.invalidateQueries({ queryKey: ['workspaces'] });
             toast.success('Miembro removido');
         },
         onError: (error: unknown) => {

@@ -710,7 +710,7 @@ function KanbanColumn({ state, issues, projectIdentifier, workspaceSlug, project
     const { setNodeRef, isOver } = useDroppable({ id: state.id });
 
     return (
-        <div className="flex flex-col w-72 shrink-0">
+        <div className="flex flex-col w-72 shrink-0 border-r border-[var(--neutral-300)] pr-6 last:border-r-0 last:pr-0">
             <div className="flex items-center gap-2 mb-3 px-1">
                 <span
                     className="w-2.5 h-2.5 rounded-full shrink-0"
@@ -871,7 +871,7 @@ function KanbanView({ issues, states, projectIdentifier, onIssueClick, workspace
                 screenReaderInstructions: dndScreenReaderInstructions,
             }}
         >
-            <div className="flex gap-6 overflow-x-auto pb-12 pt-2 animate-fade-in scrollbar-hide">
+            <div className="flex flex-1 min-h-0 gap-6 overflow-x-scroll pb-1 pt-2 animate-fade-in [&::-webkit-scrollbar]:h-2.5 [&::-webkit-scrollbar]:block [&::-webkit-scrollbar-thumb]:bg-[var(--neutral-700)] [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:hover:bg-[var(--neutral-900)] [&::-webkit-scrollbar-track]:bg-[var(--neutral-200)] [&::-webkit-scrollbar-track]:rounded-full">
                 {states.map((state) => (
                     <KanbanColumn
                         key={state.id}
@@ -1191,7 +1191,7 @@ export const IssuesPage = (): React.ReactElement => {
             )}
 
             <div className="flex-1 overflow-auto p-6 md:p-8 md:pt-6">
-                <div className="max-w-6xl mx-auto">
+                <div className={cn('mx-auto', viewMode === 'kanban' ? 'w-full max-w-none h-full flex flex-col' : 'max-w-6xl')}>
 
 
                 {isLoading && <LoadingSkeleton />}

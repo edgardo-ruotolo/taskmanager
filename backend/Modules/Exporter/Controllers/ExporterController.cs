@@ -85,6 +85,24 @@ public class ExporterController(AppDbContext db, IBackgroundJobClient background
         return PhysicalFile(export.FilePath, contentType, export.FileName);
     }
 
+    [HttpDelete("{exportId:guid}")]
+    public async Task<IActionResult> Delete(string workspaceSlug, Guid exportId, CancellationToken ct)
+    {
+        var userId = currentUser.UserId;
+        var export = await db.ExporterHistories
+            .FirstOrDefaultAsync(e => e.Id == exportId && e.RequestedById == userId, ct);
+        if (export is null) return NotFound();
+
+        if (!string.IsNullOrEmpty(export.FilePath) && System.IO.File.Exists(export.FilePath))
+        {
+            try { System.IO.File.Delete(export.FilePath); } catch { /* file ya no existe o sin permisos */ }
+        }
+
+        db.ExporterHistories.Remove(export);
+        await db.SaveChangesAsync(ct);
+        return NoContent();
+    }
+
     private static ExporterHistoryDto MapToDto(ExporterHistory e) => new()
     {
         Id = e.Id,
