@@ -226,11 +226,11 @@ export const CreateIssueDialog = ({
     const onSubmit = (data: IssueDialogFormData): void => {
         const payload = {
             ...data,
-            dueDate: data.dueDate === '' ? null : data.dueDate,
-            startDate: data.startDate === '' ? null : data.startDate,
-            cycleId: data.cycleId === '' ? null : data.cycleId,
-            parentId: data.parentId || defaultParentId || null,
-            issueTypeId: data.issueTypeId === '' ? null : data.issueTypeId,
+            dueDate: data.dueDate === '' ? undefined : data.dueDate,
+            startDate: data.startDate === '' ? undefined : data.startDate,
+            cycleId: data.cycleId === '' ? undefined : data.cycleId,
+            parentId: data.parentId || defaultParentId || undefined,
+            issueTypeId: data.issueTypeId === '' ? undefined : data.issueTypeId,
         };
 
         if (isEditMode && issue) {

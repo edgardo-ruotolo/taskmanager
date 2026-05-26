@@ -285,8 +285,8 @@ export const IssueSpreadsheetView = ({
         const { id, desc } = first;
         return [...topLevelIssues].sort((a, b) =>
             compareValues(
-                (a as Record<string, unknown>)[id],
-                (b as Record<string, unknown>)[id],
+                (a as unknown as Record<string, unknown>)[id],
+                (b as unknown as Record<string, unknown>)[id],
                 desc,
             ),
         );
