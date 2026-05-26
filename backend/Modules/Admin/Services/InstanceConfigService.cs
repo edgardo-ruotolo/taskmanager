@@ -35,6 +35,8 @@ public class InstanceConfigService(AppDbContext db) : IInstanceConfigService
         if (dto.IsSignUpEnabled.HasValue) config.IsSignUpEnabled = dto.IsSignUpEnabled.Value;
         if (dto.AdminEmail is not null) config.AdminEmail = dto.AdminEmail;
         if (dto.BrevoApiKey is not null) config.BrevoApiKey = dto.BrevoApiKey;
+        if (dto.BrevoFromEmail is not null) config.BrevoFromEmail = dto.BrevoFromEmail;
+        if (dto.BrevoFromName is not null) config.BrevoFromName = dto.BrevoFromName;
         if (dto.CloudinaryCloudName is not null) config.CloudinaryCloudName = dto.CloudinaryCloudName;
         if (dto.CloudinaryApiKey is not null) config.CloudinaryApiKey = dto.CloudinaryApiKey;
         if (dto.CloudinaryApiSecret is not null) config.CloudinaryApiSecret = dto.CloudinaryApiSecret;
@@ -50,6 +52,8 @@ public class InstanceConfigService(AppDbContext db) : IInstanceConfigService
         IsSignUpEnabled = config.IsSignUpEnabled,
         IsSetupDone = config.IsSetupDone,
         AdminEmail = config.AdminEmail,
+        BrevoFromEmail = config.BrevoFromEmail,
+        BrevoFromName = config.BrevoFromName,
         CreatedAt = config.CreatedAt,
         UpdatedAt = config.UpdatedAt
     };

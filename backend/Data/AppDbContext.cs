@@ -64,6 +64,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, ICurrentProjec
     public DbSet<IssueLink> IssueLinks => Set<IssueLink>();
     public DbSet<IssueVersion> IssueVersions => Set<IssueVersion>();
     public DbSet<UserNotificationPreference> UserNotificationPreferences => Set<UserNotificationPreference>();
+    public DbSet<UserNotificationSettings> UserNotificationSettings => Set<UserNotificationSettings>();
+    public DbSet<EmailSentLog> EmailSentLogs => Set<EmailSentLog>();
     public DbSet<WorkspaceActivity> WorkspaceActivities => Set<WorkspaceActivity>();
     public DbSet<ProjectIssueType> ProjectIssueTypes => Set<ProjectIssueType>();
     public DbSet<InstanceConfiguration> InstanceConfigurations => Set<InstanceConfiguration>();
@@ -177,6 +179,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, ICurrentProjec
         builder.Entity<IssueMention>().HasQueryFilter(e => !e.Issue.IsDeleted);
         builder.Entity<IssueDescriptionVersion>().HasQueryFilter(e => !e.Issue.IsDeleted);
         builder.Entity<UserNotificationPreference>().HasQueryFilter(e => !e.User.IsDeleted);
+        builder.Entity<UserNotificationSettings>().HasQueryFilter(e => !e.IsDeleted && !e.User.IsDeleted);
+        builder.Entity<EmailSentLog>().HasQueryFilter(e => !e.IsDeleted);
     }
 
     public override Task<int> SaveChangesAsync(CancellationToken ct = default)

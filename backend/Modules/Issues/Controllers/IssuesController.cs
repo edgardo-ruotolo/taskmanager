@@ -41,9 +41,11 @@ public class IssuesController(
     public async Task<ActionResult<PagedResult<IssueDto>>> GetAll(
         string workspaceSlug, Guid projectId,
         [FromQuery] int page = 1, [FromQuery] int pageSize = 50,
+        [FromQuery] Guid? parentId = null,
+        [FromQuery] bool? topLevelOnly = null,
         CancellationToken ct = default)
     {
-        var result = await issueService.GetAllAsync(workspaceSlug, projectId, page, pageSize, ct);
+        var result = await issueService.GetAllAsync(workspaceSlug, projectId, page, pageSize, parentId, topLevelOnly, ct);
         return Ok(result);
     }
 

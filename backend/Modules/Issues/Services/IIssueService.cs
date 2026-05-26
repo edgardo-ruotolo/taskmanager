@@ -6,7 +6,14 @@ namespace TaskManager.Api.Modules.Issues.Services;
 public interface IIssueService
 {
     Task<IssueDto> CreateAsync(string workspaceSlug, Guid projectId, Guid userId, CreateIssueDto dto, CancellationToken ct = default);
-    Task<PagedResult<IssueDto>> GetAllAsync(string workspaceSlug, Guid projectId, int page, int pageSize, CancellationToken ct = default);
+    Task<PagedResult<IssueDto>> GetAllAsync(
+        string workspaceSlug,
+        Guid projectId,
+        int page,
+        int pageSize,
+        Guid? parentId = null,
+        bool? topLevelOnly = null,
+        CancellationToken ct = default);
     Task<IssueDto> GetByIdAsync(string workspaceSlug, Guid projectId, Guid issueId, CancellationToken ct = default);
     Task<IssueDto> UpdateAsync(string workspaceSlug, Guid projectId, Guid issueId, UpdateIssueDto dto, Guid currentUserId, CancellationToken ct = default);
     Task<IssueDto> ApproveAsync(string workspaceSlug, Guid projectId, Guid issueId, Guid targetStateId, Guid currentUserId, CancellationToken ct = default);

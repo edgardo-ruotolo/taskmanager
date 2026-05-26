@@ -5,6 +5,7 @@ import { useServerMutation } from '@/shared/hooks/useServerMutation';
 import { trackEvent } from '@/shared/lib/posthog';
 import type { PagedResult } from '@/shared/types/pagination';
 import { issueRepository } from '../infrastructure/issue-repository';
+import type { GetIssuesParams } from '../infrastructure/issue-repository';
 import type { CreateIssueData, Issue, UpdateIssueData } from '../domain/types';
 import {
     issueDetailKey,
@@ -16,14 +17,36 @@ import {
 } from './use-issue-detail';
 import { realtimeQueryOptions } from './query-options';
 
-export const issuesKey = (workspaceSlug: string, projectId: string) =>
+/** Base key prefix — use for broad invalidation of all issue queries for a project. */
+export const issuesBaseKey = (workspaceSlug: string, projectId: string) =>
     ['issues', workspaceSlug, projectId] as const;
 
-export const useIssues = (workspaceSlug: string, projectId: string) =>
+export const issuesKey = (
+    workspaceSlug: string,
+    projectId: string,
+    params?: Pick<GetIssuesParams, 'topLevelOnly' | 'parentId'>,
+) =>
+    ['issues', workspaceSlug, projectId, { topLevelOnly: params?.topLevelOnly ?? null, parentId: params?.parentId ?? null }] as const;
+
+export const useIssues = (workspaceSlug: string, projectId: string, params?: Pick<GetIssuesParams, 'topLevelOnly' | 'parentId'>) =>
     useQuery({
-        queryKey: issuesKey(workspaceSlug, projectId),
-        queryFn: () => issueRepository.getAll(workspaceSlug, projectId),
+        queryKey: issuesKey(workspaceSlug, projectId, params),
+        queryFn: () => issueRepository.getAll(workspaceSlug, projectId, params),
         enabled: !!workspaceSlug && !!projectId,
+        ...realtimeQueryOptions,
+    });
+
+/** Fetches direct children of a parent issue. Lazy — only runs when enabled=true. */
+export const useSubIssues = (
+    workspaceSlug: string,
+    projectId: string,
+    parentId: string,
+    enabled = true,
+) =>
+    useQuery({
+        queryKey: issuesKey(workspaceSlug, projectId, { parentId }),
+        queryFn: () => issueRepository.getAll(workspaceSlug, projectId, { parentId }),
+        enabled: !!workspaceSlug && !!projectId && !!parentId && enabled,
         ...realtimeQueryOptions,
     });
 
@@ -37,7 +60,7 @@ export const useCreateIssue = <TFormValues extends FieldValues = FieldValues>(
         mutationFn: (data) =>
             issueRepository.create(workspaceSlug, projectId, data),
         onSuccess: () => {
-            void qc.invalidateQueries({ queryKey: issuesKey(workspaceSlug, projectId) });
+            void qc.invalidateQueries({ queryKey: issuesBaseKey(workspaceSlug, projectId) });
             void qc.invalidateQueries({ queryKey: ['cycle-issues', workspaceSlug, projectId] });
             void qc.invalidateQueries({ queryKey: ['module-issues', workspaceSlug, projectId] });
             void qc.invalidateQueries({ queryKey: ['workspace-activity', workspaceSlug] });
@@ -67,15 +90,16 @@ export const useUpdateIssue = <TFormValues extends FieldValues = FieldValues>(
         mutationFn: ({ issueId, data }) =>
             issueRepository.update(workspaceSlug, projectId, issueId, data),
         onMutate: async ({ issueId, data }): Promise<UpdateIssueContext> => {
-            await qc.cancelQueries({ queryKey: issuesKey(workspaceSlug, projectId) });
+            await qc.cancelQueries({ queryKey: issuesBaseKey(workspaceSlug, projectId) });
             await qc.cancelQueries({ queryKey: issueDetailKey(workspaceSlug, projectId, issueId) });
 
-            const prevList = qc.getQueryData<PagedResult<Issue> | Issue[]>(issuesKey(workspaceSlug, projectId));
+            const defaultKey = issuesKey(workspaceSlug, projectId);
+            const prevList = qc.getQueryData<PagedResult<Issue> | Issue[]>(defaultKey);
             const prevDetail = qc.getQueryData<Issue>(issueDetailKey(workspaceSlug, projectId, issueId));
 
             if (prevList) {
                 qc.setQueryData<PagedResult<Issue> | Issue[]>(
-                    issuesKey(workspaceSlug, projectId),
+                    defaultKey,
                     Array.isArray(prevList)
                         ? prevList.map((i) => (i.id === issueId ? { ...i, ...data } : i))
                         : {
@@ -109,7 +133,7 @@ export const useUpdateIssue = <TFormValues extends FieldValues = FieldValues>(
         },
         onSettled: (_data, _err, { issueId }) => {
             // Re-sync with the server, but lazily — UI already shows optimistic state.
-            void qc.invalidateQueries({ queryKey: issuesKey(workspaceSlug, projectId) });
+            void qc.invalidateQueries({ queryKey: issuesBaseKey(workspaceSlug, projectId) });
             void qc.invalidateQueries({ queryKey: issueDetailKey(workspaceSlug, projectId, issueId) });
             void qc.invalidateQueries({ queryKey: activitiesKey(workspaceSlug, projectId, issueId) });
             void qc.invalidateQueries({ queryKey: ['cycle-issues', workspaceSlug, projectId] });
@@ -134,7 +158,7 @@ export const useArchiveIssue = (workspaceSlug: string, projectId: string) => {
             issueRepository.archive(workspaceSlug, projectId, issueId),
         onSuccess: (_data, issueId) => {
             qc.removeQueries({ queryKey: issueDetailKey(workspaceSlug, projectId, issueId) });
-            void qc.invalidateQueries({ queryKey: issuesKey(workspaceSlug, projectId) });
+            void qc.invalidateQueries({ queryKey: issuesBaseKey(workspaceSlug, projectId) });
             void qc.invalidateQueries({ queryKey: ['cycle-issues', workspaceSlug, projectId] });
             void qc.invalidateQueries({ queryKey: ['module-issues', workspaceSlug, projectId] });
             toast.success('Tarea archivada');
@@ -149,7 +173,7 @@ export const useDuplicateIssue = (workspaceSlug: string, projectId: string) => {
         mutationFn: (issueId: string) =>
             issueRepository.duplicate(workspaceSlug, projectId, issueId),
         onSuccess: () => {
-            void qc.invalidateQueries({ queryKey: issuesKey(workspaceSlug, projectId) });
+            void qc.invalidateQueries({ queryKey: issuesBaseKey(workspaceSlug, projectId) });
             toast.success('Tarea duplicada');
         },
         onError: () => toast.error('Error al duplicar la tarea'),
@@ -162,11 +186,12 @@ export const useDeleteIssue = (workspaceSlug: string, projectId: string) => {
         mutationFn: (issueId: string) =>
             issueRepository.delete(workspaceSlug, projectId, issueId),
         onMutate: async (issueId): Promise<{ prevList?: PagedResult<Issue> | Issue[] }> => {
-            await qc.cancelQueries({ queryKey: issuesKey(workspaceSlug, projectId) });
-            const prevList = qc.getQueryData<PagedResult<Issue> | Issue[]>(issuesKey(workspaceSlug, projectId));
+            await qc.cancelQueries({ queryKey: issuesBaseKey(workspaceSlug, projectId) });
+            const defaultKey = issuesKey(workspaceSlug, projectId);
+            const prevList = qc.getQueryData<PagedResult<Issue> | Issue[]>(defaultKey);
             if (prevList) {
                 qc.setQueryData<PagedResult<Issue> | Issue[]>(
-                    issuesKey(workspaceSlug, projectId),
+                    defaultKey,
                     Array.isArray(prevList)
                         ? prevList.filter((i) => i.id !== issueId)
                         : {

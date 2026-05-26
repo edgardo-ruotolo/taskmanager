@@ -1,6 +1,6 @@
 import type React from 'react';
 import { useState } from 'react';
-import { MoreHorizontal, Pencil, Copy, ExternalLink, Archive, Trash2, CopyPlus } from 'lucide-react';
+import { MoreHorizontal, Pencil, Copy, ExternalLink, Archive, Trash2, CopyPlus, GitBranch } from 'lucide-react';
 import { toast } from 'sonner';
 import {
     DropdownMenu,
@@ -23,6 +23,7 @@ import type { Issue } from '../../domain/types';
 import { useDeleteIssue, useArchiveIssue, useDuplicateIssue } from '../../application/use-issues';
 import { useProject } from '@/modules/projects/application/use-projects';
 import { getProjectFeatures } from '@/modules/projects/application/use-project-features';
+import { CreateIssueDialog } from './CreateIssueDialog';
 
 interface IssueActionsMenuProps {
     issue: Issue;
@@ -34,6 +35,7 @@ interface IssueActionsMenuProps {
 export const IssueActionsMenu = ({ issue, workspaceSlug, projectId, onEdit }: IssueActionsMenuProps): React.ReactElement => {
     const [deleteOpen, setDeleteOpen] = useState(false);
     const [dropdownOpen, setDropdownOpen] = useState(false);
+    const [addSubTaskOpen, setAddSubTaskOpen] = useState(false);
 
     const { data: project } = useProject(workspaceSlug, projectId);
     const features = getProjectFeatures(project);
@@ -93,6 +95,13 @@ export const IssueActionsMenu = ({ issue, workspaceSlug, projectId, onEdit }: Is
                         <Pencil size={13} />
                         Editar
                     </DropdownMenuItem>
+                    <DropdownMenuItem
+                        onClick={(e) => { e.stopPropagation(); setDropdownOpen(false); setAddSubTaskOpen(true); }}
+                        className="gap-2 cursor-pointer hover:bg-[var(--neutral-200)] hover:text-primary focus:bg-[var(--neutral-200)] focus:text-primary"
+                    >
+                        <GitBranch size={13} />
+                        Agregar sub-tarea
+                    </DropdownMenuItem>
                     <DropdownMenuItem onClick={handleDuplicate} disabled={isDuplicating} className="gap-2 cursor-pointer hover:bg-[var(--neutral-200)] hover:text-primary focus:bg-[var(--neutral-200)] focus:text-primary">
                         <CopyPlus size={13} />
                         Duplicar
@@ -142,6 +151,17 @@ export const IssueActionsMenu = ({ issue, workspaceSlug, projectId, onEdit }: Is
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
+
+            {addSubTaskOpen && (
+                <CreateIssueDialog
+                    workspaceSlug={workspaceSlug}
+                    projectId={projectId}
+                    defaultParentId={issue.id}
+                    open={addSubTaskOpen}
+                    onOpenChange={setAddSubTaskOpen}
+                    trigger={<span />}
+                />
+            )}
         </>
     );
 };

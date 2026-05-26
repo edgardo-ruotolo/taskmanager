@@ -20,3 +20,14 @@ export interface UpsertNotificationPreferenceData {
     property: string;
     emailNotification: boolean;
 }
+
+export interface UserNotificationSettings {
+    id: string;
+    emailUnsubscribed: boolean;
+    emailDailyDigest: boolean;
+}
+
+export interface UpdateUserNotificationSettings {
+    emailUnsubscribed?: boolean;
+    emailDailyDigest?: boolean;
+}

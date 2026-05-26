@@ -15,5 +15,11 @@ public class UpdateIssueDtoValidator : AbstractValidator<UpdateIssueDto>
                 .LessThanOrEqualTo(x => x.DueDate)
                 .WithMessage("Start date must be before or equal to due date.");
         });
+        When(x => x.ParentId.HasValue, () =>
+        {
+            RuleFor(x => x.ParentId!.Value)
+                .NotEqual(Guid.Empty)
+                .WithMessage("ParentId must be a valid GUID.");
+        });
     }
 }

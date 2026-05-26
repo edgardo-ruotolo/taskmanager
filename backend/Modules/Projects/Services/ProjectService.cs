@@ -1,7 +1,7 @@
 using AutoMapper;
 using Microsoft.EntityFrameworkCore;
-using TaskManager.Api.Common.Email;
 using TaskManager.Api.Common.Exceptions;
+using TaskManager.Api.Common.Notifications;
 using TaskManager.Api.Common.Pagination;
 using TaskManager.Api.Data;
 using TaskManager.Api.Modules.Projects.Dtos;
@@ -10,7 +10,7 @@ using TaskManager.Api.Modules.States.Entities;
 
 namespace TaskManager.Api.Modules.Projects.Services;
 
-public class ProjectService(AppDbContext db, IMapper mapper, IEmailService emailService, IConfiguration configuration)
+public class ProjectService(AppDbContext db, IMapper mapper, INotificationDispatcher notifications, IConfiguration configuration)
     : IProjectService
 {
     public async Task<ProjectDto> CreateAsync(string workspaceSlug, Guid userId, CreateProjectDto dto, CancellationToken ct = default)
@@ -421,7 +421,21 @@ public class ProjectService(AppDbContext db, IMapper mapper, IEmailService email
 
         var frontendUrl = configuration["App:FrontendUrl"] ?? "http://localhost:5173";
         var inviteLink = $"{frontendUrl}/invitations/project/{invitation.Token}";
-        await emailService.SendProjectInvitationAsync(normalizedEmail, project.Name, inviteLink, ct);
+        notifications.Enqueue(new EmailJobPayload
+        {
+            Kind = EmailJobKind.ProjectInvitation,
+            RecipientUserId = Guid.Empty,
+            RecipientEmail = normalizedEmail,
+            RecipientName = normalizedEmail,
+            ActorUserId = invitedById,
+            EntityId = invitation.Id,
+            Params = new Dictionary<string, object?>
+            {
+                ["projectName"] = project.Name,
+                ["inviteUrl"] = inviteLink,
+                ["role"] = invitation.Role.ToString()
+            }
+        });
 
         return mapper.Map<ProjectInvitationDto>(invitation);
     }

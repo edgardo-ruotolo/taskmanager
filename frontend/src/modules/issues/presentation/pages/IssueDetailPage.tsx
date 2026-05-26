@@ -78,7 +78,7 @@ import {
     useCreateIssueRelation,
     useDeleteIssueRelation,
 } from '../../application/use-issue-detail';
-import { useUpdateIssue, useIssues } from '../../application/use-issues';
+import { useUpdateIssue, useIssues, useSubIssues } from '../../application/use-issues';
 import { useProject } from '@/modules/projects/application/use-projects';
 import { getProjectFeatures } from '@/modules/projects/application/use-project-features';
 import { useCycles } from '@/modules/cycles/application/use-cycles';
@@ -855,6 +855,7 @@ function CopyLinkButton({ url }: { url: string }): React.ReactElement {
 }
 
 /* ── Main page ── */
+// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: full issue detail page with many sections — complexity is structural
 export const IssueDetailPage = (): React.ReactElement => {
     const { workspaceSlug = '', projectId = '', issueId = '' } = useParams<{
         workspaceSlug: string;
@@ -878,7 +879,8 @@ export const IssueDetailPage = (): React.ReactElement => {
     const features = getProjectFeatures(project);
     const { data: parentIssueData } = useIssueDetail(workspaceSlug, projectId, issue?.parentId ?? '');
     const { data: allIssuesData } = useIssues(workspaceSlug, projectId);
-    const subIssues = (allIssuesData?.items ?? []).filter((i) => i.parentId === issueId);
+    const { data: subIssuesData } = useSubIssues(workspaceSlug, projectId, issueId, !!issueId);
+    const subIssues = subIssuesData?.items ?? [];
     const issueIdentifier = `${projectIdentifier ?? 'ISS'}-${issue?.sequenceId ?? ''}`;
     const { data: cycles = [] } = useCycles(workspaceSlug, projectId, { enabled: !!workspaceSlug && !!projectId && features.cyclesEnabled });
     const { data: modules = [] } = useModules(workspaceSlug, projectId, { enabled: !!workspaceSlug && !!projectId && features.modulesEnabled });

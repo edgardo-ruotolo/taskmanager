@@ -1,5 +1,5 @@
 import type React from 'react';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -24,7 +24,7 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ThemedSwitch } from '@/shared/components/ThemedSwitch';
 import { Separator } from '@/components/ui/separator';
-import { ChevronDown, ChevronRight, FileEdit, Lock } from 'lucide-react';
+import { ChevronDown, ChevronRight, FileEdit, Lock, GitBranch } from 'lucide-react';
 import { SearchableSelect } from '@/shared/components/ui/searchable-select';
 import { useProjectStates } from '@/modules/states/application/use-states';
 import { useLabels } from '@/modules/labels/application/use-labels';
@@ -37,7 +37,7 @@ import { useIssueTypes } from '../../application/use-issue-types';
 import { RichTextEditor } from '@/shared/components/RichTextEditor';
 import { PRIORITY_LABELS } from '../../domain/types';
 import type { Issue } from '../../domain/types';
-import { useCreateIssue, useUpdateIssue } from '../../application/use-issues';
+import { useCreateIssue, useUpdateIssue, useIssues } from '../../application/use-issues';
 import { useSimilarIssues } from '../../application/use-similar-issues';
 
 const issueDialogSchema = z.object({
@@ -80,6 +80,52 @@ const issueDialogSchema = z.object({
 
 type IssueDialogFormData = z.infer<typeof issueDialogSchema>;
 
+/** Builds the reset values for an existing issue being edited. */
+function buildEditResetValues(issue: Issue): IssueDialogFormData {
+    return {
+        title: issue.title,
+        description: issue.description ?? '',
+        descriptionHtml: issue.descriptionHtml ?? '',
+        descriptionJson: issue.descriptionJson ?? '',
+        priority: issue.priority,
+        stateId: issue.stateId,
+        assigneeIds: issue.assigneeIds ?? [],
+        labelIds: issue.labelIds ?? [],
+        moduleIds: issue.moduleIds ?? [],
+        cycleId: issue.cycleId ?? '',
+        parentId: issue.parentId ?? '',
+        issueTypeId: issue.issueTypeId ?? '',
+        startDate: issue.startDate ? issue.startDate.slice(0, 10) : '',
+        dueDate: issue.dueDate ? issue.dueDate.slice(0, 10) : '',
+        isDraft: issue.isDraft,
+        requiresAdminApproval: issue.requiresAdminApproval,
+        approvalRequiredStateIds: issue.approvalRequiredStateIds ?? [],
+    };
+}
+
+/** Builds the reset values for a new issue creation. */
+function buildCreateResetValues(defaultParentId?: string): IssueDialogFormData {
+    return {
+        title: '',
+        description: '',
+        descriptionHtml: '',
+        descriptionJson: '',
+        priority: 0,
+        stateId: '',
+        assigneeIds: [],
+        labelIds: [],
+        moduleIds: [],
+        cycleId: '',
+        parentId: defaultParentId ?? '',
+        issueTypeId: '',
+        startDate: '',
+        dueDate: '',
+        isDraft: false,
+        requiresAdminApproval: false,
+        approvalRequiredStateIds: [],
+    };
+}
+
 interface CreateIssueDialogProps {
     workspaceSlug: string;
     projectId: string;
@@ -98,6 +144,7 @@ export const CreateIssueDialog = ({
     open: controlledOpen,
     onOpenChange: controlledOnOpenChange,
     defaultParentId,
+// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: large dialog with many optional fields — complexity is inherent to the form structure
 }: CreateIssueDialogProps): React.ReactElement => {
     const isEditMode = !!issue;
     const [internalOpen, setInternalOpen] = useState(false);
@@ -126,50 +173,15 @@ export const CreateIssueDialog = ({
         },
     });
 
+    // biome-ignore lint/correctness/useExhaustiveDependencies: form is a stable RHF ref — adding it to deps causes infinite resets
     useEffect(() => {
-        if (issue && open) {
-            form.reset({
-                title: issue.title,
-                description: issue.description ?? '',
-                descriptionHtml: issue.descriptionHtml ?? '',
-                descriptionJson: issue.descriptionJson ?? '',
-                priority: issue.priority,
-                stateId: issue.stateId,
-                assigneeIds: issue.assigneeIds ?? [],
-                labelIds: issue.labelIds ?? [],
-                moduleIds: issue.moduleIds ?? [],
-                cycleId: issue.cycleId ?? '',
-                parentId: issue.parentId ?? '',
-                issueTypeId: issue.issueTypeId ?? '',
-                startDate: issue.startDate ? issue.startDate.slice(0, 10) : '',
-                dueDate: issue.dueDate ? issue.dueDate.slice(0, 10) : '',
-                isDraft: issue.isDraft,
-                requiresAdminApproval: issue.requiresAdminApproval,
-                approvalRequiredStateIds: issue.approvalRequiredStateIds ?? [],
-            });
-        } else if (!issue && open) {
-            form.reset({
-                title: '',
-                description: '',
-                descriptionHtml: '',
-                descriptionJson: '',
-                priority: 0,
-                stateId: '',
-                assigneeIds: [],
-                labelIds: [],
-                moduleIds: [],
-                cycleId: '',
-                parentId: defaultParentId ?? '',
-                issueTypeId: '',
-                startDate: '',
-                dueDate: '',
-                isDraft: false,
-                requiresAdminApproval: false,
-                approvalRequiredStateIds: [],
-            });
+        if (!open) return;
+        if (issue) {
+            form.reset(buildEditResetValues(issue));
+        } else {
+            form.reset(buildCreateResetValues(defaultParentId));
         }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [issue?.id, open, form, defaultParentId]);
+    }, [issue?.id, open, defaultParentId]);
 
     const watchedTitle = form.watch('title');
     const watchedRequiresApproval = form.watch('requiresAdminApproval');
@@ -195,7 +207,21 @@ export const CreateIssueDialog = ({
     const { data: modules = [] } = useModules(workspaceSlug, projectId, { enabled: !!workspaceSlug && !!projectId && features.modulesEnabled });
     const { data: members = [] } = useWorkspaceMembers(workspaceSlug);
     const { data: issueTypes = [] } = useIssueTypes(workspaceSlug);
+    const { data: allIssuesData } = useIssues(workspaceSlug, projectId);
     const { data: similarIssues } = useSimilarIssues(workspaceSlug, projectId, watchedTitle, open && !dedupeDismissed && !isEditMode);
+
+    // Build parent task picker items — exclude self (in edit mode) and any of its potential circular refs.
+    // Backend will validate circular ancestry; client-side we only exclude self.
+    const parentItems = useMemo(
+        () =>
+            (allIssuesData?.items ?? [])
+                .filter((i) => i.id !== issue?.id)
+                .map((i) => ({
+                    id: i.id,
+                    label: `#${i.sequenceId} ${i.title}`,
+                })),
+        [allIssuesData, issue?.id],
+    );
 
     const onSubmit = (data: IssueDialogFormData): void => {
         const payload = {
@@ -441,6 +467,42 @@ export const CreateIssueDialog = ({
                                 </FormItem>
                             )}
                         />
+
+                        {/* Parent task */}
+                        {defaultParentId ? (
+                            // Read-only chip when parentId is preset (opened from "Add sub-task")
+                            <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-layer-2 border border-subtle">
+                                <GitBranch size={13} className="text-placeholder shrink-0" aria-hidden="true" />
+                                <span className="text-xs text-secondary">
+                                    Tarea padre:
+                                </span>
+                                <span className="text-xs font-medium text-primary truncate flex-1">
+                                    {parentItems.find((i) => i.id === defaultParentId)?.label ?? defaultParentId}
+                                </span>
+                            </div>
+                        ) : (
+                            <FormField
+                                control={form.control}
+                                name="parentId"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel className="text-secondary">Tarea padre</FormLabel>
+                                        <FormControl>
+                                            <SearchableSelect
+                                                multi={false}
+                                                value={field.value ?? null}
+                                                onChange={(v) => field.onChange(v ?? undefined)}
+                                                items={parentItems}
+                                                placeholder="Sin tarea padre"
+                                                width="100%"
+                                                clearable
+                                            />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                        )}
 
                         {/* Progressive disclosure: hide secondary fields by default to lower TTI */}
                         <button

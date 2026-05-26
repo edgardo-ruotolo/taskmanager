@@ -1,210 +1,111 @@
 using System.Text;
 using System.Text.Json;
+using Microsoft.EntityFrameworkCore;
+using TaskManager.Api.Common.Notifications;
+using TaskManager.Api.Data;
 
 namespace TaskManager.Api.Common.Email;
 
-public class BrevoEmailService(HttpClient httpClient, IConfiguration configuration, ILogger<BrevoEmailService> logger)
-    : IEmailService
+/// <summary>
+/// Brevo (ex-Sendinblue) transactional email provider. Posts to
+/// <c>https://api.brevo.com/v3/smtp/email</c> using a configured template id
+/// and merge variables. Hangfire owns retries, so this class is intentionally thin.
+/// Reads <c>BrevoApiKey</c> first from <see cref="Modules.Admin.Entities.InstanceConfiguration"/>
+/// (configured via the god-mode UI), falling back to <c>Brevo:ApiKey</c> in appsettings.
+/// </summary>
+public class BrevoEmailService(
+    HttpClient httpClient,
+    IConfiguration configuration,
+    AppDbContext db,
+    ILogger<BrevoEmailService> logger) : IEmailService
 {
-    private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
-
-    private bool TryGetApiKey(out string apiKey)
+    private static readonly JsonSerializerOptions JsonOptions = new()
     {
-        apiKey = configuration["Brevo:ApiKey"] ?? string.Empty;
-        if (!string.IsNullOrWhiteSpace(apiKey)) return true;
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
+    };
 
-        logger.LogWarning("Brevo:ApiKey is not configured. Email sending is disabled.");
-        return false;
-    }
-
-    private async Task SendAsync(object payload, string apiKey, CancellationToken ct)
+    public async Task SendTemplateAsync(
+        string toEmail,
+        string toName,
+        EmailJobKind kind,
+        int? templateId,
+        IDictionary<string, object?> parameters,
+        string? unsubscribeToken,
+        CancellationToken ct = default)
     {
+        var (apiKey, dbFromEmail, dbFromName) = await ResolveBrevoCredentialsAsync(ct);
+        if (string.IsNullOrWhiteSpace(apiKey))
+        {
+            logger.LogWarning("Brevo API key is not configured (neither in DB nor in appsettings) — dropping {Kind} email to {Email}", kind, toEmail);
+            return;
+        }
+
+        if (templateId is null or 0)
+        {
+            logger.LogWarning("Brevo:Templates:{Kind} is not configured — dropping email to {Email}", kind, toEmail);
+            return;
+        }
+
+        var fromEmail = !string.IsNullOrWhiteSpace(dbFromEmail)
+            ? dbFromEmail
+            : configuration["Brevo:FromEmail"] ?? "noreply@taskmanager.app";
+        var fromName = !string.IsNullOrWhiteSpace(dbFromName)
+            ? dbFromName
+            : configuration["Brevo:FromName"] ?? "TaskManager";
+        var frontendUrl = configuration["App:FrontendUrl"]?.TrimEnd('/') ?? "";
+
+        var headers = new Dictionary<string, string>();
+        if (!string.IsNullOrWhiteSpace(unsubscribeToken) && !string.IsNullOrWhiteSpace(frontendUrl))
+        {
+            headers["List-Unsubscribe"] = $"<{frontendUrl}/unsubscribe?token={unsubscribeToken}>";
+            headers["List-Unsubscribe-Post"] = "List-Unsubscribe=One-Click";
+        }
+
+        var payload = new
+        {
+            sender = new { name = fromName, email = fromEmail },
+            to = new[] { new { email = toEmail, name = string.IsNullOrWhiteSpace(toName) ? toEmail : toName } },
+            templateId = templateId.Value,
+            @params = parameters,
+            headers = headers.Count > 0 ? headers : null
+        };
+
         var json = JsonSerializer.Serialize(payload, JsonOptions);
-        using var request = new HttpRequestMessage(HttpMethod.Post, "https://api.brevo.com/v3/smtp/email");
+        using var request = new HttpRequestMessage(HttpMethod.Post, "https://api.brevo.com/v3/smtp/email")
+        {
+            Content = new StringContent(json, Encoding.UTF8, "application/json")
+        };
         request.Headers.Add("api-key", apiKey);
-        request.Content = new StringContent(json, Encoding.UTF8, "application/json");
+        request.Headers.Add("accept", "application/json");
 
         var response = await httpClient.SendAsync(request, ct);
-        if (!response.IsSuccessStatusCode)
+        if (response.IsSuccessStatusCode)
         {
-            var body = await response.Content.ReadAsStringAsync(ct);
-            logger.LogWarning("Brevo API returned {StatusCode}: {Body}", response.StatusCode, body);
+            logger.LogInformation("Brevo accepted {Kind} (template {TemplateId}) for {Email}", kind, templateId, toEmail);
+            return;
         }
+
+        var body = await response.Content.ReadAsStringAsync(ct);
+        // Throw on 5xx and 429 so Hangfire retries; swallow 4xx (bad address etc.) to avoid storming.
+        if ((int)response.StatusCode >= 500 || response.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
+        {
+            logger.LogWarning("Brevo {StatusCode} for {Kind} to {Email} — Hangfire will retry. Body: {Body}",
+                response.StatusCode, kind, toEmail, body);
+            throw new HttpRequestException($"Brevo returned {(int)response.StatusCode}: {body}");
+        }
+
+        logger.LogError("Brevo {StatusCode} for {Kind} to {Email} — giving up. Body: {Body}",
+            response.StatusCode, kind, toEmail, body);
     }
 
-    public async Task SendWelcomeAsync(string toEmail, string toName, CancellationToken ct = default)
+    private async Task<(string? ApiKey, string? FromEmail, string? FromName)> ResolveBrevoCredentialsAsync(CancellationToken ct)
     {
-        if (!TryGetApiKey(out var apiKey)) return;
-
-        var payload = new
-        {
-            sender = new { name = "TaskManager", email = "noreply@taskmanager.app" },
-            to = new[] { new { email = toEmail } },
-            subject = "Welcome to TaskManager",
-            htmlContent = $"""
-                <p>Hello {toName},</p>
-                <p>Welcome to TaskManager! Your account has been created successfully.</p>
-                <p>You can now sign in and start managing your projects.</p>
-                """
-        };
-
-        await SendAsync(payload, apiKey, ct);
-    }
-
-    public async Task SendPasswordResetAsync(string toEmail, string toName, string resetUrl, CancellationToken ct = default)
-    {
-        if (!TryGetApiKey(out var apiKey)) return;
-
-        var payload = new
-        {
-            sender = new { name = "TaskManager", email = "noreply@taskmanager.app" },
-            to = new[] { new { email = toEmail } },
-            subject = "Reset your password",
-            htmlContent = $"""
-                <p>Hello {toName},</p>
-                <p>We received a request to reset your password.</p>
-                <p>Click the link below to continue:</p>
-                <p><a href="{resetUrl}">Reset password</a></p>
-                <p>If you did not request this, you can safely ignore this email.</p>
-                """
-        };
-
-        await SendAsync(payload, apiKey, ct);
-    }
-
-    public async Task SendMagicLinkAsync(string toEmail, string toName, string magicUrl, CancellationToken ct = default)
-    {
-        if (!TryGetApiKey(out var apiKey)) return;
-
-        var payload = new
-        {
-            sender = new { name = "TaskManager", email = "noreply@taskmanager.app" },
-            to = new[] { new { email = toEmail } },
-            subject = "Your magic link",
-            htmlContent = $"""
-                <p>Hello {toName},</p>
-                <p>Click the link below to sign in to TaskManager:</p>
-                <p><a href="{magicUrl}">Sign in</a></p>
-                <p>This link will expire in 15 minutes.</p>
-                """
-        };
-
-        await SendAsync(payload, apiKey, ct);
-    }
-
-    public async Task SendProjectInvitationAsync(string toEmail, string projectName, string inviteUrl, CancellationToken ct = default)
-    {
-        if (!TryGetApiKey(out var apiKey)) return;
-
-        var payload = new
-        {
-            sender = new { name = "TaskManager", email = "noreply@taskmanager.app" },
-            to = new[] { new { email = toEmail } },
-            subject = $"You have been invited to {projectName}",
-            htmlContent = $"""
-                <p>You have been invited to join the project <strong>{projectName}</strong> on TaskManager.</p>
-                <p>Click the link below to accept the invitation:</p>
-                <p><a href="{inviteUrl}">Accept invitation</a></p>
-                <p>This link will expire in 7 days.</p>
-                """
-        };
-
-        await SendAsync(payload, apiKey, ct);
-    }
-
-    public async Task SendMentionNotificationAsync(string toEmail, string mentionedName, string mentionerName, string issueTitle, string issueUrl, CancellationToken ct = default)
-    {
-        if (!TryGetApiKey(out var apiKey)) return;
-
-        var payload = new
-        {
-            sender = new { name = "TaskManager", email = "noreply@taskmanager.app" },
-            to = new[] { new { email = toEmail } },
-            subject = $"{mentionerName} mentioned you in \"{issueTitle}\"",
-            htmlContent = $"""
-                <p>Hello {mentionedName},</p>
-                <p><strong>{mentionerName}</strong> mentioned you in the issue <strong>{issueTitle}</strong>.</p>
-                <p><a href="{issueUrl}">View issue</a></p>
-                """
-        };
-
-        await SendAsync(payload, apiKey, ct);
-    }
-
-    public async Task SendIssueAssignedAsync(string toEmail, string assigneeName, string assignerName, string issueTitle, string issueUrl, CancellationToken ct = default)
-    {
-        if (!TryGetApiKey(out var apiKey)) return;
-
-        var payload = new
-        {
-            sender = new { name = "TaskManager", email = "noreply@taskmanager.app" },
-            to = new[] { new { email = toEmail } },
-            subject = $"You have been assigned to \"{issueTitle}\"",
-            htmlContent = $"""
-                <p>Hello {assigneeName},</p>
-                <p><strong>{assignerName}</strong> assigned you to the issue <strong>{issueTitle}</strong>.</p>
-                <p><a href="{issueUrl}">View issue</a></p>
-                """
-        };
-
-        await SendAsync(payload, apiKey, ct);
-    }
-
-    public async Task SendIssueCommentAsync(string toEmail, string recipientName, string commenterName, string issueTitle, string commentPreview, string issueUrl, CancellationToken ct = default)
-    {
-        if (!TryGetApiKey(out var apiKey)) return;
-
-        var payload = new
-        {
-            sender = new { name = "TaskManager", email = "noreply@taskmanager.app" },
-            to = new[] { new { email = toEmail } },
-            subject = $"New comment on \"{issueTitle}\"",
-            htmlContent = $"""
-                <p>Hello {recipientName},</p>
-                <p><strong>{commenterName}</strong> commented on <strong>{issueTitle}</strong>:</p>
-                <blockquote>{commentPreview}</blockquote>
-                <p><a href="{issueUrl}">View comment</a></p>
-                """
-        };
-
-        await SendAsync(payload, apiKey, ct);
-    }
-
-    public async Task SendCycleStartingAsync(string toEmail, string recipientName, string cycleName, string cycleUrl, DateTime startDate, CancellationToken ct = default)
-    {
-        if (!TryGetApiKey(out var apiKey)) return;
-
-        var payload = new
-        {
-            sender = new { name = "TaskManager", email = "noreply@taskmanager.app" },
-            to = new[] { new { email = toEmail } },
-            subject = $"Cycle \"{cycleName}\" is starting soon",
-            htmlContent = $"""
-                <p>Hello {recipientName},</p>
-                <p>The cycle <strong>{cycleName}</strong> is starting on <strong>{startDate:MMMM d, yyyy}</strong>.</p>
-                <p><a href="{cycleUrl}">View cycle</a></p>
-                """
-        };
-
-        await SendAsync(payload, apiKey, ct);
-    }
-
-    public async Task SendDueDateReminderAsync(string toEmail, string recipientName, string issueTitle, string issueUrl, DateTime dueDate, CancellationToken ct = default)
-    {
-        if (!TryGetApiKey(out var apiKey)) return;
-
-        var payload = new
-        {
-            sender = new { name = "TaskManager", email = "noreply@taskmanager.app" },
-            to = new[] { new { email = toEmail } },
-            subject = $"Reminder: \"{issueTitle}\" is due soon",
-            htmlContent = $"""
-                <p>Hello {recipientName},</p>
-                <p>The issue <strong>{issueTitle}</strong> is due on <strong>{dueDate:MMMM d, yyyy}</strong>.</p>
-                <p><a href="{issueUrl}">View issue</a></p>
-                """
-        };
-
-        await SendAsync(payload, apiKey, ct);
+        var row = await db.InstanceConfigurations
+            .AsNoTracking()
+            .Select(c => new { c.BrevoApiKey, c.BrevoFromEmail, c.BrevoFromName })
+            .FirstOrDefaultAsync(ct);
+        var apiKey = !string.IsNullOrWhiteSpace(row?.BrevoApiKey) ? row.BrevoApiKey : configuration["Brevo:ApiKey"];
+        return (apiKey, row?.BrevoFromEmail, row?.BrevoFromName);
     }
 }

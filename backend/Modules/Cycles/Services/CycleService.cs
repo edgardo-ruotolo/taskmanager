@@ -1,16 +1,65 @@
 using Microsoft.EntityFrameworkCore;
 using TaskManager.Api.Common.Exceptions;
+using TaskManager.Api.Common.Notifications;
 using TaskManager.Api.Common.Pagination;
 using TaskManager.Api.Data;
 using TaskManager.Api.Modules.Auth.Entities;
 using TaskManager.Api.Modules.Cycles.Dtos;
 using TaskManager.Api.Modules.Cycles.Entities;
+using TaskManager.Api.Modules.Projects.Entities;
 using TaskManager.Api.Modules.States.Entities;
 
 namespace TaskManager.Api.Modules.Cycles.Services;
 
-public class CycleService(AppDbContext db) : ICycleService
+public class CycleService(
+    AppDbContext db,
+    INotificationDispatcher notifications,
+    IConfiguration configuration) : ICycleService
 {
+    private string FrontendBaseUrl => configuration["App:FrontendUrl"]?.TrimEnd('/') ?? "";
+
+    private async Task EnqueueCycleLifecycleAsync(Cycle cycle, EmailJobKind kind, CancellationToken ct)
+    {
+        var members = await db.ProjectMembers.AsNoTracking()
+            .Where(m => m.ProjectId == cycle.ProjectId)
+            .Include(m => m.User)
+            .Include(m => m.Project)
+            .ToListAsync(ct);
+
+        if (members.Count == 0) return;
+
+        var totalIssues = await db.CycleIssues.CountAsync(ci => ci.CycleId == cycle.Id, ct);
+        var completedIssues = await db.CycleIssues
+            .Where(ci => ci.CycleId == cycle.Id)
+            .Select(ci => ci.Issue)
+            .CountAsync(i => i.CompletedAt != null, ct);
+
+        foreach (var m in members)
+        {
+            if (string.IsNullOrWhiteSpace(m.User.Email)) continue;
+            notifications.Enqueue(new EmailJobPayload
+            {
+                Kind = kind,
+                RecipientUserId = m.UserId,
+                RecipientEmail = m.User.Email!,
+                RecipientName = m.User.FirstName ?? m.User.UserName ?? string.Empty,
+                EntityId = cycle.Id,
+                Params = new Dictionary<string, object?>
+                {
+                    ["firstName"] = m.User.FirstName ?? m.User.UserName,
+                    ["cycleName"] = cycle.Name,
+                    ["projectName"] = m.Project.Name,
+                    ["startDate"] = cycle.StartDate?.ToString("yyyy-MM-dd"),
+                    ["endDate"] = cycle.EndDate?.ToString("yyyy-MM-dd"),
+                    ["totalIssues"] = totalIssues,
+                    ["completedIssues"] = completedIssues,
+                    ["pendingIssues"] = totalIssues - completedIssues,
+                    ["cycleUrl"] = $"{FrontendBaseUrl}/projects/{cycle.ProjectId}/cycles/{cycle.Id}"
+                }
+            });
+        }
+    }
+
     public async Task<PagedResult<CycleDto>> GetAllAsync(string workspaceSlug, Guid projectId, int page, int pageSize, CancellationToken ct = default)
     {
         var workspace = await db.Workspaces.AsNoTracking()
@@ -97,13 +146,26 @@ public class CycleService(AppDbContext db) : ICycleService
             .FirstOrDefaultAsync(c => c.Id == cycleId && c.ProjectId == projectId && c.Project.WorkspaceId == workspace.Id, ct)
             ?? throw new NotFoundException("Cycle not found.");
 
+        var oldStatus = cycle.Status;
+
         if (dto.Name is not null) cycle.Name = dto.Name;
         if (dto.Description is not null) cycle.Description = dto.Description;
         if (dto.Status is not null) cycle.Status = dto.Status.Value;
         if (dto.StartDate is not null) cycle.StartDate = dto.StartDate;
         if (dto.EndDate is not null) cycle.EndDate = dto.EndDate;
 
+        var startedNow = oldStatus != CycleStatus.Started && cycle.Status == CycleStatus.Started && cycle.StartNotifiedAt == null;
+        var completedNow = oldStatus != CycleStatus.Completed && cycle.Status == CycleStatus.Completed && cycle.EndNotifiedAt == null;
+        if (startedNow) cycle.StartNotifiedAt = DateTime.UtcNow;
+        if (completedNow) cycle.EndNotifiedAt = DateTime.UtcNow;
+
         await db.SaveChangesAsync(ct);
+
+        if (startedNow)
+            await EnqueueCycleLifecycleAsync(cycle, EmailJobKind.CycleStart, ct);
+        if (completedNow)
+            await EnqueueCycleLifecycleAsync(cycle, EmailJobKind.CycleEnd, ct);
+
         var result = MapToDto(cycle);
         await EnrichCyclesAsync(new[] { result }, ct);
         return result;
@@ -342,8 +404,11 @@ public class CycleService(AppDbContext db) : ICycleService
         if (cycle.ClosedAt is not null)
             throw new ValidationException("Cycle is already closed.");
 
+        var wasNotCompleted = cycle.Status != CycleStatus.Completed;
         cycle.Status = CycleStatus.Completed;
         cycle.ClosedAt = DateTime.UtcNow;
+        if (wasNotCompleted && cycle.EndNotifiedAt == null)
+            cycle.EndNotifiedAt = DateTime.UtcNow;
 
         if (moveIncompleteToBacklog)
         {
@@ -363,6 +428,9 @@ public class CycleService(AppDbContext db) : ICycleService
         }
 
         await db.SaveChangesAsync(ct);
+
+        if (wasNotCompleted)
+            await EnqueueCycleLifecycleAsync(cycle, EmailJobKind.CycleEnd, ct);
 
         var result = MapToDto(cycle);
         await EnrichCyclesAsync(new[] { result }, ct);

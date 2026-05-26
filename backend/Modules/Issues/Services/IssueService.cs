@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using TaskManager.Api.Common.Auth;
 using TaskManager.Api.Common.Exceptions;
+using TaskManager.Api.Common.Notifications;
 using TaskManager.Api.Common.Pagination;
 using TaskManager.Api.Data;
 using TaskManager.Api.Modules.Projects.Entities;
@@ -24,8 +25,116 @@ public class IssueService(
     IHtmlSanitizer htmlSanitizer,
     ICurrentUser currentUser,
     IRealtimePublisher realtime,
+    INotificationDispatcher notifications,
+    IConfiguration configuration,
     ILogger<IssueService> logger) : IIssueService
 {
+    private string FrontendBaseUrl => configuration["App:FrontendUrl"]?.TrimEnd('/') ?? "";
+
+    private async Task EnqueueIssueAssignedAsync(Issue issue, IEnumerable<Guid> assigneeIds, Guid actorId, CancellationToken ct)
+    {
+        var ids = assigneeIds.Where(id => id != actorId && id != Guid.Empty).Distinct().ToList();
+        if (ids.Count == 0) return;
+
+        var users = await db.Users.AsNoTracking()
+            .Where(u => ids.Contains(u.Id) && u.Email != null)
+            .ToListAsync(ct);
+        var actor = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == actorId, ct);
+        var assignerName = actor?.FirstName ?? actor?.UserName ?? string.Empty;
+
+        foreach (var u in users)
+        {
+            notifications.Enqueue(new EmailJobPayload
+            {
+                Kind = EmailJobKind.IssueAssigned,
+                RecipientUserId = u.Id,
+                RecipientEmail = u.Email!,
+                RecipientName = u.FirstName ?? u.UserName ?? string.Empty,
+                ActorUserId = actorId,
+                EntityId = issue.Id,
+                Params = new Dictionary<string, object?>
+                {
+                    ["firstName"] = u.FirstName ?? u.UserName,
+                    ["assignerName"] = assignerName,
+                    ["issueTitle"] = issue.Title,
+                    ["issueSequenceId"] = issue.SequenceId,
+                    ["issueUrl"] = $"{FrontendBaseUrl}/projects/{issue.ProjectId}/issues/{issue.Id}"
+                }
+            });
+        }
+    }
+
+    private async Task EnqueueIssueStateChangedAsync(Issue issue, string? oldStateName, string? newStateName, Guid actorId, CancellationToken ct)
+    {
+        if (oldStateName == newStateName) return;
+
+        var watcherIds = new HashSet<Guid>();
+        if (issue.CreatedById != actorId) watcherIds.Add(issue.CreatedById);
+        foreach (var a in issue.Assignees)
+            if (a.UserId != actorId) watcherIds.Add(a.UserId);
+        if (issue.AssigneeId.HasValue && issue.AssigneeId != actorId) watcherIds.Add(issue.AssigneeId.Value);
+        if (watcherIds.Count == 0) return;
+
+        var users = await db.Users.AsNoTracking()
+            .Where(u => watcherIds.Contains(u.Id) && u.Email != null)
+            .ToListAsync(ct);
+        var actor = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == actorId, ct);
+        var actorName = actor?.FirstName ?? actor?.UserName ?? string.Empty;
+
+        foreach (var u in users)
+        {
+            notifications.Enqueue(new EmailJobPayload
+            {
+                Kind = EmailJobKind.IssueStateChanged,
+                RecipientUserId = u.Id,
+                RecipientEmail = u.Email!,
+                RecipientName = u.FirstName ?? u.UserName ?? string.Empty,
+                ActorUserId = actorId,
+                EntityId = issue.Id,
+                Params = new Dictionary<string, object?>
+                {
+                    ["firstName"] = u.FirstName ?? u.UserName,
+                    ["actorName"] = actorName,
+                    ["issueTitle"] = issue.Title,
+                    ["oldState"] = oldStateName,
+                    ["newState"] = newStateName,
+                    ["issueUrl"] = $"{FrontendBaseUrl}/projects/{issue.ProjectId}/issues/{issue.Id}"
+                }
+            });
+        }
+    }
+
+    private async Task EnqueueApprovalPendingAsync(Issue issue, Guid actorId, CancellationToken ct)
+    {
+        var leads = await db.ProjectMembers.AsNoTracking()
+            .Where(m => m.ProjectId == issue.ProjectId
+                && (m.Role == ProjectRole.Admin || m.Role == ProjectRole.Lead)
+                && m.UserId != actorId)
+            .Include(m => m.User)
+            .ToListAsync(ct);
+
+        foreach (var m in leads)
+        {
+            if (string.IsNullOrWhiteSpace(m.User.Email)) continue;
+            notifications.Enqueue(new EmailJobPayload
+            {
+                Kind = EmailJobKind.LeaderApprovalPending,
+                RecipientUserId = m.UserId,
+                RecipientEmail = m.User.Email!,
+                RecipientName = m.User.FirstName ?? m.User.UserName ?? string.Empty,
+                ActorUserId = actorId,
+                EntityId = issue.Id,
+                Params = new Dictionary<string, object?>
+                {
+                    ["firstName"] = m.User.FirstName ?? m.User.UserName,
+                    ["issueTitle"] = issue.Title,
+                    ["issueSequenceId"] = issue.SequenceId,
+                    ["issueUrl"] = $"{FrontendBaseUrl}/projects/{issue.ProjectId}/issues/{issue.Id}"
+                }
+            });
+        }
+    }
+
     private static readonly Regex HtmlTagRegex = new("<[^>]+>", RegexOptions.Compiled);
     private static readonly Regex WhitespaceRegex = new("\\s+", RegexOptions.Compiled);
 
@@ -113,6 +222,51 @@ public class IssueService(
         return member is not null && (member.Role == ProjectRole.Admin || member.Role == ProjectRole.Lead);
     }
 
+    // Validates a candidate ParentId for an Issue:
+    // - The parent must exist and belong to the same project.
+    // - When `currentIssueId` is provided (Update path), the parent must not be the issue itself
+    //   nor any of its descendants (would create a cycle).
+    // Walks upward from the candidate following ParentId links until null or until the current
+    // issue is found. Bounded to a depth of 1024 to defend against pre-existing corrupt data.
+    private async Task ValidateParentAsync(
+        Guid candidateParentId,
+        Guid projectId,
+        Guid? currentIssueId,
+        CancellationToken ct)
+    {
+        if (currentIssueId.HasValue && candidateParentId == currentIssueId.Value)
+            throw new ValidationException("An issue cannot be its own parent.");
+
+        var parent = await db.Issues
+            .AsNoTracking()
+            .Where(i => i.Id == candidateParentId)
+            .Select(i => new { i.Id, i.ProjectId, i.ParentId })
+            .FirstOrDefaultAsync(ct)
+            ?? throw new ValidationException("Parent issue not found.");
+
+        if (parent.ProjectId != projectId)
+            throw new ValidationException("Parent issue must belong to the same project.");
+
+        if (!currentIssueId.HasValue) return;
+
+        var cursor = parent.ParentId;
+        var depth = 0;
+        while (cursor.HasValue)
+        {
+            if (cursor.Value == currentIssueId.Value)
+                throw new ValidationException("Sub-task cannot be moved under one of its own descendants.");
+
+            if (++depth > 1024)
+                throw new ValidationException("Parent chain exceeds maximum supported depth.");
+
+            cursor = await db.Issues
+                .AsNoTracking()
+                .Where(i => i.Id == cursor.Value)
+                .Select(i => i.ParentId)
+                .FirstOrDefaultAsync(ct);
+        }
+    }
+
     public async Task<IssueDto> CreateAsync(string workspaceSlug, Guid projectId, Guid userId, CreateIssueDto dto, CancellationToken ct = default)
     {
         // Reads — no tracking needed for validation.
@@ -127,6 +281,9 @@ public class IssueService(
         var state = await db.States.AsNoTracking()
             .FirstOrDefaultAsync(s => s.Id == dto.StateId, ct)
             ?? throw new NotFoundException($"State {dto.StateId} not found.");
+
+        if (dto.ParentId.HasValue)
+            await ValidateParentAsync(dto.ParentId.Value, project.Id, currentIssueId: null, ct);
 
         // Single EF transaction encloses the SequenceId reservation + Issue insertion +
         // all side-effects (assignees, labels, cycle/module attachments) so a failure in
@@ -198,6 +355,14 @@ public class IssueService(
 
         await EmitIssueEventAsync("issue.created", workspaceSlug, project.Id, issue.Id, ct);
 
+        var allAssignees = new HashSet<Guid>();
+        if (dto.AssigneeId.HasValue) allAssignees.Add(dto.AssigneeId.Value);
+        foreach (var id in dto.AssigneeIds) allAssignees.Add(id);
+        if (allAssignees.Count > 0)
+            await EnqueueIssueAssignedAsync(issue, allAssignees, userId, ct);
+        if (issue.RequiresAdminApproval)
+            await EnqueueApprovalPendingAsync(issue, userId, ct);
+
         // Re-load with full graph for the response DTO.
         var created = await db.Issues
             .AsNoTracking()
@@ -214,7 +379,20 @@ public class IssueService(
         return IssueMapper.MapToDto(created);
     }
 
-    public async Task<PagedResult<IssueDto>> GetAllAsync(string workspaceSlug, Guid projectId, int page, int pageSize, CancellationToken ct = default)
+    /// <summary>
+    /// Lists issues for a project with pagination.
+    /// </summary>
+    /// <param name="parentId">Optional. When set, returns only direct children of this issue.</param>
+    /// <param name="topLevelOnly">Optional. When true, returns only top-level issues (ParentId == null).
+    /// Ignored if <paramref name="parentId"/> is provided.</param>
+    public async Task<PagedResult<IssueDto>> GetAllAsync(
+        string workspaceSlug,
+        Guid projectId,
+        int page,
+        int pageSize,
+        Guid? parentId = null,
+        bool? topLevelOnly = null,
+        CancellationToken ct = default)
     {
         var workspace = await db.Workspaces.AsNoTracking()
             .FirstOrDefaultAsync(w => w.Slug == workspaceSlug, ct)
@@ -226,6 +404,11 @@ public class IssueService(
         var query = db.Issues
             .AsNoTracking()
             .Where(i => i.ProjectId == projectId && i.Project.WorkspaceId == workspace.Id);
+
+        if (parentId.HasValue)
+            query = query.Where(i => i.ParentId == parentId.Value);
+        else if (topLevelOnly == true)
+            query = query.Where(i => i.ParentId == null);
 
         var total = await query.CountAsync(ct);
 
@@ -339,6 +522,8 @@ public class IssueService(
         var oldStateName = issue.State?.Name;
         var oldPriority = issue.Priority.ToString();
         var oldTitle = issue.Title;
+        var oldAssigneeIds = issue.Assignees.Select(a => a.UserId).ToHashSet();
+        var oldRequiresApproval = issue.RequiresAdminApproval;
 
         if (dto.Title is not null) issue.Title = dto.Title;
 
@@ -351,7 +536,11 @@ public class IssueService(
 
         if (dto.Priority is not null) issue.Priority = dto.Priority.Value;
         if (dto.AssigneeId is not null) issue.AssigneeId = dto.AssigneeId;
-        if (dto.ParentId is not null) issue.ParentId = dto.ParentId;
+        if (dto.ParentId is not null && dto.ParentId != issue.ParentId)
+        {
+            await ValidateParentAsync(dto.ParentId.Value, issue.ProjectId, issue.Id, ct);
+            issue.ParentId = dto.ParentId;
+        }
         if (dto.IssueTypeId is not null) issue.IssueTypeId = dto.IssueTypeId;
         if (dto.SortOrder.HasValue) issue.SortOrder = dto.SortOrder.Value;
         if (dto.IsDraft.HasValue) issue.IsDraft = dto.IsDraft.Value;
@@ -471,6 +660,17 @@ public class IssueService(
 
         await EmitIssueEventAsync("issue.updated", workspaceSlug, projectId, issue.Id, ct);
 
+        var newAssigneeIds = issue.Assignees.Select(a => a.UserId).ToHashSet();
+        var addedAssignees = newAssigneeIds.Except(oldAssigneeIds).ToList();
+        if (addedAssignees.Count > 0)
+            await EnqueueIssueAssignedAsync(issue, addedAssignees, currentUserId, ct);
+
+        if (dto.StateId is not null && issue.State?.Name != oldStateName)
+            await EnqueueIssueStateChangedAsync(issue, oldStateName, issue.State?.Name, currentUserId, ct);
+
+        if (!oldRequiresApproval && issue.RequiresAdminApproval)
+            await EnqueueApprovalPendingAsync(issue, currentUserId, ct);
+
         return IssueMapper.MapToDto(issue);
     }
 
@@ -546,6 +746,7 @@ public class IssueService(
         await db.SaveChangesAsync(ct);
 
         await EmitIssueEventAsync("issue.updated", workspaceSlug, projectId, issueId, ct);
+        await EnqueueIssueAssignedAsync(issue, new[] { userId }, currentUser.UserId, ct);
     }
 
     public async Task RemoveAssigneeAsync(string workspaceSlug, Guid projectId, Guid issueId, Guid userId, CancellationToken ct = default)

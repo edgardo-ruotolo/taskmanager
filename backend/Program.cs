@@ -21,6 +21,7 @@ using Serilog;
 using TaskManager.Api.Common.Auth;
 using TaskManager.Api.Common.Authorization;
 using TaskManager.Api.Common.Email;
+using TaskManager.Api.Common.Notifications;
 using TaskManager.Api.Common.Filters;
 using TaskManager.Api.Common.Health;
 using TaskManager.Api.Common.Multitenancy;
@@ -165,6 +166,15 @@ else
 {
     builder.Services.AddScoped<IEmailService, LogOnlyEmailService>();
 }
+
+// Notification pipeline — services emit EmailJobPayload, dispatcher enqueues on
+// Hangfire, EmailDispatchJob processes (applies prefs, calls IEmailService).
+builder.Services.AddScoped<INotificationDispatcher, NotificationDispatcher>();
+builder.Services.AddScoped<EmailDispatchJob>();
+builder.Services.AddScoped<TaskManager.Api.Modules.Notifications.Jobs.OverdueDigestJob>();
+builder.Services.AddScoped<TaskManager.Api.Modules.Notifications.Jobs.CycleMidpointJob>();
+builder.Services.AddScoped<TaskManager.Api.Modules.Notifications.Jobs.DailyDigestJob>();
+builder.Services.AddScoped<TaskManager.Api.Modules.Notifications.Services.IUserNotificationSettingsService, TaskManager.Api.Modules.Notifications.Services.UserNotificationSettingsService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IRefreshTokenService, RefreshTokenService>();
 builder.Services.AddScoped<IOnboardingService, OnboardingService>();
@@ -445,6 +455,20 @@ RecurringJob.AddOrUpdate<IRecurringDispatcher>(
     "recurring-dispatcher",
     d => d.DispatchDueTemplatesAsync(CancellationToken.None),
     "*/15 * * * *");
+
+// Notification recurring jobs.
+RecurringJob.AddOrUpdate<TaskManager.Api.Modules.Notifications.Jobs.OverdueDigestJob>(
+    TaskManager.Api.Modules.Notifications.Jobs.OverdueDigestJob.RecurringJobId,
+    j => j.RunAsync(CancellationToken.None),
+    "0 8 * * *");
+RecurringJob.AddOrUpdate<TaskManager.Api.Modules.Notifications.Jobs.CycleMidpointJob>(
+    TaskManager.Api.Modules.Notifications.Jobs.CycleMidpointJob.RecurringJobId,
+    j => j.RunAsync(CancellationToken.None),
+    "0 * * * *");
+RecurringJob.AddOrUpdate<TaskManager.Api.Modules.Notifications.Jobs.DailyDigestJob>(
+    TaskManager.Api.Modules.Notifications.Jobs.DailyDigestJob.RecurringJobId,
+    j => j.RunAsync(CancellationToken.None),
+    "0 18 * * *");
 app.MapControllers();
 app.MapHub<NotificationHub>("/hubs/notifications");
 app.MapHub<IssueHub>("/hubs/issues");

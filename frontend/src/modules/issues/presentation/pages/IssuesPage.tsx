@@ -16,6 +16,7 @@ import {
     Filter,
     Flag,
     Calendar,
+    GitBranch,
 } from 'lucide-react';
 import {
     DndContext,
@@ -40,7 +41,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { StatePip } from '@/components/ui/state-pip';
 import { PriorityDot } from '@/components/ui/priority-dot';
 import { cn } from '@/lib/utils';
-import { useIssues, useCreateIssue, useUpdateIssue } from '../../application/use-issues';
+import { useIssues, useCreateIssue, useUpdateIssue, useSubIssues } from '../../application/use-issues';
 import { useProjectStates } from '@/modules/states/application/use-states';
 import { useProject, useProjectMembers } from '@/modules/projects/application/use-projects';
 import { getProjectFeatures, type ProjectFeatures } from '@/modules/projects/application/use-project-features';
@@ -312,7 +313,7 @@ function IssueListHeader({ features }: IssueListHeaderProps): React.ReactElement
             {headers.map((h) => (
                 <span
                     key={h.key}
-                    className="font-mono text-[10px] text-[var(--neutral-600)] uppercase tracking-[0.1em]"
+                    className="font-mono text-[10px] text-[var(--neutral-600)] uppercase tracking-[0.1em] whitespace-nowrap"
                 >
                     {h.label}
                 </span>
@@ -393,9 +394,6 @@ function ListGroupSection({
                     {issues.length}
                 </span>
                 <span className="flex-1" />
-                {showQuickAdd && isExpanded && defaultStateId && (
-                    <span className="text-[11px] text-[var(--neutral-600)]">+ Añadir</span>
-                )}
             </div>
 
             {isExpanded && (
@@ -663,6 +661,7 @@ interface KanbanCardProps {
     isDragOverlay?: boolean;
 }
 
+// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: kanban card with multi-field rendering — complexity is structural
 function KanbanCard({ issue, projectIdentifier, workspaceSlug = '', projectId = '', onClick, isDragOverlay = false }: KanbanCardProps): React.ReactElement {
     const [editingIssue, setEditingIssue] = useState<Issue | null>(null);
     const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: issue.id });
@@ -713,7 +712,16 @@ function KanbanCard({ issue, projectIdentifier, workspaceSlug = '', projectId = 
         return issue.moduleIds.map((id) => items.find((m) => m.id === id)).filter((m): m is Module => m !== undefined);
     }, [issue.moduleIds, modulesData]);
 
-    // TODO(backend): subIssueCount/subIssueCompletedCount not in Issue DTO
+    const hasSubIssues = (issue.subIssueCount ?? 0) > 0;
+    const [subPopoverOpen, setSubPopoverOpen] = useState(false);
+    const { data: subIssuesData, isLoading: subIssuesLoading } = useSubIssues(
+        workspaceSlug,
+        projectId,
+        issue.id,
+        subPopoverOpen,
+    );
+    const subIssues = subIssuesData?.items ?? [];
+    const navigate = useNavigate();
 
     return (
         <>
@@ -800,9 +808,87 @@ function KanbanCard({ issue, projectIdentifier, workspaceSlug = '', projectId = 
                     </div>
                 )}
 
-                {/* Row 5: priority + assignee avatars + due date */}
+                {/* Row 5: priority + sub-issues badge + assignee avatars + due date */}
                 <div className="flex items-center justify-between gap-2 mt-auto">
-                    <PriorityDot priority={mapPriority(issue.priority)} size={11} />
+                    <div className="flex items-center gap-1.5">
+                        <PriorityDot priority={mapPriority(issue.priority)} size={11} />
+                        {hasSubIssues && !isDragOverlay && (
+                            <Popover open={subPopoverOpen} onOpenChange={setSubPopoverOpen}>
+                                <PopoverTrigger asChild>
+                                    {/* biome-ignore lint/a11y/noStaticElementInteractions: stopPropagation wrapper; button inside owns interaction */}
+                                    <span
+                                        onClick={(e) => e.stopPropagation()}
+                                        onKeyDown={(e) => e.stopPropagation()}
+                                    >
+                                        <button
+                                            type="button"
+                                            onClick={(e) => { e.stopPropagation(); setSubPopoverOpen((v) => !v); }}
+                                            className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-[var(--neutral-200)] text-[var(--neutral-700)] hover:bg-[var(--neutral-300)] transition-colors"
+                                            aria-label={`Ver sub-tareas de ${issue.title}`}
+                                        >
+                                            <GitBranch size={9} aria-hidden="true" />
+                                            {issue.subIssueCompletedCount ?? 0}/{issue.subIssueCount ?? 0}
+                                        </button>
+                                    </span>
+                                </PopoverTrigger>
+                                <PopoverContent
+                                    className="w-72 p-0 bg-white border border-[var(--neutral-300)] shadow-lg rounded-lg overflow-hidden"
+                                    side="bottom"
+                                    align="start"
+                                    onClick={(e) => e.stopPropagation()}
+                                >
+                                    <div className="px-3 py-2 border-b border-[var(--neutral-200)] bg-[var(--neutral-100)]">
+                                        <p className="text-[11px] font-semibold text-[var(--neutral-900)] truncate">
+                                            Sub-tareas de {issue.title}
+                                        </p>
+                                    </div>
+                                    <div className="max-h-56 overflow-y-auto">
+                                        {subIssuesLoading ? (
+                                            <div className="flex flex-col gap-2 p-3">
+                                                <Skeleton className="h-4 w-full bg-[var(--neutral-200)]" />
+                                                <Skeleton className="h-4 w-3/4 bg-[var(--neutral-200)]" />
+                                            </div>
+                                        ) : subIssues.length === 0 ? (
+                                            <p className="text-[11px] text-[var(--neutral-500)] px-3 py-3">Sin sub-tareas</p>
+                                        ) : (
+                                            <ul className="flex flex-col divide-y divide-[var(--neutral-100)]">
+                                                {subIssues.map((sub) => (
+                                                    <li key={sub.id}>
+                                                        <button
+                                                            type="button"
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                setSubPopoverOpen(false);
+                                                                void navigate(`/${workspaceSlug}/projects/${projectId}/issues/${sub.id}`);
+                                                            }}
+                                                            className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-[var(--neutral-100)] transition-colors"
+                                                        >
+                                                            <span
+                                                                className="w-2 h-2 rounded-full shrink-0"
+                                                                style={{ backgroundColor: sub.stateColor ?? 'var(--neutral-400)' }}
+                                                                aria-hidden="true"
+                                                            />
+                                                            <span className="text-[10px] font-mono text-[var(--neutral-500)] shrink-0">
+                                                                {projectIdentifier ?? 'ISS'}-{sub.sequenceId}
+                                                            </span>
+                                                            <span className="text-[11px] text-[var(--neutral-900)] truncate flex-1">
+                                                                {sub.title}
+                                                            </span>
+                                                            {(sub.subIssueCount ?? 0) > 0 && (
+                                                                <span className="text-[9px] font-mono text-[var(--neutral-500)] shrink-0">
+                                                                    +{sub.subIssueCount}
+                                                                </span>
+                                                            )}
+                                                        </button>
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        )}
+                                    </div>
+                                </PopoverContent>
+                            </Popover>
+                        )}
+                    </div>
                     <div className="flex items-center gap-1.5 ml-auto">
                         {issue.dueDate && (
                             <span className="text-[10px] font-mono text-[var(--neutral-600)] uppercase tracking-wider">
@@ -816,7 +902,7 @@ function KanbanCard({ issue, projectIdentifier, workspaceSlug = '', projectId = 
                                     <div
                                         key={member.userId}
                                         title={member.displayName ?? member.email}
-                                        aria-label={`Asignado a ${member.displayName ?? member.email}`}
+                                        aria-hidden="true"
                                         className="w-[20px] h-[20px] rounded-full bg-[var(--brand-700)] flex items-center justify-center text-[9px] font-bold text-white shrink-0 ring-1 ring-white"
                                     >
                                         {member.avatarUrl ? (
@@ -833,7 +919,8 @@ function KanbanCard({ issue, projectIdentifier, workspaceSlug = '', projectId = 
                                 {assignees.length > 3 && (
                                     <div
                                         className="w-[20px] h-[20px] rounded-full bg-[var(--neutral-300)] flex items-center justify-center text-[8px] font-mono text-[var(--neutral-700)] shrink-0 ring-1 ring-white"
-                                        aria-label={`+${assignees.length - 3} más`}
+                                        title={`+${assignees.length - 3} más`}
+                                        aria-hidden="true"
                                     >
                                         +{assignees.length - 3}
                                     </div>
@@ -1274,8 +1361,11 @@ function MemberAvatar({ userId, displayName, email, isActive, onToggle }: Member
 }
 
 /* ── Main page ── */
-function useIssuesPageData(workspaceSlug: string, projectId: string) {
-    const { data, isLoading: issuesLoading } = useIssues(workspaceSlug, projectId);
+function useIssuesPageData(workspaceSlug: string, projectId: string, viewMode: string) {
+    // List view only shows top-level issues — children are lazy-loaded on expand.
+    // Board, Gantt, Calendar, Spreadsheet use topLevelOnly too (children shown inline or via popover).
+    const topLevelOnly = viewMode === 'list' || viewMode === 'kanban' || viewMode === 'gantt' || viewMode === 'spreadsheet';
+    const { data, isLoading: issuesLoading } = useIssues(workspaceSlug, projectId, topLevelOnly ? { topLevelOnly: true } : undefined);
     const { data: states, isLoading: statesLoading } = useProjectStates(workspaceSlug, projectId);
     const { data: project } = useProject(workspaceSlug, projectId);
     const isLoading = issuesLoading || statesLoading;
@@ -1292,17 +1382,19 @@ function useIssuesPageData(workspaceSlug: string, projectId: string) {
     };
 }
 
+// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: multi-view page with 5 view modes — complexity is structural
 export const IssuesPage = (): React.ReactElement => {
     const { workspaceSlug = '', projectId = '' } = useParams<{ workspaceSlug: string; projectId: string }>();
     const navigate = useNavigate();
 
+    const [viewMode, setViewMode] = useState<ViewMode>('list');
+
     const { isLoading, allIssues, sortedStates, defaultStateId, projectIdentifier, features } =
-        useIssuesPageData(workspaceSlug, projectId);
+        useIssuesPageData(workspaceSlug, projectId, viewMode);
 
     const { data: projectMembers } = useProjectMembers(workspaceSlug, projectId);
 
     const [searchParams, setSearchParams] = useSearchParams();
-    const [viewMode, setViewMode] = useState<ViewMode>('list');
     const [filterPopoverOpen, setFilterPopoverOpen] = useState(false);
 
     const filters = useMemo<IssueFilter>(() => {

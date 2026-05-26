@@ -19,6 +19,7 @@ import {
     Inbox,
     Archive,
     HelpCircle,
+    SlidersHorizontal,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useResizablePanel } from '@/shared/hooks/useResizablePanel';
@@ -452,6 +453,16 @@ export function PrimarySidebar(): React.ReactElement {
 
                         <div className="flex items-center gap-0.5 ml-auto">
                             <ThemeSwitcher />
+                            <button
+                                type="button"
+                                onClick={() => void navigate('/account/settings')}
+                                title="Configuración de cuenta"
+                                className="flex size-6 items-center justify-center rounded-sm hover:bg-[var(--neutral-200)] transition-colors"
+                                style={{ color: 'var(--neutral-700)' }}
+                                aria-label="Ir a configuración de cuenta"
+                            >
+                                <SlidersHorizontal size={13} aria-hidden="true" />
+                            </button>
                             {isAdmin && (
                                 <button
                                     type="button"

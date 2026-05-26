@@ -48,3 +48,6 @@ TaskManager.zip
 
 # Claude Code worktrees
 .claude/
+
+# Codegraph (local tool index)
+.codegraph/

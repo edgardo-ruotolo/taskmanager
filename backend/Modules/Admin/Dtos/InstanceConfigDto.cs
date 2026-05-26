@@ -7,6 +7,8 @@ public class InstanceConfigDto
     public bool IsSignUpEnabled { get; set; }
     public bool IsSetupDone { get; set; }
     public string? AdminEmail { get; set; }
+    public string? BrevoFromEmail { get; set; }
+    public string? BrevoFromName { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
 }

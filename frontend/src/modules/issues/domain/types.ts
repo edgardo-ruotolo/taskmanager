@@ -37,6 +37,10 @@ export interface Issue {
     moduleIds: string[];
     cycleId?: string;
     parentId?: string;
+    /** Number of direct child issues (provided by backend DTO) */
+    subIssueCount?: number;
+    /** Number of completed direct child issues (provided by backend DTO) */
+    subIssueCompletedCount?: number;
     issueTypeId?: string;
     startDate?: string;
     dueDate?: string;

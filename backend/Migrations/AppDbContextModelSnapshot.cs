@@ -263,6 +263,12 @@ namespace TaskManager.Api.Migrations
                     b.Property<string>("BrevoApiKey")
                         .HasColumnType("text");
 
+                    b.Property<string>("BrevoFromEmail")
+                        .HasColumnType("text");
+
+                    b.Property<string>("BrevoFromName")
+                        .HasColumnType("text");
+
                     b.Property<string>("CloudinaryApiKey")
                         .HasColumnType("text");
 
@@ -602,6 +608,9 @@ namespace TaskManager.Api.Migrations
                     b.Property<DateTime?>("EndDate")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<DateTime?>("EndNotifiedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<bool>("IsArchived")
                         .HasColumnType("boolean");
 
@@ -610,6 +619,9 @@ namespace TaskManager.Api.Migrations
 
                     b.Property<Guid?>("LeadId")
                         .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("MidpointNotifiedAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -623,6 +635,9 @@ namespace TaskManager.Api.Migrations
                         .HasColumnType("uuid");
 
                     b.Property<DateTime?>("StartDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("StartNotifiedAt")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("Status")
@@ -1955,6 +1970,51 @@ namespace TaskManager.Api.Migrations
                     b.ToTable("ModuleMembers");
                 });
 
+            modelBuilder.Entity("TaskManager.Api.Modules.Notifications.Entities.EmailSentLog", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Bucket")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("EntityId")
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<DateTime>("SentAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId", "Kind", "Bucket")
+                        .IsUnique();
+
+                    b.ToTable("EmailSentLog", (string)null);
+                });
+
             modelBuilder.Entity("TaskManager.Api.Modules.Notifications.Entities.Notification", b =>
                 {
                     b.Property<Guid>("Id")
@@ -2036,6 +2096,49 @@ namespace TaskManager.Api.Migrations
                         .IsUnique();
 
                     b.ToTable("UserNotificationPreferences");
+                });
+
+            modelBuilder.Entity("TaskManager.Api.Modules.Notifications.Entities.UserNotificationSettings", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("EmailDailyDigest")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("EmailUnsubscribed")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("UnsubscribeToken")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UnsubscribeToken")
+                        .IsUnique();
+
+                    b.HasIndex("UserId")
+                        .IsUnique();
+
+                    b.ToTable("UserNotificationSettings", (string)null);
                 });
 
             modelBuilder.Entity("TaskManager.Api.Modules.Projects.Entities.Project", b =>
@@ -3701,6 +3804,17 @@ namespace TaskManager.Api.Migrations
                 });
 
             modelBuilder.Entity("TaskManager.Api.Modules.Notifications.Entities.UserNotificationPreference", b =>
+                {
+                    b.HasOne("TaskManager.Api.Modules.Auth.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("TaskManager.Api.Modules.Notifications.Entities.UserNotificationSettings", b =>
                 {
                     b.HasOne("TaskManager.Api.Modules.Auth.Entities.User", "User")
                         .WithMany()

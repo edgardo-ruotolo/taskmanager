@@ -53,13 +53,27 @@ function normalizePagedIssues(raw: PagedResult<Issue>): PagedResult<Issue> {
     return { ...raw, items: raw.items.map(normalizeIssue) };
 }
 
+export interface GetIssuesParams {
+    topLevelOnly?: boolean;
+    parentId?: string;
+    page?: number;
+    pageSize?: number;
+}
+
 export const issueRepository = {
-    getAll: (workspaceSlug: string, projectId: string): Promise<PagedResult<Issue>> =>
-        apiClient
+    getAll: (workspaceSlug: string, projectId: string, params?: GetIssuesParams): Promise<PagedResult<Issue>> => {
+        const query = new URLSearchParams();
+        if (params?.topLevelOnly) query.set('topLevelOnly', 'true');
+        if (params?.parentId) query.set('parentId', params.parentId);
+        if (params?.page !== undefined) query.set('page', String(params.page));
+        if (params?.pageSize !== undefined) query.set('pageSize', String(params.pageSize));
+        const qs = query.toString();
+        return apiClient
             .get<PagedResult<Issue>>(
-                `/api/workspaces/${workspaceSlug}/projects/${projectId}/issues`,
+                `/api/workspaces/${workspaceSlug}/projects/${projectId}/issues${qs ? `?${qs}` : ''}`,
             )
-            .then((r) => normalizePagedIssues(r.data)),
+            .then((r) => normalizePagedIssues(r.data));
+    },
     create: (
         workspaceSlug: string,
         projectId: string,

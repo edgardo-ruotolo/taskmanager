@@ -4,6 +4,8 @@ export interface InstanceConfig {
     isSignUpEnabled: boolean;
     isSetupDone: boolean;
     adminEmail?: string;
+    brevoFromEmail?: string | null;
+    brevoFromName?: string | null;
 }
 
 export interface UpdateInstanceConfigData {
@@ -11,6 +13,8 @@ export interface UpdateInstanceConfigData {
     isSignUpEnabled?: boolean;
     adminEmail?: string;
     brevoApiKey?: string;
+    brevoFromEmail?: string;
+    brevoFromName?: string;
     cloudinaryCloudName?: string;
     cloudinaryApiKey?: string;
     cloudinaryApiSecret?: string;

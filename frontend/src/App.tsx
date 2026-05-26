@@ -57,6 +57,11 @@ const LabelsPage = lazy(() => import('@/modules/labels/presentation/pages/Labels
 // Notifications pages
 const NotificationsPage = lazy(() => import('@/modules/notifications/presentation/pages/NotificationsPage').then(m => ({ default: m.NotificationsPage })));
 
+// Account pages
+const AccountSettingsPage = lazy(() => import('@/modules/account/presentation/pages/AccountSettingsPage').then(m => ({ default: m.AccountSettingsPage })));
+const UnsubscribeConfirmedPage = lazy(() => import('@/modules/account/presentation/pages/UnsubscribeConfirmedPage').then(m => ({ default: m.UnsubscribeConfirmedPage })));
+const UnsubscribeFailedPage = lazy(() => import('@/modules/account/presentation/pages/UnsubscribeFailedPage').then(m => ({ default: m.UnsubscribeFailedPage })));
+
 // Analytics pages
 const AnalyticsPage = lazy(() => import('@/modules/analytics/presentation/pages/AnalyticsPage').then(m => ({ default: m.AnalyticsPage })));
 const AnalyticsLayout = lazy(() => import('@/modules/analytics/presentation/components/AnalyticsLayout').then(m => ({ default: m.AnalyticsLayout })));
@@ -114,8 +119,11 @@ export const App = (): React.ReactElement => {
             <Route path="/forgot-password" element={<ForgotPasswordPage />} />
             <Route path="/reset-password" element={<ResetPasswordPage />} />
             <Route path="/magic-link/:token" element={<MagicLinkVerifyPage />} />
+            <Route path="/unsubscribe-confirmed" element={<UnsubscribeConfirmedPage />} />
+            <Route path="/unsubscribe-failed" element={<UnsubscribeFailedPage />} />
             <Route element={<AuthGuard />}>
                 <Route path="/onboarding" element={<OnboardingPage />} />
+                <Route path="/account/settings" element={<AccountSettingsPage />} />
                 <Route path="/" element={<WorkspaceRedirect />} />
                 <Route path="/workspaces" element={<WorkspacesPage />} />
                 <Route path="/:workspaceSlug" element={<WorkspaceLayout />}>

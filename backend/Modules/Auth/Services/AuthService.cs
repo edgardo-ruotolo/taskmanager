@@ -3,8 +3,8 @@ using System.Text;
 using AutoMapper;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using TaskManager.Api.Common.Email;
 using TaskManager.Api.Common.Exceptions;
+using TaskManager.Api.Common.Notifications;
 using TaskManager.Api.Common.Telemetry;
 using TaskManager.Api.Data;
 using TaskManager.Api.Modules.Auth.Dtos;
@@ -16,7 +16,7 @@ public class AuthService(
     UserManager<User> userManager,
     SignInManager<User> signInManager,
     IMapper mapper,
-    IEmailService emailService,
+    INotificationDispatcher notifications,
     AppDbContext db,
     ITelemetryProvider telemetry,
     IConfiguration configuration) : IAuthService
@@ -105,7 +105,18 @@ public class AuthService(
         var encodedToken = Uri.EscapeDataString(token);
         var resetLink = $"{FrontendBaseUrl}/reset-password?email={Uri.EscapeDataString(user.Email!)}&token={encodedToken}";
 
-        await emailService.SendPasswordResetAsync(user.Email!, user.FirstName ?? user.UserName ?? string.Empty, resetLink, ct);
+        notifications.Enqueue(new EmailJobPayload
+        {
+            Kind = EmailJobKind.PasswordReset,
+            RecipientUserId = user.Id,
+            RecipientEmail = user.Email!,
+            RecipientName = user.FirstName ?? user.UserName ?? string.Empty,
+            Params = new Dictionary<string, object?>
+            {
+                ["firstName"] = user.FirstName ?? user.UserName ?? string.Empty,
+                ["resetUrl"] = resetLink
+            }
+        });
     }
 
     public async Task ResetPasswordAsync(ResetPasswordDto dto, CancellationToken ct = default)
@@ -197,7 +208,18 @@ public class AuthService(
 
         var url = $"{FrontendBaseUrl}/magic-link/{rawToken}";
         var name = user.FirstName ?? user.UserName ?? string.Empty;
-        await emailService.SendMagicLinkAsync(user.Email!, name, url, ct);
+        notifications.Enqueue(new EmailJobPayload
+        {
+            Kind = EmailJobKind.MagicLink,
+            RecipientUserId = user.Id,
+            RecipientEmail = user.Email!,
+            RecipientName = name,
+            Params = new Dictionary<string, object?>
+            {
+                ["firstName"] = name,
+                ["magicUrl"] = url
+            }
+        });
     }
 
     public async Task<UserDto> VerifyMagicLinkAsync(MagicLinkVerifyDto dto, HttpContext httpContext, CancellationToken ct = default)

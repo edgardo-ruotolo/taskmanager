@@ -22,5 +22,8 @@ public class Cycle : AuditableEntity
     public bool IsArchived { get; set; } = false;
     public DateTime? ArchivedAt { get; set; }
     public DateTime? ClosedAt { get; set; }
+    public DateTime? MidpointNotifiedAt { get; set; }
+    public DateTime? StartNotifiedAt { get; set; }
+    public DateTime? EndNotifiedAt { get; set; }
     public ICollection<CycleIssue> CycleIssues { get; set; } = [];
 }

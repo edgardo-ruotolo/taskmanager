@@ -1,5 +1,5 @@
 import type React from 'react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -7,33 +7,52 @@ import { Eye, EyeOff, Info } from 'lucide-react';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { useUpdateInstanceConfig } from '../../application/use-admin';
+import { useInstanceConfig, useUpdateInstanceConfig } from '../../application/use-admin';
 import type { UpdateInstanceConfigData } from '../../domain/types';
 
 const schema = z.object({
     brevoApiKey: z.string().optional(),
+    brevoFromEmail: z.string().email('Email inválido').or(z.literal('')).optional(),
+    brevoFromName: z.string().max(100).optional(),
 });
 
 type FormData = z.infer<typeof schema>;
 
 export const GodModeEmailPage = (): React.ReactElement => {
+    const { data: config } = useInstanceConfig();
     const { mutate: updateConfig, isPending } = useUpdateInstanceConfig();
     const [visible, setVisible] = useState(false);
 
     const form = useForm<FormData>({
         resolver: zodResolver(schema),
-        defaultValues: { brevoApiKey: '' },
+        defaultValues: {
+            brevoApiKey: '',
+            brevoFromEmail: '',
+            brevoFromName: '',
+        },
     });
+
+    useEffect(() => {
+        if (config) {
+            form.reset({
+                brevoApiKey: '',
+                brevoFromEmail: config.brevoFromEmail ?? '',
+                brevoFromName: config.brevoFromName ?? '',
+            });
+        }
+    }, [config, form]);
 
     const onSubmit = (data: FormData): void => {
         const payload: UpdateInstanceConfigData = {
             brevoApiKey: data.brevoApiKey || undefined,
+            brevoFromEmail: data.brevoFromEmail || undefined,
+            brevoFromName: data.brevoFromName || undefined,
         };
         updateConfig(payload);
     };
 
     return (
-        <div className="max-w-lg">
+        <div className="max-w-xl">
             <div className="mb-6">
                 <h2 className="text-lg font-semibold text-primary">Correo electrónico</h2>
                 <p className="text-sm text-secondary mt-1">
@@ -80,6 +99,51 @@ export const GodModeEmailPage = (): React.ReactElement => {
                                             {visible ? <EyeOff size={15} aria-hidden="true" /> : <Eye size={15} aria-hidden="true" />}
                                         </button>
                                     </div>
+                                </FormControl>
+                                <FormMessage className="text-danger-primary" />
+                            </FormItem>
+                        )}
+                    />
+
+                    <FormField
+                        control={form.control}
+                        name="brevoFromEmail"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel className="text-primary text-sm font-medium">
+                                    Email remitente
+                                </FormLabel>
+                                <FormControl>
+                                    <Input
+                                        type="email"
+                                        placeholder="noreply@tu-dominio.com"
+                                        className="bg-surface-1 border-subtle text-primary placeholder:text-placeholder"
+                                        {...field}
+                                    />
+                                </FormControl>
+                                <p className="text-xs text-secondary mt-1">
+                                    Dirección desde donde se envían los correos. Debe estar verificada en Brevo (SPF/DKIM).
+                                </p>
+                                <FormMessage className="text-danger-primary" />
+                            </FormItem>
+                        )}
+                    />
+
+                    <FormField
+                        control={form.control}
+                        name="brevoFromName"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel className="text-primary text-sm font-medium">
+                                    Nombre remitente
+                                </FormLabel>
+                                <FormControl>
+                                    <Input
+                                        type="text"
+                                        placeholder="TaskManager"
+                                        className="bg-surface-1 border-subtle text-primary placeholder:text-placeholder"
+                                        {...field}
+                                    />
                                 </FormControl>
                                 <FormMessage className="text-danger-primary" />
                             </FormItem>

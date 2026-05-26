@@ -13,6 +13,12 @@ public class CreateIssueDtoValidator : AbstractValidator<CreateIssueDto>
         RuleForEach(x => x.AssigneeIds).NotEqual(Guid.Empty);
         RuleForEach(x => x.LabelIds).NotEqual(Guid.Empty);
         RuleForEach(x => x.ModuleIds).NotEqual(Guid.Empty);
+        When(x => x.ParentId.HasValue, () =>
+        {
+            RuleFor(x => x.ParentId!.Value)
+                .NotEqual(Guid.Empty)
+                .WithMessage("ParentId must be a valid GUID.");
+        });
         When(x => x.StartDate.HasValue && x.DueDate.HasValue, () =>
         {
             RuleFor(x => x.StartDate)

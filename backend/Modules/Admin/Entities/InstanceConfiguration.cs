@@ -9,6 +9,8 @@ public class InstanceConfiguration : AuditableEntity
     public bool IsSetupDone { get; set; } = false;
     public string? AdminEmail { get; set; }
     public string? BrevoApiKey { get; set; }
+    public string? BrevoFromEmail { get; set; }
+    public string? BrevoFromName { get; set; }
     public string? CloudinaryCloudName { get; set; }
     public string? CloudinaryApiKey { get; set; }
     public string? CloudinaryApiSecret { get; set; }

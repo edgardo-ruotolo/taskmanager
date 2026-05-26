@@ -1,6 +1,6 @@
 import type React from 'react';
 import { useState, useMemo, useRef } from 'react';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, CornerDownRight } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 import { parseDateOnly } from '@/shared/lib/date';
@@ -46,6 +46,47 @@ function mondayBasedDow(date: Date): number {
     return dow === 0 ? 6 : dow - 1;
 }
 
+/** Returns true if the issue should appear on the given calendar date. */
+function issueMatchesDate(issue: Issue, date: Date): boolean {
+    if (issue.dueDate) {
+        const d = parseDateOnly(issue.dueDate);
+        if (d && isSameDay(d, date)) return true;
+    }
+    if (issue.startDate && !issue.dueDate) {
+        const d = parseDateOnly(issue.startDate);
+        if (d && isSameDay(d, date)) return true;
+    }
+    return false;
+}
+
+/** Builds the CalendarDay array for the given year/month using the provided issues. */
+function buildCalendarDays(year: number, month: number, issues: Issue[]): CalendarDay[] {
+    const firstDay = startOfMonth(year, month);
+    const daysInMonth = getDaysInMonth(year, month);
+    const startOffset = mondayBasedDow(firstDay);
+
+    const days: CalendarDay[] = [];
+
+    for (let i = startOffset - 1; i >= 0; i--) {
+        const d = new Date(year, month, -i);
+        days.push({ date: d, isCurrentMonth: false, issues: [] });
+    }
+
+    for (let d = 1; d <= daysInMonth; d++) {
+        const date = new Date(year, month, d);
+        const dayIssues = issues.filter((issue) => issueMatchesDate(issue, date));
+        days.push({ date, isCurrentMonth: true, issues: dayIssues });
+    }
+
+    const totalCells = Math.ceil(days.length / 7) * 7;
+    let nextDay = 1;
+    while (days.length < totalCells) {
+        days.push({ date: new Date(year, month + 1, nextDay++), isCurrentMonth: false, issues: [] });
+    }
+
+    return days;
+}
+
 interface CalendarDay {
     date: Date;
     isCurrentMonth: boolean;
@@ -58,12 +99,23 @@ interface IssuePillProps {
     onClick: () => void;
     className?: string;
     projectIdentifier?: string;
+    /** All issues in the current view — used to resolve parent title for tooltip */
+    allIssues?: Issue[];
 }
 
-function IssuePill({ issue, onClick, className, projectIdentifier }: IssuePillProps): React.ReactElement {
+function IssuePill({ issue, onClick, className, projectIdentifier, allIssues }: IssuePillProps): React.ReactElement {
     // Bug 13: use projectIdentifier prop instead of hardcoded 'ISS'
     const identifier = `${projectIdentifier ?? 'ISS'}-${issue.sequenceId}`;
     const borderColor = issue.stateColor || 'var(--neutral-400)';
+    const isSubIssue = !!issue.parentId;
+
+    const parentIssue = isSubIssue && allIssues
+        ? allIssues.find((i) => i.id === issue.parentId)
+        : undefined;
+
+    const tooltipText = parentIssue
+        ? `${projectIdentifier ?? 'ISS'}-${parentIssue.sequenceId} ${parentIssue.title} › ${issue.title}`
+        : issue.title;
 
     return (
         <button
@@ -76,8 +128,15 @@ function IssuePill({ issue, onClick, className, projectIdentifier }: IssuePillPr
                 className,
             )}
             style={{ borderLeft: `2px solid ${borderColor}` }}
-            title={issue.title}
+            title={tooltipText}
         >
+            {isSubIssue && (
+                <CornerDownRight
+                    size={9}
+                    className="mr-1 shrink-0 text-[var(--neutral-500)]"
+                    aria-hidden="true"
+                />
+            )}
             <span className="font-mono text-[10px] text-[var(--neutral-600)] mr-1 shrink-0">
                 {identifier}
             </span>
@@ -93,9 +152,10 @@ interface CalendarCellProps {
     day: CalendarDay;
     onIssueClick: (id: string) => void;
     projectIdentifier?: string;
+    allIssues: Issue[];
 }
 
-function CalendarCell({ day, onIssueClick, projectIdentifier }: CalendarCellProps): React.ReactElement {
+function CalendarCell({ day, onIssueClick, projectIdentifier, allIssues }: CalendarCellProps): React.ReactElement {
     const overflowCount = day.issues.length - MAX_VISIBLE_PER_CELL;
     const hasOverflow = overflowCount > 0;
     const triggerRef = useRef<HTMLButtonElement>(null);
@@ -140,6 +200,7 @@ function CalendarCell({ day, onIssueClick, projectIdentifier }: CalendarCellProp
                     issue={issue}
                     onClick={() => onIssueClick(issue.id)}
                     projectIdentifier={projectIdentifier}
+                    allIssues={allIssues}
                 />
             ))}
 
@@ -172,6 +233,7 @@ function CalendarCell({ day, onIssueClick, projectIdentifier }: CalendarCellProp
                                     onClick={() => onIssueClick(issue.id)}
                                     className="text-[11px]"
                                     projectIdentifier={projectIdentifier}
+                                    allIssues={allIssues}
                                 />
                             ))}
                         </div>
@@ -191,42 +253,10 @@ export const IssueCalendarView = ({
     const [year, setYear] = useState(today.getFullYear());
     const [month, setMonth] = useState(today.getMonth());
 
-    const calendarDays = useMemo<CalendarDay[]>(() => {
-        const firstDay = startOfMonth(year, month);
-        const daysInMonth = getDaysInMonth(year, month);
-        const startOffset = mondayBasedDow(firstDay);
-
-        const days: CalendarDay[] = [];
-
-        for (let i = startOffset - 1; i >= 0; i--) {
-            const d = new Date(year, month, -i);
-            days.push({ date: d, isCurrentMonth: false, issues: [] });
-        }
-
-        for (let d = 1; d <= daysInMonth; d++) {
-            const date = new Date(year, month, d);
-            const dayIssues = issues.filter((issue) => {
-                if (issue.dueDate) {
-                    const d = parseDateOnly(issue.dueDate);
-                    if (d && isSameDay(d, date)) return true;
-                }
-                if (issue.startDate && !issue.dueDate) {
-                    const d = parseDateOnly(issue.startDate);
-                    if (d && isSameDay(d, date)) return true;
-                }
-                return false;
-            });
-            days.push({ date, isCurrentMonth: true, issues: dayIssues });
-        }
-
-        const totalCells = Math.ceil(days.length / 7) * 7;
-        let nextDay = 1;
-        while (days.length < totalCells) {
-            days.push({ date: new Date(year, month + 1, nextDay++), isCurrentMonth: false, issues: [] });
-        }
-
-        return days;
-    }, [year, month, issues]);
+    const calendarDays = useMemo<CalendarDay[]>(
+        () => buildCalendarDays(year, month, issues),
+        [year, month, issues],
+    );
 
     const prevMonth = (): void => {
         if (month === 0) { setMonth(11); setYear((y) => y - 1); }
@@ -305,6 +335,7 @@ export const IssueCalendarView = ({
                         day={day}
                         onIssueClick={onIssueClick}
                         projectIdentifier={projectIdentifier}
+                        allIssues={issues}
                     />
                 ))}
             </div>
