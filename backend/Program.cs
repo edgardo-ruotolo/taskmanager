@@ -102,10 +102,15 @@ builder.Services.AddIdentity<User, IdentityRole<Guid>>(options =>
 builder.Services.ConfigureApplicationCookie(options =>
 {
     options.Cookie.HttpOnly = true;
-    options.Cookie.SecurePolicy = builder.Environment.IsDevelopment()
-        ? CookieSecurePolicy.SameAsRequest
-        : CookieSecurePolicy.Always;
-    options.Cookie.SameSite = SameSiteMode.Strict;
+    var cookieSecure = builder.Configuration
+        .GetValue("Auth:CookieSecure", !builder.Environment.IsDevelopment());
+    options.Cookie.SecurePolicy = cookieSecure
+        ? CookieSecurePolicy.Always
+        : CookieSecurePolicy.SameAsRequest;
+
+    var sameSite = builder.Configuration
+        .GetValue("Auth:CookieSameSite", "Strict");
+    options.Cookie.SameSite = Enum.Parse<SameSiteMode>(sameSite);
     options.ExpireTimeSpan = TimeSpan.FromHours(24);
     options.SlidingExpiration = true;
     options.Events.OnRedirectToLogin = ctx =>
