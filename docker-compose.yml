@@ -75,6 +75,7 @@ services:
       Redis__ConnectionString: "redis:6379,password=${REDIS_PASSWORD},abortConnect=false"
       Auth__MagicLinkSecret: ${AUTH_MAGIC_LINK_SECRET}
       Auth__RefreshTokenSecret: ${AUTH_REFRESH_TOKEN_SECRET}
+      Auth__CookieSecure: ${AUTH_COOKIE_SECURE:-true}
       Cors__AllowedOrigins__0: ${FRONTEND_PUBLIC_URL}
       App__BaseUrl: ${BACKEND_PUBLIC_URL}
       App__FrontendUrl: ${FRONTEND_PUBLIC_URL}

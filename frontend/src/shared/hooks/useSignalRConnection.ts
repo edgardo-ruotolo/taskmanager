@@ -26,7 +26,10 @@ export const useSignalRConnection = (
 
         // Resolve relative hub paths against the API origin so SignalR
         // negotiates against the backend, not the Vite dev server.
-        const apiBase = (import.meta.env.VITE_API_URL as string | undefined) ?? 'http://localhost:5000';
+        // When VITE_API_URL is empty (same-origin nginx proxy), fall back to
+        // window.location.origin so SignalR receives an absolute URL.
+        const envBase = (import.meta.env.VITE_API_URL as string | undefined) ?? '';
+        const apiBase = envBase !== '' ? envBase : window.location.origin;
         const resolvedUrl = /^https?:\/\//.test(hubUrl) ? hubUrl : `${apiBase}${hubUrl}`;
 
         const connection = new HubConnectionBuilder()

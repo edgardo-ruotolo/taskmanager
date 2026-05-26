@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using TaskManager.Api.Common.Auth;
 using Microsoft.AspNetCore.RateLimiting;
@@ -17,18 +18,20 @@ public class AuthController(
     IAuthService authService,
     ICurrentUser currentUser,
     IRefreshTokenService refreshTokenService,
-    IWebHostEnvironment env) : ControllerBase
+    IWebHostEnvironment env,
+    IConfiguration configuration) : ControllerBase
 {
     private const string RefreshCookieName = "refresh_token";
     private const string RefreshCookiePath = "/api/auth";
 
     private void IssueRefreshCookie(string token, DateTime expiresAt)
     {
+        var secure = configuration.GetValue<bool?>("Auth:CookieSecure") ?? !env.IsDevelopment();
         Response.Cookies.Append(RefreshCookieName, token, new CookieOptions
         {
             HttpOnly = true,
-            Secure = !env.IsDevelopment(),
-            SameSite = SameSiteMode.Strict,
+            Secure = secure,
+            SameSite = SameSiteMode.Lax,
             Expires = expiresAt,
             Path = RefreshCookiePath
         });
