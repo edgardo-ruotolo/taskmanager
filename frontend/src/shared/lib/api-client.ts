@@ -1,7 +1,9 @@
-import axios, { type InternalAxiosRequestConfig } from 'axios';
+﻿import axios, { type InternalAxiosRequestConfig } from 'axios';
 import { toast } from 'sonner';
 import { useAuthStore } from '@/modules/auth/application/auth-store';
 import { queryClient } from '@/shared/lib/query-client';
+
+export const AUTH_UNAUTHORIZED_EVENT = 'auth:logout';
 
 export const apiClient = axios.create({
     baseURL: import.meta.env.VITE_API_URL ?? 'http://localhost:5000',
@@ -21,7 +23,7 @@ const isAuthBypassUrl = (url: string): boolean =>
 export const handleAuthFailure = (): void => {
     useAuthStore.getState().clearAuth();
     queryClient.clear();
-    window.dispatchEvent(new CustomEvent('auth:logout'));
+    window.dispatchEvent(new CustomEvent(AUTH_UNAUTHORIZED_EVENT));
 };
 
 const performRefresh = (): Promise<void> => {

@@ -1,3 +1,5 @@
+// TODO(bug-15): This component is currently unused (not imported anywhere).
+// When re-enabled, replace hardcoded 'ISS-' with a projectIdentifier prop.
 import type React from 'react';
 import { useState } from 'react';
 import {

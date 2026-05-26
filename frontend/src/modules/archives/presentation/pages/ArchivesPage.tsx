@@ -100,7 +100,7 @@ export const ArchivesPage = (): React.ReactElement => {
 
     return (
         <div className="p-6 md:p-8">
-            <div className="max-w-4xl mx-auto">
+            <div className="w-full">
                 {/* Header */}
                 <div className="flex items-center gap-3 mb-6">
                     <div className="w-8 h-8 rounded-lg bg-surface-2 border border-subtle flex items-center justify-center">

@@ -58,7 +58,7 @@ export const ReportsPage = (): React.ReactElement => {
     const { data: history, isLoading } = useExports(workspaceSlug, hasPending ? 5000 : false);
 
     return (
-        <div className="mx-auto max-w-[1100px] px-10 py-8 space-y-5">
+        <div className="w-full px-10 py-8 space-y-5">
             <div className="flex items-center justify-between gap-4">
                 <div>
                     <h2 className="text-[20px] font-medium tracking-[-0.02em] text-[var(--neutral-1200)]">

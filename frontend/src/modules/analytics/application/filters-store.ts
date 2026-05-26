@@ -49,6 +49,20 @@ export const defaultFilters: AnalyticsFiltersState = {
 
 const STORAGE_PREFIX = 'tm-analytics-filters';
 
+function computeActiveFilterCount(s: AnalyticsFiltersState): number {
+    let count = 0;
+    if (s.userIds.length > 0) count += 1;
+    if (s.labelIds.length > 0) count += 1;
+    if (s.projectIds.length > 0) count += 1;
+    if (s.stateIds.length > 0) count += 1;
+    if (s.stateCategories.length > 0) count += 1;
+    if (s.priorities.length > 0) count += 1;
+    if (s.dateFrom || s.dateTo) count += 1;
+    if (s.cycleId) count += 1;
+    if (s.includeArchived) count += 1;
+    return count;
+}
+
 /**
  * Builds a workspace-scoped Zustand store. Each workspaceSlug gets an
  * independent persisted instance so switching workspaces never leaks filters.
@@ -77,20 +91,7 @@ function createAnalyticsFiltersStore(workspaceSlug: string) {
                         s.includeArchived
                     );
                 },
-                countActiveFilters: () => {
-                    const s = get();
-                    let count = 0;
-                    if (s.userIds.length > 0) count += 1;
-                    if (s.labelIds.length > 0) count += 1;
-                    if (s.projectIds.length > 0) count += 1;
-                    if (s.stateIds.length > 0) count += 1;
-                    if (s.stateCategories.length > 0) count += 1;
-                    if (s.priorities.length > 0) count += 1;
-                    if (s.dateFrom || s.dateTo) count += 1;
-                    if (s.cycleId) count += 1;
-                    if (s.includeArchived) count += 1;
-                    return count;
-                },
+                countActiveFilters: () => computeActiveFilterCount(get()),
             }),
             {
                 name: `${STORAGE_PREFIX}-${workspaceSlug}`,

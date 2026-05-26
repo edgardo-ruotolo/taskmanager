@@ -16,6 +16,11 @@ public class PublicSpaceController(AppDbContext db) : ControllerBase
             .FirstOrDefaultAsync(b => b.Token == token, ct);
 
         if (board is null || !board.IsPublic) return NotFound();
+        if (board.ExpiresAt.HasValue && board.ExpiresAt.Value < DateTime.UtcNow) return NotFound();
+
+        board.VisitCount += 1;
+        board.LastVisitAt = DateTime.UtcNow;
+        await db.SaveChangesAsync(ct);
 
         var issuesQuery = db.Issues
             .Where(i => i.ProjectId == board.ProjectId);

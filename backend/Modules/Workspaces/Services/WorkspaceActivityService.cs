@@ -34,11 +34,12 @@ public class WorkspaceActivityService(AppDbContext db) : IWorkspaceActivityServi
             a.ActorId,
             (a.Actor.DisplayName ?? $"{a.Actor.FirstName} {a.Actor.LastName}".Trim()).Trim(),
             a.Action,
-            a.EntityType,
+            DeriveEntityType(a.EntityType, a.Action),
             a.EntityId,
             a.EntityTitle,
             a.OldValue,
             a.NewValue,
+            TruncateComment(a.CommentBody),
             a.CreatedAt
         )).ToList();
 
@@ -51,19 +52,42 @@ public class WorkspaceActivityService(AppDbContext db) : IWorkspaceActivityServi
         };
     }
 
-    public async Task LogAsync(Guid workspaceId, Guid actorId, string action, string? entityType, Guid? entityId, string? entityTitle, CancellationToken ct = default)
+    public async Task LogAsync(Guid workspaceId, Guid actorId, string action, string? entityType, Guid? entityId, string? entityTitle, string? commentBody = null, CancellationToken ct = default)
     {
         var activity = new WorkspaceActivity
         {
             WorkspaceId = workspaceId,
             ActorId = actorId,
             Action = action,
-            EntityType = entityType,
+            EntityType = DeriveEntityType(entityType, action),
             EntityId = entityId,
-            EntityTitle = entityTitle
+            EntityTitle = entityTitle,
+            CommentBody = TruncateComment(commentBody)
         };
 
         db.WorkspaceActivities.Add(activity);
         await db.SaveChangesAsync(ct);
+    }
+
+    private static string? DeriveEntityType(string? explicitType, string action)
+    {
+        if (!string.IsNullOrWhiteSpace(explicitType)) return explicitType;
+        if (string.IsNullOrWhiteSpace(action)) return null;
+
+        var lower = action.ToLowerInvariant();
+        if (lower.Contains("comment")) return "comment";
+        if (lower.Contains("issue")) return "issue";
+        if (lower.Contains("page")) return "page";
+        if (lower.Contains("cycle")) return "cycle";
+        if (lower.Contains("module")) return "module";
+        if (lower.Contains("member")) return "member";
+        if (lower.Contains("setting")) return "settings";
+        return null;
+    }
+
+    private static string? TruncateComment(string? body)
+    {
+        if (string.IsNullOrEmpty(body)) return body;
+        return body.Length <= 200 ? body : body[..200];
     }
 }

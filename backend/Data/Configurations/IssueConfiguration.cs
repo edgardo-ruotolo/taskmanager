@@ -66,12 +66,6 @@ public class IssueConfiguration : IEntityTypeConfiguration<Issue>
             .IsRequired(false)
             .OnDelete(DeleteBehavior.SetNull);
 
-        builder.HasOne(i => i.EstimatePoint)
-            .WithMany()
-            .HasForeignKey(i => i.EstimatePointId)
-            .IsRequired(false)
-            .OnDelete(DeleteBehavior.SetNull);
-
         builder.Property(i => i.SortOrder).HasDefaultValue(65535d);
         builder.Property(i => i.IsDraft).HasDefaultValue(false);
 

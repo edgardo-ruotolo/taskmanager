@@ -19,27 +19,21 @@ import {
     FormLabel,
     FormMessage,
 } from '@/components/ui/form';
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ThemedSwitch } from '@/shared/components/ThemedSwitch';
 import { Separator } from '@/components/ui/separator';
 import { ChevronDown, ChevronRight, FileEdit, Lock } from 'lucide-react';
-import { ThemedMultiSelect } from '@/shared/components/ThemedMultiSelect';
+import { SearchableSelect } from '@/shared/components/ui/searchable-select';
 import { useProjectStates } from '@/modules/states/application/use-states';
 import { useLabels } from '@/modules/labels/application/use-labels';
 import { useCycles } from '@/modules/cycles/application/use-cycles';
 import { useModules } from '@/modules/modules/application/use-modules';
 import { useWorkspaceMembers } from '@/modules/workspaces/application/use-workspaces';
+import { useProject } from '@/modules/projects/application/use-projects';
+import { getProjectFeatures } from '@/modules/projects/application/use-project-features';
 import { useIssueTypes } from '../../application/use-issue-types';
-import { ThemedSelect } from '@/shared/components/ThemedSelect';
 import { RichTextEditor } from '@/shared/components/RichTextEditor';
 import { PRIORITY_LABELS } from '../../domain/types';
 import type { Issue } from '../../domain/types';
@@ -60,13 +54,12 @@ const issueDialogSchema = z.object({
     cycleId: z.string().optional(),
     parentId: z.string().optional(),
     issueTypeId: z.string().optional(),
-    estimatePointId: z.string().optional(),
     startDate: z.string().optional(),
     dueDate: z.string().optional(),
     isDraft: z.boolean().optional(),
     sortOrder: z.number().min(0).optional(),
-    requiresAdminApproval: z.boolean().default(false),
-    approvalRequiredStateIds: z.array(z.string()).default([]),
+    requiresAdminApproval: z.boolean(),
+    approvalRequiredStateIds: z.array(z.string()),
 }).refine(
     (data) => {
         if (data.startDate && data.dueDate) {
@@ -148,7 +141,6 @@ export const CreateIssueDialog = ({
                 cycleId: issue.cycleId ?? '',
                 parentId: issue.parentId ?? '',
                 issueTypeId: issue.issueTypeId ?? '',
-                estimatePointId: issue.estimatePointId ?? '',
                 startDate: issue.startDate ? issue.startDate.slice(0, 10) : '',
                 dueDate: issue.dueDate ? issue.dueDate.slice(0, 10) : '',
                 isDraft: issue.isDraft,
@@ -158,18 +150,26 @@ export const CreateIssueDialog = ({
         } else if (!issue && open) {
             form.reset({
                 title: '',
+                description: '',
+                descriptionHtml: '',
+                descriptionJson: '',
                 priority: 0,
                 stateId: '',
                 assigneeIds: [],
                 labelIds: [],
                 moduleIds: [],
+                cycleId: '',
+                parentId: defaultParentId ?? '',
+                issueTypeId: '',
+                startDate: '',
+                dueDate: '',
                 isDraft: false,
                 requiresAdminApproval: false,
                 approvalRequiredStateIds: [],
-                parentId: defaultParentId ?? '',
             });
         }
-    }, [issue, open, form, defaultParentId]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [issue?.id, open, form, defaultParentId]);
 
     const watchedTitle = form.watch('title');
     const watchedRequiresApproval = form.watch('requiresAdminApproval');
@@ -186,10 +186,13 @@ export const CreateIssueDialog = ({
     );
     const isPending = isEditMode ? isUpdating : isCreating;
 
+    const { data: project } = useProject(workspaceSlug, projectId);
+    const features = getProjectFeatures(project);
+
     const { data: states = [] } = useProjectStates(workspaceSlug, projectId);
     const { data: labels = [] } = useLabels(workspaceSlug);
-    const { data: cycles = [] } = useCycles(workspaceSlug, projectId);
-    const { data: modules = [] } = useModules(workspaceSlug, projectId);
+    const { data: cycles = [] } = useCycles(workspaceSlug, projectId, { enabled: !!workspaceSlug && !!projectId && features.cyclesEnabled });
+    const { data: modules = [] } = useModules(workspaceSlug, projectId, { enabled: !!workspaceSlug && !!projectId && features.modulesEnabled });
     const { data: members = [] } = useWorkspaceMembers(workspaceSlug);
     const { data: issueTypes = [] } = useIssueTypes(workspaceSlug);
     const { data: similarIssues } = useSimilarIssues(workspaceSlug, projectId, watchedTitle, open && !dedupeDismissed && !isEditMode);
@@ -197,12 +200,11 @@ export const CreateIssueDialog = ({
     const onSubmit = (data: IssueDialogFormData): void => {
         const payload = {
             ...data,
-            dueDate: data.dueDate || undefined,
-            startDate: data.startDate || undefined,
-            cycleId: data.cycleId || undefined,
-            parentId: data.parentId || defaultParentId || undefined,
-            issueTypeId: data.issueTypeId || undefined,
-            estimatePointId: data.estimatePointId || undefined,
+            dueDate: data.dueDate === '' ? null : data.dueDate,
+            startDate: data.startDate === '' ? null : data.startDate,
+            cycleId: data.cycleId === '' ? null : data.cycleId,
+            parentId: data.parentId || defaultParentId || null,
+            issueTypeId: data.issueTypeId === '' ? null : data.issueTypeId,
         };
 
         if (isEditMode && issue) {
@@ -299,23 +301,31 @@ export const CreateIssueDialog = ({
                                 render={({ field }) => (
                                     <FormItem>
                                         <FormLabel className="text-secondary">Estado</FormLabel>
-                                        <Select onValueChange={field.onChange} value={field.value}>
-                                            <FormControl>
-                                                <SelectTrigger className="bg-layer-1 border-subtle text-primary">
-                                                    <SelectValue placeholder="Seleccionar..." />
-                                                </SelectTrigger>
-                                            </FormControl>
-                                            <SelectContent className="bg-layer-1 border-subtle">
-                                                {states.map((state) => (
-                                                    <SelectItem key={state.id} value={state.id} className="text-primary focus:bg-layer-2">
-                                                        <div className="flex items-center gap-2">
-                                                            <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: state.color }} />
-                                                            {state.name}
-                                                        </div>
-                                                    </SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
+                                        <FormControl>
+                                            <SearchableSelect
+                                                multi={false}
+                                                value={field.value || null}
+                                                onChange={(v) => field.onChange(v ?? '')}
+                                                items={states.map((s) => ({
+                                                    id: s.id,
+                                                    label: s.name,
+                                                    icon: (
+                                                        <span
+                                                            style={{
+                                                                width: 10,
+                                                                height: 10,
+                                                                borderRadius: 99,
+                                                                background: s.color,
+                                                                display: 'inline-block',
+                                                            }}
+                                                        />
+                                                    ),
+                                                }))}
+                                                placeholder="Seleccionar..."
+                                                width="100%"
+                                                clearable={false}
+                                            />
+                                        </FormControl>
                                         <FormMessage />
                                     </FormItem>
                                 )}
@@ -326,20 +336,20 @@ export const CreateIssueDialog = ({
                                 render={({ field }) => (
                                     <FormItem>
                                         <FormLabel className="text-secondary">Prioridad</FormLabel>
-                                        <Select onValueChange={(v) => field.onChange(Number(v))} value={String(field.value)}>
-                                            <FormControl>
-                                                <SelectTrigger className="bg-layer-1 border-subtle text-primary">
-                                                    <SelectValue placeholder="Seleccionar..." />
-                                                </SelectTrigger>
-                                            </FormControl>
-                                            <SelectContent className="bg-layer-1 border-subtle">
-                                                {([0, 1, 2, 3, 4] as const).map((p) => (
-                                                    <SelectItem key={p} value={String(p)} className="text-primary focus:bg-layer-2">
-                                                        {PRIORITY_LABELS[p]}
-                                                    </SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
+                                        <FormControl>
+                                            <SearchableSelect
+                                                multi={false}
+                                                value={String(field.value)}
+                                                onChange={(v) => field.onChange(v !== null ? Number(v) : 0)}
+                                                items={([0, 1, 2, 3, 4] as const).map((p) => ({
+                                                    id: String(p),
+                                                    label: PRIORITY_LABELS[p],
+                                                }))}
+                                                placeholder="Seleccionar..."
+                                                width="100%"
+                                                clearable={false}
+                                            />
+                                        </FormControl>
                                         <FormMessage />
                                     </FormItem>
                                 )}
@@ -354,13 +364,16 @@ export const CreateIssueDialog = ({
                                 render={({ field }) => (
                                     <FormItem>
                                         <FormLabel className="text-secondary">Tipo de tarea</FormLabel>
-                                        <ThemedSelect
-                                            value={field.value ?? ''}
-                                            onValueChange={field.onChange}
-                                            options={issueTypes.map((t) => ({ value: t.id, label: t.name }))}
-                                            placeholder="Sin tipo"
-                                            ariaLabel="Tipo de tarea"
-                                        />
+                                        <FormControl>
+                                            <SearchableSelect
+                                                multi={false}
+                                                value={field.value ?? null}
+                                                onChange={(v) => field.onChange(v ?? undefined)}
+                                                items={issueTypes.map((t) => ({ id: t.id, label: t.name }))}
+                                                placeholder="Sin tipo"
+                                                width="100%"
+                                            />
+                                        </FormControl>
                                         <FormMessage />
                                     </FormItem>
                                 )}
@@ -374,12 +387,20 @@ export const CreateIssueDialog = ({
                             render={({ field }) => (
                                 <FormItem>
                                     <FormLabel className="text-secondary">Asignados</FormLabel>
-                                    <ThemedMultiSelect
-                                        placeholder="Seleccionar miembros..."
-                                        options={members.map((m) => ({ value: m.userId, label: m.displayName ?? m.email }))}
-                                        selected={field.value ?? []}
-                                        onChange={field.onChange}
-                                    />
+                                    <FormControl>
+                                        <SearchableSelect
+                                            multi={true}
+                                            value={field.value ?? []}
+                                            onChange={field.onChange}
+                                            items={members.map((m) => ({
+                                                id: m.userId,
+                                                label: m.displayName ?? m.email,
+                                                sublabel: m.email !== (m.displayName ?? m.email) ? m.email : undefined,
+                                            }))}
+                                            placeholder="Seleccionar miembros..."
+                                            width="100%"
+                                        />
+                                    </FormControl>
                                     <FormMessage />
                                 </FormItem>
                             )}
@@ -392,12 +413,30 @@ export const CreateIssueDialog = ({
                             render={({ field }) => (
                                 <FormItem>
                                     <FormLabel className="text-secondary">Etiquetas</FormLabel>
-                                    <ThemedMultiSelect
-                                        placeholder="Seleccionar etiquetas..."
-                                        options={labels.map((l) => ({ value: l.id, label: l.name, color: l.color }))}
-                                        selected={field.value ?? []}
-                                        onChange={field.onChange}
-                                    />
+                                    <FormControl>
+                                        <SearchableSelect
+                                            multi={true}
+                                            value={field.value ?? []}
+                                            onChange={field.onChange}
+                                            items={labels.map((l) => ({
+                                                id: l.id,
+                                                label: l.name,
+                                                icon: (
+                                                    <span
+                                                        style={{
+                                                            width: 10,
+                                                            height: 10,
+                                                            borderRadius: 99,
+                                                            background: l.color,
+                                                            display: 'inline-block',
+                                                        }}
+                                                    />
+                                                ),
+                                            }))}
+                                            placeholder="Seleccionar etiquetas..."
+                                            width="100%"
+                                        />
+                                    </FormControl>
                                     <FormMessage />
                                 </FormItem>
                             )}
@@ -447,48 +486,52 @@ export const CreateIssueDialog = ({
                         </div>
 
                         {/* Cycle select */}
+                        {features.cyclesEnabled && (
                         <FormField
                             control={form.control}
                             name="cycleId"
                             render={({ field }) => (
                                 <FormItem>
                                     <FormLabel className="text-secondary">Ciclo</FormLabel>
-                                    <Select onValueChange={field.onChange} value={field.value ?? ''}>
-                                        <FormControl>
-                                            <SelectTrigger className="bg-layer-1 border-subtle text-primary">
-                                                <SelectValue placeholder="Sin ciclo" />
-                                            </SelectTrigger>
-                                        </FormControl>
-                                        <SelectContent className="bg-layer-1 border-subtle">
-                                            {cycles.map((c) => (
-                                                <SelectItem key={c.id} value={c.id} className="text-primary focus:bg-layer-2">
-                                                    {c.name}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
+                                    <FormControl>
+                                        <SearchableSelect
+                                            multi={false}
+                                            value={field.value ?? null}
+                                            onChange={(v) => field.onChange(v ?? undefined)}
+                                            items={cycles.map((c) => ({ id: c.id, label: c.name }))}
+                                            placeholder="Sin ciclo"
+                                            width="100%"
+                                        />
+                                    </FormControl>
                                     <FormMessage />
                                 </FormItem>
                             )}
                         />
+                        )}
 
                         {/* Modules multi-select */}
+                        {features.modulesEnabled && (
                         <FormField
                             control={form.control}
                             name="moduleIds"
                             render={({ field }) => (
                                 <FormItem>
                                     <FormLabel className="text-secondary">Módulos</FormLabel>
-                                    <ThemedMultiSelect
-                                        placeholder="Seleccionar módulos..."
-                                        options={modules.map((m) => ({ value: m.id, label: m.name }))}
-                                        selected={field.value ?? []}
-                                        onChange={field.onChange}
-                                    />
+                                    <FormControl>
+                                        <SearchableSelect
+                                            multi={true}
+                                            value={field.value ?? []}
+                                            onChange={field.onChange}
+                                            items={modules.map((m) => ({ id: m.id, label: m.name }))}
+                                            placeholder="Seleccionar módulos..."
+                                            width="100%"
+                                        />
+                                    </FormControl>
                                     <FormMessage />
                                 </FormItem>
                             )}
                         />
+                        )}
 
                         <Separator className="bg-subtle" />
 
@@ -523,12 +566,30 @@ export const CreateIssueDialog = ({
                                     render={({ field }) => (
                                         <FormItem>
                                             <FormLabel className="text-secondary text-xs">Estados que requieren aprobación</FormLabel>
-                                            <ThemedMultiSelect
-                                                placeholder="Seleccionar estados..."
-                                                options={states.map((s) => ({ value: s.id, label: s.name, color: s.color }))}
-                                                selected={field.value ?? []}
-                                                onChange={field.onChange}
-                                            />
+                                            <FormControl>
+                                                <SearchableSelect
+                                                    multi={true}
+                                                    value={field.value ?? []}
+                                                    onChange={field.onChange}
+                                                    items={states.map((s) => ({
+                                                        id: s.id,
+                                                        label: s.name,
+                                                        icon: (
+                                                            <span
+                                                                style={{
+                                                                    width: 10,
+                                                                    height: 10,
+                                                                    borderRadius: 99,
+                                                                    background: s.color,
+                                                                    display: 'inline-block',
+                                                                }}
+                                                            />
+                                                        ),
+                                                    }))}
+                                                    placeholder="Seleccionar estados..."
+                                                    width="100%"
+                                                />
+                                            </FormControl>
                                             <FormMessage />
                                         </FormItem>
                                     )}

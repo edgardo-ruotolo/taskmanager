@@ -1,5 +1,5 @@
 import type React from 'react';
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -16,7 +16,11 @@ import {
     MoreHorizontal,
     Pencil,
     GitBranch,
+    User,
 } from 'lucide-react';
+import { useWorkspaceMembers } from '@/modules/workspaces/application/use-workspaces';
+import { useProjectStates } from '@/modules/states/application/use-states';
+import { useLabels } from '@/modules/labels/application/use-labels';
 import { AiSubIssueGenerator } from '@/modules/ai/presentation/components/AiSubIssueGenerator';
 import { IssuePdfExport } from '@/modules/pdf/presentation/components/IssuePdfExport';
 import { toast } from 'sonner';
@@ -47,11 +51,13 @@ import { useAuthMe } from '@/modules/auth/application/use-auth-me';
 import { useRealtimeIssue } from '@/modules/realtime/application/use-realtime-issue';
 import { RichTextEditor } from '@/shared/components/RichTextEditor';
 import { useDocumentCollaboration } from '@/shared/hooks/useDocumentCollaboration';
-import type { IssueRelationType } from '../../domain/types';
+import { SearchableSelect } from '@/shared/components/ui/searchable-select';
+import type { IssueRelationType, IssuePriority } from '../../domain/types';
+import { PRIORITY_LABELS } from '../../domain/types';
 import { FileAttachments } from '@/modules/files/presentation/components/FileAttachments';
 import { WorklogPanel } from '@/modules/time-tracking/presentation/components/WorklogPanel';
-import { IssuePriorityBadge } from '../components/IssuePriorityBadge';
 import { IssueStateBadge } from '../components/IssueStateBadge';
+import { IssueAiDependencyBanner } from '../components/IssueAiDependencyBanner';
 import {
     useIssueDetail,
     useComments,
@@ -74,8 +80,10 @@ import {
 } from '../../application/use-issue-detail';
 import { useUpdateIssue, useIssues } from '../../application/use-issues';
 import { useProject } from '@/modules/projects/application/use-projects';
+import { getProjectFeatures } from '@/modules/projects/application/use-project-features';
+import { useCycles } from '@/modules/cycles/application/use-cycles';
+import { useModules } from '@/modules/modules/application/use-modules';
 import { CreateIssueDialog } from '../components/CreateIssueDialog';
-import { useEstimates } from '@/modules/estimates/application/use-estimates';
 import type {
     IssueComment,
     IssueActivity,
@@ -174,7 +182,7 @@ function InlineTitle({ title, onSave, isPending }: InlineTitleProps): React.Reac
                 onChange={(e) => setValue(e.target.value)}
                 onBlur={handleBlur}
                 onKeyDown={handleKeyDown}
-                className="w-full text-2xl font-bold text-primary bg-transparent border-b border-blue-600 outline-none pb-0.5 leading-snug"
+                className="w-full text-[42px] font-medium tightest text-primary bg-transparent border-b border-[var(--brand-700)] outline-none pb-0.5"
             />
         );
     }
@@ -183,7 +191,7 @@ function InlineTitle({ title, onSave, isPending }: InlineTitleProps): React.Reac
         <button
             type="button"
             onClick={() => setEditing(true)}
-            className="w-full text-left text-2xl font-bold text-primary leading-snug hover:opacity-80 transition-opacity"
+            className="w-full text-left text-[42px] font-medium tightest text-primary hover:opacity-80 transition-opacity"
         >
             {title}
         </button>
@@ -594,22 +602,13 @@ function RelationsSection({
     issueId,
     projectIdentifier,
 }: RelationsSectionProps): React.ReactElement {
-    const [searchQuery, setSearchQuery] = useState('');
     const [selectedIssueId, setSelectedIssueId] = useState('');
-    const [pickerOpen, setPickerOpen] = useState(false);
     const [relationType, setRelationType] = useState<IssueRelationType>('DuplicateOf');
     const { data: relations = [] } = useIssueRelations(workspaceSlug, projectId, issueId);
     const { data: allIssuesData } = useIssues(workspaceSlug, projectId);
     const candidateIssues = (allIssuesData?.items ?? []).filter(
         (i) => i.id !== issueId && !relations.some((r) => r.relatedIssueId === i.id),
     );
-    const filteredCandidates = searchQuery.trim()
-        ? candidateIssues.filter(
-              (i) =>
-                  i.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                  String(i.sequenceId).includes(searchQuery),
-          )
-        : candidateIssues.slice(0, 20);
 
     const { mutate: createRelation, isPending: isCreating } = useCreateIssueRelation(
         workspaceSlug,
@@ -629,14 +628,21 @@ function RelationsSection({
             {
                 onSuccess: () => {
                     setSelectedIssueId('');
-                    setSearchQuery('');
-                    setPickerOpen(false);
                 },
             },
         );
     };
 
-    const selectedIssue = candidateIssues.find((i) => i.id === selectedIssueId);
+    const candidateIssueItems = useMemo(
+        () =>
+            candidateIssues.map((i) => ({
+                id: i.id,
+                label: i.title,
+                sublabel: `${projectIdentifier ?? 'ISS'}-${i.sequenceId}`,
+                searchTerms: [String(i.sequenceId)],
+            })),
+        [candidateIssues, projectIdentifier],
+    );
 
     return (
         <div>
@@ -646,14 +652,14 @@ function RelationsSection({
                     <p className="text-xs text-placeholder italic">No hay relaciones</p>
                 )}
                 {relations.map((rel: IssueRelation) => (
-                    <div key={rel.id} className="flex items-center gap-2">
-                        <div className="flex-1 min-w-0">
-                            <span className="text-xs text-placeholder">
+                    <div key={rel.id} className="flex items-center gap-2 py-0.5">
+                        <div className="flex-1 min-w-0 flex items-center gap-2 flex-wrap">
+                            <span className="text-[10px] font-medium text-placeholder bg-layer-2 rounded px-1.5 py-0.5 shrink-0">
                                 {RELATION_LABELS[rel.relationType]}
-                            </span>{' '}
-                            <span className="text-xs font-mono text-tertiary">
+                            </span>
+                            <span className="text-xs font-mono text-blue-400 shrink-0">
                                 {projectIdentifier ?? 'ISS'}-{rel.relatedIssueSequenceId}
-                            </span>{' '}
+                            </span>
                             <span className="text-xs text-secondary truncate">
                                 {rel.relatedIssueTitle}
                             </span>
@@ -671,52 +677,29 @@ function RelationsSection({
                 ))}
             </div>
             <div className="space-y-1.5">
-                <select
+                <SearchableSelect
+                    multi={false}
                     value={relationType}
-                    onChange={(e) => setRelationType(e.target.value as IssueRelationType)}
-                    className="w-full rounded-md border border-subtle bg-layer-1/50 px-2 py-1 text-xs text-primary focus:outline-none focus:ring-1 focus:ring-blue-600"
-                >
-                    {(Object.keys(RELATION_LABELS) as IssueRelationType[]).map((key) => (
-                        <option key={key} value={key}>
-                            {RELATION_LABELS[key]}
-                        </option>
-                    ))}
-                </select>
+                    onChange={(v) => { if (v) setRelationType(v as IssueRelationType); }}
+                    items={(Object.keys(RELATION_LABELS) as IssueRelationType[]).map((key) => ({
+                        id: key,
+                        label: RELATION_LABELS[key],
+                    }))}
+                    placeholder="Tipo de relación"
+                    width="100%"
+                    clearable={false}
+                />
                 <div className="flex gap-2">
-                    <div className="relative flex-1">
-                        <Input
-                            value={selectedIssue ? `${projectIdentifier ?? 'ISS'}-${selectedIssue.sequenceId} — ${selectedIssue.title}` : searchQuery}
-                            onChange={(e) => {
-                                setSelectedIssueId('');
-                                setSearchQuery(e.target.value);
-                                setPickerOpen(true);
-                            }}
-                            onFocus={() => setPickerOpen(true)}
+                    <div className="flex-1">
+                        <SearchableSelect
+                            multi={false}
+                            value={selectedIssueId || null}
+                            onChange={(v) => setSelectedIssueId(v ?? '')}
+                            items={candidateIssueItems}
                             placeholder="Buscar tarea..."
-                            className="bg-layer-1/50 border-subtle text-primary placeholder:text-placeholder text-xs h-8"
+                            width="100%"
+                            clearable
                         />
-                        {pickerOpen && filteredCandidates.length > 0 && (
-                            <div className="absolute top-full left-0 right-0 z-50 mt-1 max-h-48 overflow-y-auto rounded-md border border-subtle bg-surface-1 shadow-lg">
-                                {filteredCandidates.map((i) => (
-                                    <button
-                                        key={i.id}
-                                        type="button"
-                                        onMouseDown={(e) => {
-                                            e.preventDefault();
-                                            setSelectedIssueId(i.id);
-                                            setSearchQuery('');
-                                            setPickerOpen(false);
-                                        }}
-                                        className="w-full flex items-center gap-2 px-3 py-2 text-xs hover:bg-layer-2 transition-colors text-left"
-                                    >
-                                        <span className="font-mono text-tertiary shrink-0">
-                                            {projectIdentifier ?? 'ISS'}-{i.sequenceId}
-                                        </span>
-                                        <span className="text-secondary truncate">{i.title}</span>
-                                    </button>
-                                ))}
-                            </div>
-                        )}
                     </div>
                     <Button
                         size="sm"
@@ -892,25 +875,124 @@ export const IssueDetailPage = (): React.ReactElement => {
     const { data: subscribers = [] } = useSubscribers(workspaceSlug, projectId, issueId);
     const { data: project } = useProject(workspaceSlug, projectId);
     const projectIdentifier = project?.identifier;
+    const features = getProjectFeatures(project);
     const { data: parentIssueData } = useIssueDetail(workspaceSlug, projectId, issue?.parentId ?? '');
     const { data: allIssuesData } = useIssues(workspaceSlug, projectId);
     const subIssues = (allIssuesData?.items ?? []).filter((i) => i.parentId === issueId);
     const issueIdentifier = `${projectIdentifier ?? 'ISS'}-${issue?.sequenceId ?? ''}`;
-    const { data: estimates = [] } = useEstimates(workspaceSlug, projectId);
-    const allEstimatePoints = estimates.flatMap((e) => (e.points ?? []).map((p) => ({ ...p, estimateName: e.name })));
+    const { data: cycles = [] } = useCycles(workspaceSlug, projectId, { enabled: !!workspaceSlug && !!projectId && features.cyclesEnabled });
+    const { data: modules = [] } = useModules(workspaceSlug, projectId, { enabled: !!workspaceSlug && !!projectId && features.modulesEnabled });
+    const { data: relationsForBanner = [] } = useIssueRelations(workspaceSlug, projectId, issueId);
+    const { data: members = [] } = useWorkspaceMembers(workspaceSlug);
+    const { data: states = [] } = useProjectStates(workspaceSlug, projectId);
+    const { data: labels = [] } = useLabels(workspaceSlug);
+
+    // SearchableSelect items built once per render
+    const stateItems = useMemo(
+        () =>
+            states.map((s) => ({
+                id: s.id,
+                label: s.name,
+                group: s.category,
+                icon: (
+                    <span
+                        style={{
+                            width: 10,
+                            height: 10,
+                            borderRadius: 99,
+                            background: s.color,
+                            display: 'inline-block',
+                        }}
+                    />
+                ),
+            })),
+        [states],
+    );
+
+    const priorityItems = useMemo(
+        () =>
+            ([0, 1, 2, 3, 4] as const).map((p) => ({
+                id: String(p),
+                label: PRIORITY_LABELS[p as IssuePriority],
+            })),
+        [],
+    );
+
+    const memberItems = useMemo(
+        () =>
+            members.map((m) => ({
+                id: m.userId,
+                label: m.displayName ?? m.email,
+                sublabel: m.email !== (m.displayName ?? m.email) ? m.email : undefined,
+                icon: (
+                    <span
+                        className="inline-flex items-center justify-center rounded-full text-[9px] font-semibold"
+                        style={{ width: 20, height: 20, background: 'var(--bg-cream-3)', color: 'var(--ink-mute)' }}
+                    >
+                        {(m.displayName ?? m.email).slice(0, 1).toUpperCase()}
+                    </span>
+                ),
+            })),
+        [members],
+    );
+
+    const labelItems = useMemo(
+        () =>
+            labels.map((l) => ({
+                id: l.id,
+                label: l.name,
+                icon: (
+                    <span
+                        style={{
+                            width: 10,
+                            height: 10,
+                            borderRadius: 99,
+                            background: l.color,
+                            display: 'inline-block',
+                        }}
+                    />
+                ),
+            })),
+        [labels],
+    );
+
+    const cycleItems = useMemo(
+        () => cycles.map((c) => ({ id: c.id, label: c.name })),
+        [cycles],
+    );
+
+    const moduleItems = useMemo(
+        () => modules.map((m) => ({ id: m.id, label: m.name })),
+        [modules],
+    );
+
+    const parentItems = useMemo(
+        () =>
+            (allIssuesData?.items ?? [])
+                .filter((i) => i.id !== issueId)
+                .map((i) => ({
+                    id: i.id,
+                    label: `${projectIdentifier ?? 'ISS'}-${i.sequenceId} ${i.title}`,
+                })),
+        [allIssuesData, issueId, projectIdentifier],
+    );
 
     const { mutate: updateIssue, isPending: isUpdating } = useUpdateIssue(workspaceSlug, projectId);
 
     const [descSaveState, setDescSaveState] = useState<'idle' | 'saving' | 'saved'>('idle');
     const descDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const descPendingRef = useRef<{ descriptionHtml?: string; descriptionJson?: string }>({});
 
     const handleDescriptionChange = (field: 'descriptionHtml' | 'descriptionJson', value: string): void => {
+        descPendingRef.current = { ...descPendingRef.current, [field]: value };
         if (descDebounceRef.current) clearTimeout(descDebounceRef.current);
         setDescSaveState('saving');
         descDebounceRef.current = setTimeout(() => {
             if (!issue) return;
+            const payload = { ...descPendingRef.current };
+            descPendingRef.current = {};
             updateIssue(
-                { issueId: issue.id, data: { [field]: value } },
+                { issueId: issue.id, data: payload },
                 {
                     onSuccess: () => {
                         setDescSaveState('saved');
@@ -919,7 +1001,7 @@ export const IssueDetailPage = (): React.ReactElement => {
                     onError: () => setDescSaveState('idle'),
                 },
             );
-        }, 1500);
+        }, 500);
     };
 
     const { mutate: addReaction, isPending: isAddingReaction } = useAddReaction(
@@ -952,7 +1034,7 @@ export const IssueDetailPage = (): React.ReactElement => {
 
     if (issueLoading) {
         return (
-            <div className="p-8 max-w-6xl mx-auto space-y-4">
+            <div className="p-8 w-full space-y-4">
                 <Skeleton className="h-5 w-64 bg-layer-1" />
                 <Skeleton className="h-9 w-full bg-layer-1" />
                 <Skeleton className="h-32 w-full bg-layer-1" />
@@ -962,7 +1044,7 @@ export const IssueDetailPage = (): React.ReactElement => {
 
     if (!issue) {
         return (
-            <div className="p-8 max-w-6xl mx-auto">
+            <div className="p-8 w-full">
                 <Link
                     to={backUrl}
                     className="inline-flex items-center gap-1.5 text-sm text-tertiary hover:text-primary mb-6"
@@ -979,19 +1061,36 @@ export const IssueDetailPage = (): React.ReactElement => {
         <div className="animate-fade-in">
             {/* ── Sticky header ── */}
             <div className="sticky top-0 z-10 bg-canvas border-b border-subtle px-6 md:px-8 py-3">
-                <div className="max-w-6xl mx-auto flex items-center justify-between gap-4">
-                    {/* Left: back + breadcrumb */}
-                    <div className="flex items-center gap-3 min-w-0">
+                <div className="w-full flex items-center justify-between gap-4">
+                    {/* Left: breadcrumb — workspace / project / Issues / ID */}
+                    <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
+                        <Link
+                            to={`/${workspaceSlug}`}
+                            className="text-xs text-placeholder hover:text-secondary transition-colors shrink-0"
+                        >
+                            {workspaceSlug}
+                        </Link>
+                        <ChevronRight size={11} className="text-placeholder shrink-0" aria-hidden="true" />
+                        {project?.name && (
+                            <>
+                                <Link
+                                    to={`/${workspaceSlug}/projects/${projectId}/issues`}
+                                    className="text-xs text-placeholder hover:text-secondary transition-colors shrink-0 max-w-[120px] truncate"
+                                >
+                                    {project.name}
+                                </Link>
+                                <ChevronRight size={11} className="text-placeholder shrink-0" aria-hidden="true" />
+                            </>
+                        )}
                         <Link
                             to={backUrl}
-                            className="inline-flex items-center gap-1.5 text-xs text-placeholder hover:text-secondary transition-colors shrink-0"
+                            className="text-xs text-placeholder hover:text-secondary transition-colors shrink-0"
                         >
-                            <ArrowLeft size={14} />
                             Issues
                         </Link>
                         {issue.parentId && parentIssueData && (
                             <>
-                                <ChevronRight size={12} className="text-placeholder shrink-0" aria-hidden="true" />
+                                <ChevronRight size={11} className="text-placeholder shrink-0" aria-hidden="true" />
                                 <Link
                                     to={`/${workspaceSlug}/projects/${projectId}/issues/${issue.parentId}`}
                                     className="text-xs font-mono text-tertiary hover:text-secondary transition-colors shrink-0"
@@ -1000,12 +1099,10 @@ export const IssueDetailPage = (): React.ReactElement => {
                                 </Link>
                             </>
                         )}
-                        <ChevronRight size={12} className="text-placeholder shrink-0" aria-hidden="true" />
+                        <ChevronRight size={11} className="text-placeholder shrink-0" aria-hidden="true" />
                         <span className="text-xs font-mono text-tertiary shrink-0">
                             {issueIdentifier}
                         </span>
-                        <ChevronRight size={12} className="text-placeholder shrink-0" aria-hidden="true" />
-                        <span className="text-xs text-secondary truncate">{issue.title}</span>
                     </div>
 
                     {/* Right: actions */}
@@ -1023,13 +1120,27 @@ export const IssueDetailPage = (): React.ReactElement => {
                             identifier={issueIdentifier}
                         />
                         <CopyLinkButton url={window.location.href} />
+                        <button
+                            type="button"
+                            disabled={isSubscribing || isUnsubscribing}
+                            onClick={() => (isSubscribed ? unsubscribe() : subscribe())}
+                            className={cn(
+                                'flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs border transition-colors',
+                                isSubscribed
+                                    ? 'border-blue-500/50 text-blue-400 hover:bg-blue-500/10'
+                                    : 'border-subtle text-placeholder hover:text-secondary hover:bg-surface-2',
+                            )}
+                            aria-label={isSubscribed ? 'Desuscribirse del issue' : 'Suscribirse al issue'}
+                        >
+                            {isSubscribed ? 'Suscripto' : 'Suscribirse'}
+                        </button>
                     </div>
                 </div>
             </div>
 
             {/* ── Page body ── */}
             <div className="p-6 md:p-8">
-                <div className="max-w-6xl mx-auto flex flex-col lg:flex-row gap-8">
+                <div className="w-full flex flex-col lg:flex-row gap-8">
                     {/* ── Left column (main) ── */}
                     <div className="flex-1 min-w-0">
                         {/* Identifier + title */}
@@ -1045,6 +1156,17 @@ export const IssueDetailPage = (): React.ReactElement => {
                                 isPending={isUpdating}
                             />
                         </div>
+
+                        {/* AI Dependency Banner */}
+                        {relationsForBanner.length > 0 && (
+                            <IssueAiDependencyBanner
+                                relations={relationsForBanner}
+                                workspaceSlug={workspaceSlug}
+                                projectId={projectId}
+                                projectIdentifier={projectIdentifier}
+                                className="mb-5"
+                            />
+                        )}
 
                         {/* Description */}
                         <div className="mb-6">
@@ -1134,7 +1256,7 @@ export const IssueDetailPage = (): React.ReactElement => {
                                     Sub-tareas
                                     {subIssues.length > 0 && (
                                         <span className="text-xs bg-layer-2 text-placeholder rounded-full px-1.5 py-0.5 ml-1">
-                                            {subIssues.length}
+                                            {subIssues.filter((s) => s.stateGroup === 'completed').length}/{subIssues.length} completados
                                         </span>
                                     )}
                                 </h3>
@@ -1149,7 +1271,7 @@ export const IssueDetailPage = (): React.ReactElement => {
                                             aria-label="Agregar sub-tarea"
                                         >
                                             <Plus size={13} />
-                                            Agregar
+                                            Añadir
                                         </button>
                                     }
                                 />
@@ -1158,18 +1280,32 @@ export const IssueDetailPage = (): React.ReactElement => {
                                 <p className="text-xs text-placeholder italic">Sin sub-tareas</p>
                             ) : (
                                 <div className="space-y-1">
-                                    {subIssues.map((sub) => (
+                                    {subIssues.map((sub, idx) => (
                                         <Link
                                             key={sub.id}
                                             to={`/${workspaceSlug}/projects/${projectId}/issues/${sub.id}`}
                                             className="flex items-center gap-2 px-3 py-2 rounded-md hover:bg-layer-2 transition-colors group"
                                         >
+                                            {/* Sub-issue number as parentSeqId.N */}
                                             <span className="text-[10px] font-mono text-tertiary shrink-0">
-                                                {projectIdentifier ?? 'ISS'}-{sub.sequenceId}
+                                                {issueIdentifier}.{idx + 1}
                                             </span>
-                                            <span className="text-xs text-secondary truncate group-hover:text-primary transition-colors">
+                                            <IssueStateBadge
+                                                stateName={sub.stateName}
+                                                stateGroup={sub.stateGroup ?? sub.stateName}
+                                            />
+                                            <span className="text-xs text-secondary truncate group-hover:text-primary transition-colors flex-1 min-w-0">
                                                 {sub.title}
                                             </span>
+                                            {/* Assignee indicator — TODO(backend): no assigneeName in DTO */}
+                                            {sub.assigneeIds.length > 0 && (
+                                                <span
+                                                    className="w-5 h-5 rounded-full bg-layer-2 border border-subtle flex items-center justify-center text-[9px] text-tertiary shrink-0"
+                                                    title={`${sub.assigneeIds.length} asignado${sub.assigneeIds.length > 1 ? 's' : ''}`}
+                                                >
+                                                    <User size={10} aria-hidden="true" />
+                                                </span>
+                                            )}
                                         </Link>
                                     ))}
                                 </div>
@@ -1209,122 +1345,149 @@ export const IssueDetailPage = (): React.ReactElement => {
                                 </p>
                             </div>
                             <div className="px-4 py-1">
+                                <PropertyRow label="ID">
+                                    <span className="text-xs font-mono text-tertiary">
+                                        {issueIdentifier}
+                                    </span>
+                                </PropertyRow>
+
                                 <PropertyRow label="Estado">
-                                    <IssueStateBadge
-                                        stateName={issue.stateName}
-                                        stateGroup={issue.stateName}
+                                    <SearchableSelect
+                                        multi={false}
+                                        value={issue.stateId || null}
+                                        onChange={(v) => {
+                                            if (v) updateIssue({ issueId: issue.id, data: { stateId: v } });
+                                        }}
+                                        items={stateItems}
+                                        placeholder="Sin estado"
+                                        width="100%"
+                                        clearable={false}
+                                        groupBy="group"
                                     />
                                 </PropertyRow>
 
                                 <PropertyRow label="Prioridad">
-                                    <IssuePriorityBadge priority={issue.priority} />
+                                    <SearchableSelect
+                                        multi={false}
+                                        value={String(issue.priority)}
+                                        onChange={(v) => {
+                                            if (v !== null) updateIssue({ issueId: issue.id, data: { priority: Number(v) as IssuePriority } });
+                                        }}
+                                        items={priorityItems}
+                                        placeholder="Sin prioridad"
+                                        width="100%"
+                                        clearable={false}
+                                    />
+                                </PropertyRow>
+
+                                {/* TODO(backend): Issue DTO has no createdByName field — showing ID fallback */}
+                                <PropertyRow label="Creado por">
+                                    <span className="text-xs text-secondary font-mono">
+                                        {issue.createdById.slice(0, 8)}…
+                                    </span>
                                 </PropertyRow>
 
                                 <PropertyRow label="Asignados">
-                                    {issue.assigneeIds.length > 0 ? (
-                                        <span className="text-xs text-secondary">
-                                            {issue.assigneeIds.length} asignado{issue.assigneeIds.length > 1 ? 's' : ''}
-                                        </span>
-                                    ) : (
-                                        <span className="text-xs text-placeholder italic">Sin asignar</span>
-                                    )}
+                                    <SearchableSelect
+                                        multi={true}
+                                        value={issue.assigneeIds}
+                                        onChange={(v) =>
+                                            updateIssue({ issueId: issue.id, data: { assigneeIds: v } })
+                                        }
+                                        items={memberItems}
+                                        placeholder="Sin asignar"
+                                        width="100%"
+                                        clearable
+                                    />
                                 </PropertyRow>
 
+                                {/* Bug 16: editable date fields */}
                                 <PropertyRow label="Fecha inicio">
-                                    {issue.startDate ? (
-                                        <span className="text-xs text-secondary">
-                                            {new Date(issue.startDate).toLocaleDateString('es-ES', {
-                                                year: 'numeric',
-                                                month: 'long',
-                                                day: 'numeric',
-                                            })}
-                                        </span>
-                                    ) : (
-                                        <span className="text-xs text-placeholder italic">Sin fecha de inicio</span>
-                                    )}
+                                    <input
+                                        type="date"
+                                        aria-label="Fecha de inicio"
+                                        defaultValue={issue.startDate ? issue.startDate.slice(0, 10) : ''}
+                                        onChange={(e) => {
+                                            const val = e.target.value;
+                                            updateIssue({ issueId: issue.id, data: { startDate: val || undefined } });
+                                        }}
+                                        className="text-xs text-secondary bg-transparent border-b border-transparent hover:border-[var(--neutral-400)] focus:border-[var(--brand-700)] outline-none transition-colors cursor-pointer"
+                                    />
                                 </PropertyRow>
 
                                 <PropertyRow label="Fecha límite">
-                                    {issue.dueDate ? (
-                                        <span className="text-xs text-secondary">
-                                            {new Date(issue.dueDate).toLocaleDateString('es-ES', {
-                                                year: 'numeric',
-                                                month: 'long',
-                                                day: 'numeric',
-                                            })}
-                                        </span>
-                                    ) : (
-                                        <span className="text-xs text-placeholder italic">Sin fecha límite</span>
-                                    )}
+                                    <input
+                                        type="date"
+                                        aria-label="Fecha límite"
+                                        defaultValue={issue.dueDate ? issue.dueDate.slice(0, 10) : ''}
+                                        onChange={(e) => {
+                                            const val = e.target.value;
+                                            updateIssue({ issueId: issue.id, data: { dueDate: val || undefined } });
+                                        }}
+                                        className="text-xs text-secondary bg-transparent border-b border-transparent hover:border-[var(--neutral-400)] focus:border-[var(--brand-700)] outline-none transition-colors cursor-pointer"
+                                    />
                                 </PropertyRow>
 
+                                {/* Bug 17: editable parent field */}
                                 <PropertyRow label="Padre">
-                                    {issue.parentId ? (
-                                        <Link
-                                            to={`/${workspaceSlug}/projects/${projectId}/issues/${issue.parentId}`}
-                                            className="text-xs font-mono text-blue-400 hover:text-blue-300 transition-colors truncate"
-                                        >
-                                            {parentIssueData
-                                                ? `${projectIdentifier ?? 'ISS'}-${parentIssueData.sequenceId}`
-                                                : `${issue.parentId.slice(0, 8)}…`}
-                                        </Link>
-                                    ) : (
-                                        <span className="text-xs text-placeholder italic">Sin padre</span>
-                                    )}
+                                    <SearchableSelect
+                                        multi={false}
+                                        value={issue.parentId ?? null}
+                                        onChange={(v) =>
+                                            updateIssue({ issueId: issue.id, data: { parentId: v ?? undefined } })
+                                        }
+                                        items={parentItems}
+                                        placeholder="Sin padre"
+                                        width="100%"
+                                        clearable
+                                    />
                                 </PropertyRow>
 
                                 <PropertyRow label="Etiquetas">
-                                    {issue.labelIds.length > 0 ? (
-                                        <span className="text-xs text-secondary">
-                                            {issue.labelIds.length} etiqueta{issue.labelIds.length > 1 ? 's' : ''}
-                                        </span>
-                                    ) : (
-                                        <span className="text-xs text-placeholder italic">Sin etiquetas</span>
-                                    )}
+                                    <SearchableSelect
+                                        multi={true}
+                                        value={issue.labelIds}
+                                        onChange={(v) =>
+                                            updateIssue({ issueId: issue.id, data: { labelIds: v } })
+                                        }
+                                        items={labelItems}
+                                        placeholder="Sin etiquetas"
+                                        width="100%"
+                                        clearable
+                                    />
                                 </PropertyRow>
 
+                                {features.cyclesEnabled && (
                                 <PropertyRow label="Ciclo">
-                                    {issue.cycleId ? (
-                                        <span className="text-xs text-secondary font-mono">
-                                            {issue.cycleId.slice(0, 8)}…
-                                        </span>
-                                    ) : (
-                                        <span className="text-xs text-placeholder italic">Sin ciclo</span>
-                                    )}
+                                    <SearchableSelect
+                                        multi={false}
+                                        value={issue.cycleId ?? null}
+                                        onChange={(v) =>
+                                            updateIssue({ issueId: issue.id, data: { cycleId: v ?? undefined } })
+                                        }
+                                        items={cycleItems}
+                                        placeholder="Sin ciclo"
+                                        width="100%"
+                                        clearable
+                                    />
                                 </PropertyRow>
-
-                                {allEstimatePoints.length > 0 && (
-                                    <PropertyRow label="Estimación">
-                                        <select
-                                            value={issue.estimatePointId ?? ''}
-                                            onChange={(e) =>
-                                                updateIssue({
-                                                    issueId: issue.id,
-                                                    data: { estimatePointId: e.target.value || undefined },
-                                                })
-                                            }
-                                            className="text-xs bg-layer-1 border border-subtle rounded px-2 py-0.5 text-secondary focus:outline-none focus:border-strong max-w-[140px]"
-                                            aria-label="Seleccionar estimación"
-                                        >
-                                            <option value="">Sin estimar</option>
-                                            {allEstimatePoints.map((p) => (
-                                                <option key={p.id} value={p.id}>
-                                                    {p.value} ({p.estimateName})
-                                                </option>
-                                            ))}
-                                        </select>
-                                    </PropertyRow>
                                 )}
 
-                                <PropertyRow label="Módulos">
-                                    {issue.moduleIds.length > 0 ? (
-                                        <span className="text-xs text-secondary">
-                                            {issue.moduleIds.length} módulo{issue.moduleIds.length > 1 ? 's' : ''}
-                                        </span>
-                                    ) : (
-                                        <span className="text-xs text-placeholder italic">Sin módulos</span>
-                                    )}
+                                {features.modulesEnabled && (
+                                <PropertyRow label="Módulo">
+                                    <SearchableSelect
+                                        multi={true}
+                                        value={issue.moduleIds}
+                                        onChange={(v) =>
+                                            updateIssue({ issueId: issue.id, data: { moduleIds: v } })
+                                        }
+                                        items={moduleItems}
+                                        placeholder="Sin módulos"
+                                        width="100%"
+                                        clearable
+                                    />
                                 </PropertyRow>
+                                )}
 
                                 {issue.isDraft && (
                                     <PropertyRow label="Estado">
@@ -1380,7 +1543,7 @@ export const IssueDetailPage = (): React.ReactElement => {
                                 {subscribers.map((sub: IssueSubscriber) => (
                                     <div key={sub.userId} className="flex items-center gap-1.5">
                                         <div className="w-5 h-5 rounded-full bg-layer-2 flex items-center justify-center text-xs font-medium text-secondary shrink-0">
-                                            {`${sub.userFirstName[0] ?? ''}${sub.userLastName[0] ?? ''}`.toUpperCase()}
+                                            {`${sub.userFirstName?.[0] ?? ''}${sub.userLastName?.[0] ?? ''}`.toUpperCase()}
                                         </div>
                                         <span className="text-xs text-tertiary truncate">
                                             {sub.userFirstName} {sub.userLastName}

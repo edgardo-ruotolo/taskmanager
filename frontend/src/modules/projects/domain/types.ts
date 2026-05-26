@@ -27,6 +27,10 @@ export interface Project {
     teamId?: string | null;
     teamName?: string | null;
     createdAt: string;
+    cyclesEnabled: boolean;
+    modulesEnabled: boolean;
+    intakeEnabled: boolean;
+    archivesEnabled: boolean;
 }
 
 export interface CreateProjectData {
@@ -41,6 +45,10 @@ export interface UpdateProjectData {
     description?: string;
     logoUrl?: string;
     stateGroupId?: string;
+    cyclesEnabled?: boolean;
+    modulesEnabled?: boolean;
+    intakeEnabled?: boolean;
+    archivesEnabled?: boolean;
 }
 
 export interface AddProjectMemberData {

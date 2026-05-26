@@ -51,7 +51,7 @@ export const BurndownPage = (): React.ReactElement => {
             : 0;
 
     return (
-        <div className="mx-auto max-w-[1100px] px-10 py-8 space-y-5">
+        <div className="w-full px-10 py-8 space-y-5">
             <div>
                 <h2 className="text-[20px] font-medium tracking-[-0.02em] text-[var(--neutral-1200)]">
                     Burndown

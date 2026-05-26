@@ -1,9 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import type { UseQueryOptions } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import type { FieldValues, UseFormSetError } from 'react-hook-form';
 import { useServerMutation } from '@/shared/hooks/useServerMutation';
 import { cycleRepository } from '../infrastructure/cycle-repository';
-import type { CreateCycleData, CycleIssueRef } from '../domain/types';
+import type { Cycle, CreateCycleData, UpdateCycleData, CycleIssueRef } from '../domain/types';
 import { issuesKey } from '@/modules/issues/application/use-issues';
 import type { Issue } from '@/modules/issues/domain/types';
 import type { PagedResult } from '@/shared/types/pagination';
@@ -11,11 +12,16 @@ import type { PagedResult } from '@/shared/types/pagination';
 export const cyclesKey = (workspaceSlug: string, projectId: string) =>
     ['cycles', workspaceSlug, projectId] as const;
 
-export const useCycles = (workspaceSlug: string, projectId: string) =>
+export const useCycles = (
+    workspaceSlug: string,
+    projectId: string,
+    options?: Omit<UseQueryOptions<Cycle[]>, 'queryKey' | 'queryFn'>,
+) =>
     useQuery({
         queryKey: cyclesKey(workspaceSlug, projectId),
         queryFn: () => cycleRepository.getAll(workspaceSlug, projectId),
         enabled: !!workspaceSlug && !!projectId,
+        ...options,
     });
 
 export const useCreateCycle = <TFormValues extends FieldValues = FieldValues>(
@@ -33,6 +39,24 @@ export const useCreateCycle = <TFormValues extends FieldValues = FieldValues>(
         },
         setError: options?.setError,
         fallbackMessage: 'Error al crear el ciclo',
+    });
+};
+
+export const useUpdateCycle = <TFormValues extends FieldValues = FieldValues>(
+    workspaceSlug: string,
+    projectId: string,
+    options?: { setError?: UseFormSetError<TFormValues> },
+) => {
+    const qc = useQueryClient();
+    return useServerMutation<unknown, { cycleId: string; data: UpdateCycleData }, TFormValues>({
+        mutationFn: ({ cycleId, data }) =>
+            cycleRepository.update(workspaceSlug, projectId, cycleId, data),
+        onSuccess: () => {
+            void qc.invalidateQueries({ queryKey: cyclesKey(workspaceSlug, projectId) });
+            toast.success('Ciclo actualizado');
+        },
+        setError: options?.setError,
+        fallbackMessage: 'Error al actualizar el ciclo',
     });
 };
 

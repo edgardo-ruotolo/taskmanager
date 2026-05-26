@@ -4,6 +4,7 @@ import { Navigate, Route, Routes } from 'react-router-dom';
 import { AuthGuard } from '@/modules/auth/presentation/components/AuthGuard';
 import { WorkspaceLayout } from '@/modules/workspaces/presentation/layouts/WorkspaceLayout';
 import { WorkspaceRedirect } from '@/shared/components/WorkspaceRedirect';
+import { ProjectFeatureGuard } from '@/shared/components/ProjectFeatureGuard';
 import { AdminGuard } from '@/modules/admin/presentation/guards/AdminGuard';
 import { GodModeLayout } from '@/modules/admin/presentation/layouts/GodModeLayout';
 import { PageLoader } from '@/shared/components/PageLoader';
@@ -55,9 +56,6 @@ const LabelsPage = lazy(() => import('@/modules/labels/presentation/pages/Labels
 
 // Notifications pages
 const NotificationsPage = lazy(() => import('@/modules/notifications/presentation/pages/NotificationsPage').then(m => ({ default: m.NotificationsPage })));
-
-// Estimates pages
-const EstimatesPage = lazy(() => import('@/modules/estimates/presentation/pages/EstimatesPage').then(m => ({ default: m.EstimatesPage })));
 
 // Analytics pages
 const AnalyticsPage = lazy(() => import('@/modules/analytics/presentation/pages/AnalyticsPage').then(m => ({ default: m.AnalyticsPage })));
@@ -126,13 +124,12 @@ export const App = (): React.ReactElement => {
                     <Route path="projects" element={<ProjectsPage />} />
                     <Route path="projects/:projectId/issues" element={<IssuesPage />} />
                     <Route path="projects/:projectId/issues/:issueId" element={<IssueDetailPage />} />
-                    <Route path="projects/:projectId/cycles" element={<CyclesPage />} />
-                    <Route path="projects/:projectId/cycles/:cycleId" element={<CycleDetailPage />} />
-                    <Route path="projects/:projectId/modules" element={<ModulesPage />} />
-                    <Route path="projects/:projectId/modules/:moduleId" element={<ModuleDetailPage />} />
-                    <Route path="projects/:projectId/archives" element={<ArchivesPage />} />
-                    <Route path="projects/:projectId/estimates" element={<EstimatesPage />} />
-                    <Route path="projects/:projectId/inbox" element={<InboxPage />} />
+                    <Route path="projects/:projectId/cycles" element={<ProjectFeatureGuard feature="cyclesEnabled"><CyclesPage /></ProjectFeatureGuard>} />
+                    <Route path="projects/:projectId/cycles/:cycleId" element={<ProjectFeatureGuard feature="cyclesEnabled"><CycleDetailPage /></ProjectFeatureGuard>} />
+                    <Route path="projects/:projectId/modules" element={<ProjectFeatureGuard feature="modulesEnabled"><ModulesPage /></ProjectFeatureGuard>} />
+                    <Route path="projects/:projectId/modules/:moduleId" element={<ProjectFeatureGuard feature="modulesEnabled"><ModuleDetailPage /></ProjectFeatureGuard>} />
+                    <Route path="projects/:projectId/archives" element={<ProjectFeatureGuard feature="archivesEnabled"><ArchivesPage /></ProjectFeatureGuard>} />
+                    <Route path="projects/:projectId/inbox" element={<ProjectFeatureGuard feature="intakeEnabled"><InboxPage /></ProjectFeatureGuard>} />
                     <Route path="projects/:projectId/deploy-boards" element={<DeployBoardsPage />} />
 
                     <Route path="projects/:projectId/importer" element={<ImporterPage />} />

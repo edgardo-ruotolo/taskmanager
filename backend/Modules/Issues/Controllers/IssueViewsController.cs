@@ -150,8 +150,6 @@ public class IssueViewsController(IIssueViewService viewService, AppDbContext db
                 LabelIds = i.Labels.Select(l => l.LabelId).ToList(),
                 ParentId = i.ParentId,
                 IssueTypeId = i.IssueTypeId,
-                EstimatePointId = i.EstimatePointId,
-                Point = i.Point,
                 StartDate = i.StartDate,
                 DueDate = i.DueDate,
                 CompletedAt = i.CompletedAt,

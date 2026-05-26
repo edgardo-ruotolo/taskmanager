@@ -1,5 +1,8 @@
+using System.Text.Json;
+using System.Text.RegularExpressions;
 using Ganss.Xss;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using TaskManager.Api.Common.Auth;
 using TaskManager.Api.Common.Exceptions;
 using TaskManager.Api.Common.Pagination;
@@ -20,10 +23,79 @@ public class IssueService(
     IIssueActivityService activityService,
     IHtmlSanitizer htmlSanitizer,
     ICurrentUser currentUser,
-    IRealtimePublisher realtime) : IIssueService
+    IRealtimePublisher realtime,
+    ILogger<IssueService> logger) : IIssueService
 {
+    private static readonly Regex HtmlTagRegex = new("<[^>]+>", RegexOptions.Compiled);
+    private static readonly Regex WhitespaceRegex = new("\\s+", RegexOptions.Compiled);
+
     private string? Sanitize(string? html) =>
         string.IsNullOrEmpty(html) ? html : htmlSanitizer.Sanitize(html);
+
+    private static string? ExtractPlainTextFromTiptapJson(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json)) return null;
+        try
+        {
+            using var doc = JsonDocument.Parse(json);
+            var sb = new System.Text.StringBuilder();
+            AppendNodeText(doc.RootElement, sb);
+            var text = sb.ToString().Trim();
+            return string.IsNullOrEmpty(text) ? null : text;
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+    }
+
+    private static void AppendNodeText(JsonElement node, System.Text.StringBuilder sb)
+    {
+        if (node.ValueKind == JsonValueKind.Object)
+        {
+            if (node.TryGetProperty("type", out var typeProp) && typeProp.ValueKind == JsonValueKind.String)
+            {
+                var type = typeProp.GetString();
+                if (type == "text" && node.TryGetProperty("text", out var textProp) && textProp.ValueKind == JsonValueKind.String)
+                {
+                    sb.Append(textProp.GetString());
+                }
+                else if (type == "hardBreak" || type == "lineBreak")
+                {
+                    sb.Append('\n');
+                }
+            }
+            if (node.TryGetProperty("content", out var content) && content.ValueKind == JsonValueKind.Array)
+            {
+                foreach (var child in content.EnumerateArray())
+                    AppendNodeText(child, sb);
+                if (node.TryGetProperty("type", out var t) && t.ValueKind == JsonValueKind.String)
+                {
+                    var type = t.GetString();
+                    if (type is "paragraph" or "heading" or "listItem" or "blockquote") sb.Append('\n');
+                }
+            }
+        }
+        else if (node.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var child in node.EnumerateArray())
+                AppendNodeText(child, sb);
+        }
+    }
+
+    private static string? StripHtmlToPlain(string? html)
+    {
+        if (string.IsNullOrWhiteSpace(html)) return null;
+        var stripped = HtmlTagRegex.Replace(html, " ");
+        var decoded = System.Net.WebUtility.HtmlDecode(stripped);
+        var collapsed = WhitespaceRegex.Replace(decoded, " ").Trim();
+        return string.IsNullOrEmpty(collapsed) ? null : collapsed;
+    }
+
+    private static string? ComputePlainDescription(string? descriptionJson, string? descriptionHtml, string? fallbackPlain) =>
+        ExtractPlainTextFromTiptapJson(descriptionJson)
+        ?? StripHtmlToPlain(descriptionHtml)
+        ?? (string.IsNullOrWhiteSpace(fallbackPlain) ? null : fallbackPlain);
 
     private async Task EmitIssueEventAsync(string type, string workspaceSlug, Guid projectId, Guid issueId, CancellationToken ct)
     {
@@ -73,11 +145,12 @@ public class IssueService(
             .MaxAsync(ct) ?? 0;
         var sequenceId = maxSeq + 1;
 
+        var sanitizedHtml = Sanitize(dto.DescriptionHtml);
         var issue = new Issue
         {
             Title = dto.Title,
-            Description = dto.Description,
-            DescriptionHtml = Sanitize(dto.DescriptionHtml),
+            Description = ComputePlainDescription(dto.DescriptionJson, sanitizedHtml, dto.Description),
+            DescriptionHtml = sanitizedHtml,
             DescriptionJson = dto.DescriptionJson,
             Priority = dto.Priority,
             StateId = state.Id,
@@ -87,7 +160,6 @@ public class IssueService(
             AssigneeId = dto.AssigneeId,
             ParentId = dto.ParentId,
             IssueTypeId = dto.IssueTypeId,
-            EstimatePointId = dto.EstimatePointId,
             SortOrder = dto.SortOrder,
             IsDraft = dto.IsDraft,
             StartDate = dto.StartDate.HasValue ? DateTime.SpecifyKind(dto.StartDate.Value, DateTimeKind.Utc) : null,
@@ -130,10 +202,13 @@ public class IssueService(
         var created = await db.Issues
             .AsNoTracking()
             .Include(i => i.State)
+            .Include(i => i.Assignee)
+            .Include(i => i.CreatedBy)
             .Include(i => i.Assignees)
             .Include(i => i.Labels)
-            .Include(i => i.CycleIssues)
+            .Include(i => i.CycleIssues).ThenInclude(ci => ci.Cycle)
             .Include(i => i.ModuleIssues)
+            .Include(i => i.SubIssues).ThenInclude(s => s.State)
             .FirstAsync(i => i.Id == issue.Id, ct);
 
         return IssueMapper.MapToDto(created);
@@ -174,16 +249,32 @@ public class IssueService(
                 StateColor = i.State.Color,
                 StateGroup = i.State.Category.ToString(),
                 CreatedById = i.CreatedById,
+                CreatedByName = i.CreatedBy != null
+                    ? (i.CreatedBy.DisplayName
+                       ?? (((i.CreatedBy.FirstName ?? "") + " " + (i.CreatedBy.LastName ?? "")).Trim() != ""
+                            ? ((i.CreatedBy.FirstName ?? "") + " " + (i.CreatedBy.LastName ?? "")).Trim()
+                            : (i.CreatedBy.UserName ?? i.CreatedBy.Email)))
+                    : null,
                 UpdatedById = i.UpdatedById,
                 AssigneeId = i.AssigneeId,
+                AssigneeName = i.Assignee != null
+                    ? (i.Assignee.DisplayName
+                       ?? (((i.Assignee.FirstName ?? "") + " " + (i.Assignee.LastName ?? "")).Trim() != ""
+                            ? ((i.Assignee.FirstName ?? "") + " " + (i.Assignee.LastName ?? "")).Trim()
+                            : (i.Assignee.UserName ?? i.Assignee.Email)))
+                    : null,
+                AssigneeAvatarUrl = i.Assignee != null ? i.Assignee.AvatarUrl : null,
                 AssigneeIds = i.Assignees.Select(a => a.UserId).ToList(),
                 LabelIds = i.Labels.Select(l => l.LabelId).ToList(),
                 ModuleIds = i.ModuleIssues.Select(mi => mi.ModuleId).ToList(),
                 CycleId = i.CycleIssues.Select(ci => (Guid?)ci.CycleId).FirstOrDefault(),
+                CycleName = i.CycleIssues.Select(ci => ci.Cycle.Name).FirstOrDefault(),
                 ParentId = i.ParentId,
+                SubIssueCount = i.SubIssues.Count,
+                SubIssueCompletedCount = i.SubIssues
+                    .Count(s => s.State.Category == StateCategory.Completed
+                                || s.State.Category == StateCategory.Cancelled),
                 IssueTypeId = i.IssueTypeId,
-                EstimatePointId = i.EstimatePointId,
-                Point = i.Point,
                 StartDate = i.StartDate,
                 DueDate = i.DueDate,
                 CompletedAt = i.CompletedAt,
@@ -218,10 +309,13 @@ public class IssueService(
         var issue = await db.Issues
             .AsNoTracking()
             .Include(i => i.State)
+            .Include(i => i.Assignee)
+            .Include(i => i.CreatedBy)
             .Include(i => i.Assignees)
             .Include(i => i.Labels)
-            .Include(i => i.CycleIssues)
+            .Include(i => i.CycleIssues).ThenInclude(ci => ci.Cycle)
             .Include(i => i.ModuleIssues)
+            .Include(i => i.SubIssues).ThenInclude(s => s.State)
             .FirstOrDefaultAsync(i => i.Id == issueId && i.ProjectId == projectId, ct)
             ?? throw new NotFoundException("Issue not found.");
 
@@ -232,10 +326,13 @@ public class IssueService(
     {
         var issue = await db.Issues
             .Include(i => i.State)
+            .Include(i => i.Assignee)
+            .Include(i => i.CreatedBy)
             .Include(i => i.Assignees)
             .Include(i => i.Labels)
-            .Include(i => i.CycleIssues)
+            .Include(i => i.CycleIssues).ThenInclude(ci => ci.Cycle)
             .Include(i => i.ModuleIssues)
+            .Include(i => i.SubIssues).ThenInclude(s => s.State)
             .FirstOrDefaultAsync(i => i.Id == issueId && i.ProjectId == projectId, ct)
             ?? throw new NotFoundException("Issue not found.");
 
@@ -244,14 +341,18 @@ public class IssueService(
         var oldTitle = issue.Title;
 
         if (dto.Title is not null) issue.Title = dto.Title;
-        if (dto.Description is not null) issue.Description = dto.Description;
+
+        var descriptionTouched = dto.Description is not null || dto.DescriptionHtml is not null || dto.DescriptionJson is not null;
         if (dto.DescriptionHtml is not null) issue.DescriptionHtml = Sanitize(dto.DescriptionHtml);
         if (dto.DescriptionJson is not null) issue.DescriptionJson = dto.DescriptionJson;
+        if (dto.Description is not null) issue.Description = dto.Description;
+        if (descriptionTouched)
+            issue.Description = ComputePlainDescription(issue.DescriptionJson, issue.DescriptionHtml, dto.Description ?? issue.Description);
+
         if (dto.Priority is not null) issue.Priority = dto.Priority.Value;
         if (dto.AssigneeId is not null) issue.AssigneeId = dto.AssigneeId;
         if (dto.ParentId is not null) issue.ParentId = dto.ParentId;
         if (dto.IssueTypeId is not null) issue.IssueTypeId = dto.IssueTypeId;
-        if (dto.EstimatePointId is not null) issue.EstimatePointId = dto.EstimatePointId;
         if (dto.SortOrder.HasValue) issue.SortOrder = dto.SortOrder.Value;
         if (dto.IsDraft.HasValue) issue.IsDraft = dto.IsDraft.Value;
         if (dto.RequiresAdminApproval.HasValue) issue.RequiresAdminApproval = dto.RequiresAdminApproval.Value;
@@ -328,7 +429,34 @@ public class IssueService(
             db.ModuleIssues.AddRange(toAdd.Select(mid => new ModuleIssue { ModuleId = mid, IssueId = issue.Id, AddedById = issue.CreatedById }));
         }
 
-        await db.SaveChangesAsync(ct);
+        try
+        {
+            await db.SaveChangesAsync(ct);
+        }
+        catch (DbUpdateException ex)
+        {
+            logger.LogError(ex,
+                "Failed to persist Issue update. IssueId={IssueId} ProjectId={ProjectId} ChangedFields={Fields}",
+                issue.Id, projectId,
+                new
+                {
+                    Title = dto.Title is not null,
+                    Description = dto.Description is not null,
+                    DescriptionHtml = dto.DescriptionHtml is not null,
+                    DescriptionJson = dto.DescriptionJson is not null,
+                    Priority = dto.Priority is not null,
+                    StateId = dto.StateId is not null,
+                    AssigneeId = dto.AssigneeId is not null,
+                    AssigneeIds = dto.AssigneeIds is not null,
+                    LabelIds = dto.LabelIds is not null,
+                    ParentId = dto.ParentId is not null,
+                    StartDate = dto.StartDate is not null,
+                    DueDate = dto.DueDate is not null,
+                    CycleId = dto.CycleId is not null,
+                    ModuleIds = dto.ModuleIds is not null
+                });
+            throw;
+        }
 
         var actorId = currentUserId;
 
@@ -355,9 +483,13 @@ public class IssueService(
 
         var issue = await db.Issues
             .Include(i => i.State)
+            .Include(i => i.Assignee)
+            .Include(i => i.CreatedBy)
             .Include(i => i.Assignees)
             .Include(i => i.Labels)
+            .Include(i => i.CycleIssues).ThenInclude(ci => ci.Cycle)
             .Include(i => i.ModuleIssues)
+            .Include(i => i.SubIssues).ThenInclude(s => s.State)
             .FirstOrDefaultAsync(i => i.Id == issueId && i.ProjectId == projectId, ct)
             ?? throw new NotFoundException("Issue not found.");
 
@@ -515,19 +647,23 @@ public class IssueService(
             .FirstOrDefaultAsync(w => w.Slug == workspaceSlug, ct)
             ?? throw new NotFoundException($"Workspace '{workspaceSlug}' not found.");
 
-        return await db.Issues
+        var issues = await db.Issues
             .AsNoTracking()
             .Include(i => i.State)
+            .Include(i => i.Assignee)
+            .Include(i => i.CreatedBy)
             .Include(i => i.Assignees)
             .Include(i => i.Labels)
-            .Include(i => i.CycleIssues)
+            .Include(i => i.CycleIssues).ThenInclude(ci => ci.Cycle)
             .Include(i => i.ModuleIssues)
+            .Include(i => i.SubIssues).ThenInclude(s => s.State)
             .Where(i => i.ProjectId == projectId && i.Project.WorkspaceId == workspace.Id)
             .Where(i => EF.Functions.TrigramsSimilarity(i.Title, title) >= threshold)
             .OrderByDescending(i => EF.Functions.TrigramsSimilarity(i.Title, title))
             .Take(10)
-            .Select(i => IssueMapper.MapToDto(i))
             .ToListAsync(ct);
+
+        return issues.Select(IssueMapper.MapToDto).ToList();
     }
 
 }

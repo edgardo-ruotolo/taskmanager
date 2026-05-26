@@ -35,13 +35,6 @@ import {
     AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from '@/components/ui/select';
-import {
     Form,
     FormControl,
     FormField,
@@ -59,6 +52,7 @@ import {
     useRemoveWorkspaceMember,
     useAdminUsers,
 } from '../../application/use-admin';
+import { SearchableSelect } from '@/shared/components/ui/searchable-select';
 import type {
     AdminWorkspaceDto,
     AdminWorkspaceMemberDto,
@@ -420,24 +414,20 @@ function AddMemberForm({ workspaceId }: AddMemberFormProps): React.ReactElement 
                     render={({ field }) => (
                         <FormItem className="flex-1">
                             <FormLabel className="text-secondary text-xs">Usuario</FormLabel>
-                            <Select onValueChange={field.onChange} value={field.value}>
-                                <FormControl>
-                                    <SelectTrigger className="bg-layer-1 border-subtle text-primary h-8 text-sm">
-                                        <SelectValue placeholder="Seleccionar..." />
-                                    </SelectTrigger>
-                                </FormControl>
-                                <SelectContent className="bg-surface-2 border-subtle">
-                                    {(usersData?.items ?? []).map((u) => (
-                                        <SelectItem
-                                            key={u.id}
-                                            value={u.id}
-                                            className="text-primary text-sm"
-                                        >
-                                            {u.email}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
+                            <FormControl>
+                                <SearchableSelect
+                                    multi={false}
+                                    value={field.value || null}
+                                    onChange={(v) => field.onChange(v ?? '')}
+                                    items={(usersData?.items ?? []).map((u) => ({
+                                        id: u.id,
+                                        label: u.email,
+                                    }))}
+                                    placeholder="Seleccionar..."
+                                    width="100%"
+                                    clearable={false}
+                                />
+                            </FormControl>
                             <FormMessage />
                         </FormItem>
                     )}

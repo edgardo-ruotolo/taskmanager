@@ -1,5 +1,6 @@
 using TaskManager.Api.Common.Auditing;
 using TaskManager.Api.Modules.Auth.Entities;
+using TaskManager.Api.Modules.Cycles.Entities;
 using TaskManager.Api.Modules.Issues.Entities;
 using TaskManager.Api.Modules.Workspaces.Entities;
 
@@ -34,6 +35,8 @@ public class RecurringIssueTemplate : AuditableEntity
     public BlockPolicy BlockPolicy { get; set; } = BlockPolicy.SkipAndNotify;
     public Guid? IssueTypeId { get; set; }
     public IssueType? IssueType { get; set; }
+    public Guid? CycleId { get; set; }
+    public Cycle? Cycle { get; set; }
     public Guid CreatedById { get; set; }
     public User CreatedBy { get; set; } = null!;
     public ICollection<RecurringIssueTemplateProject> Projects { get; set; } = [];

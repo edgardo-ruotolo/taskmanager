@@ -36,7 +36,7 @@ import {
     FormMessage,
 } from '@/components/ui/form';
 import { cn } from '@/lib/utils';
-import { ThemedSelect } from '@/shared/components/ThemedSelect';
+import { SearchableSelect } from '@/shared/components/ui/searchable-select';
 import {
     useProjects,
     useUpdateProject,
@@ -241,11 +241,13 @@ function ManageProjectTeamDialog({
                             No hay equipos en el workspace. Creá uno desde Configuración → Equipos.
                         </p>
                     ) : (
-                        <ThemedSelect
-                            id="project-team"
+                        <SearchableSelect
+                            multi={false}
                             value={selectedValue}
-                            onValueChange={setSelectedValue}
-                            options={options}
+                            onChange={(v) => setSelectedValue(v ?? NO_TEAM_SENTINEL)}
+                            items={options.map((o) => ({ id: o.value, label: o.label }))}
+                            placeholder="Sin equipo"
+                            width="100%"
                         />
                     )}
                 </div>
@@ -382,7 +384,7 @@ export const WorkspaceProjectsSettingsTab = (): React.ReactElement => {
     const projects = data?.items ?? [];
 
     return (
-        <div className="p-6 md:p-8 max-w-5xl mx-auto">
+        <div className="p-6 md:p-8 w-full">
             <div className="flex items-start justify-between mb-6">
                 <div>
                     <h1 className="text-lg font-semibold text-primary">Proyectos</h1>

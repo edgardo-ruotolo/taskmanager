@@ -6,5 +6,6 @@ public record LogWorkspaceActivityDto(
     Guid? EntityId,
     string? EntityTitle,
     string? OldValue,
-    string? NewValue
+    string? NewValue,
+    string? CommentBody
 );

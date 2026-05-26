@@ -1,5 +1,5 @@
 import type React from 'react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
@@ -18,55 +18,106 @@ import {
     FormLabel,
     FormMessage,
 } from '@/components/ui/form';
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
+import { SearchableSelect } from '@/shared/components/ui/searchable-select';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { createModuleSchema, type CreateModuleFormData } from '../../application/schemas';
-import { useCreateModule } from '../../application/use-modules';
+import { useCreateModule, useUpdateModule } from '../../application/use-modules';
+import type { Module } from '../../domain/types';
 
 interface CreateModuleDialogProps {
     workspaceSlug: string;
     projectId: string;
     trigger: React.ReactNode;
+    /** When provided, dialog runs in edit mode */
+    module?: Module;
+    /** Controlled open state for edit mode (optional) */
+    open?: boolean;
+    onOpenChange?: (open: boolean) => void;
 }
+
+const STATUS_ITEMS = [
+    { id: 'Backlog', label: 'Por hacer' },
+    { id: 'InProgress', label: 'En progreso' },
+    { id: 'Paused', label: 'Pausado' },
+    { id: 'Completed', label: 'Completado' },
+    { id: 'Archived', label: 'Archivado' },
+] as const;
 
 export const CreateModuleDialog = ({
     workspaceSlug,
     projectId,
     trigger,
+    module,
+    open: controlledOpen,
+    onOpenChange: controlledOnOpenChange,
 }: CreateModuleDialogProps): React.ReactElement => {
-    const [open, setOpen] = useState(false);
+    const [internalOpen, setInternalOpen] = useState(false);
+    const isControlled = controlledOpen !== undefined;
+    const open = isControlled ? controlledOpen : internalOpen;
+    const setOpen = isControlled
+        ? (controlledOnOpenChange ?? setInternalOpen)
+        : setInternalOpen;
+
+    const isEditMode = module !== undefined;
 
     const form = useForm<CreateModuleFormData>({
         resolver: zodResolver(createModuleSchema),
-        defaultValues: { name: '', description: '', status: 'Backlog' },
+        defaultValues: {
+            name: module?.name ?? '',
+            description: module?.description ?? '',
+            status: module?.status ?? 'Backlog',
+        },
     });
 
-    const { mutate, isPending } = useCreateModule<CreateModuleFormData>(workspaceSlug, projectId, {
-        setError: form.setError,
-    });
+    useEffect(() => {
+        if (open && isEditMode) {
+            form.reset({
+                name: module.name,
+                description: module.description ?? '',
+                status: module.status,
+            });
+        }
+        if (!open && !isEditMode) {
+            form.reset({ name: '', description: '', status: 'Backlog' });
+        }
+    }, [open, module, isEditMode, form]);
+
+    const { mutate: createMutate, isPending: isCreating } = useCreateModule<CreateModuleFormData>(
+        workspaceSlug,
+        projectId,
+        { setError: form.setError },
+    );
+
+    const { mutate: updateMutate, isPending: isUpdating } = useUpdateModule<CreateModuleFormData>(
+        workspaceSlug,
+        projectId,
+        { setError: form.setError },
+    );
+
+    const isPending = isCreating || isUpdating;
 
     const onSubmit = (data: CreateModuleFormData): void => {
-        mutate(
-            {
-                name: data.name,
-                description: data.description || undefined,
-                status: data.status,
-            },
-            {
+        const payload = {
+            name: data.name,
+            description: data.description || undefined,
+            status: data.status,
+        };
+
+        if (isEditMode) {
+            updateMutate(
+                { moduleId: module.id, data: payload },
+                { onSuccess: () => setOpen(false) },
+            );
+        } else {
+            createMutate(payload, {
                 onSuccess: () => {
                     form.reset();
                     setOpen(false);
                 },
-            },
-        );
+            });
+        }
     };
 
     return (
@@ -74,9 +125,13 @@ export const CreateModuleDialog = ({
             <DialogTrigger asChild>{trigger}</DialogTrigger>
             <DialogContent className="bg-surface-1 border-subtle text-primary sm:max-w-md">
                 <DialogHeader>
-                    <DialogTitle className="text-primary">Nuevo Módulo</DialogTitle>
+                    <DialogTitle className="text-primary">
+                        {isEditMode ? 'Editar Módulo' : 'Nuevo Módulo'}
+                    </DialogTitle>
                     <DialogDescription className="sr-only">
-                        Agrupa issues por tema o entrega. Define nombre, descripción, fechas y líder.
+                        {isEditMode
+                            ? 'Modifica el nombre, descripción y estado del módulo.'
+                            : 'Agrupa issues por tema o entrega. Define nombre, descripción y estado.'}
                     </DialogDescription>
                 </DialogHeader>
                 <Form {...form}>
@@ -122,20 +177,17 @@ export const CreateModuleDialog = ({
                             render={({ field }) => (
                                 <FormItem>
                                     <FormLabel className="text-secondary">Estado</FormLabel>
-                                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                        <FormControl>
-                                            <SelectTrigger className="bg-layer-1 border-subtle text-primary">
-                                                <SelectValue />
-                                            </SelectTrigger>
-                                        </FormControl>
-                                        <SelectContent className="bg-layer-1 border-subtle">
-                                            <SelectItem value="Backlog" className="text-primary focus:bg-layer-2">Por hacer</SelectItem>
-                                            <SelectItem value="InProgress" className="text-primary focus:bg-layer-2">En progreso</SelectItem>
-                                            <SelectItem value="Paused" className="text-primary focus:bg-layer-2">Pausado</SelectItem>
-                                            <SelectItem value="Completed" className="text-primary focus:bg-layer-2">Completado</SelectItem>
-                                            <SelectItem value="Archived" className="text-primary focus:bg-layer-2">Archivado</SelectItem>
-                                        </SelectContent>
-                                    </Select>
+                                    <FormControl>
+                                        <SearchableSelect
+                                            multi={false}
+                                            value={field.value || null}
+                                            onChange={(v) => field.onChange(v ?? 'Backlog')}
+                                            items={STATUS_ITEMS as unknown as Array<{ id: string; label: string }>}
+                                            placeholder="Estado"
+                                            width="100%"
+                                            clearable={false}
+                                        />
+                                    </FormControl>
                                     <FormMessage />
                                 </FormItem>
                             )}
@@ -154,7 +206,9 @@ export const CreateModuleDialog = ({
                                 disabled={isPending}
                                 className="bg-accent-primary hover:bg-accent-primary-hover text-on-color"
                             >
-                                {isPending ? 'Creando...' : 'Crear módulo'}
+                                {isEditMode
+                                    ? isPending ? 'Guardando...' : 'Guardar'
+                                    : isPending ? 'Creando...' : 'Crear módulo'}
                             </Button>
                         </div>
                     </form>

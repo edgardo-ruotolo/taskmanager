@@ -160,7 +160,7 @@ export const DraftsPage = (): React.ReactElement => {
     return (
         <>
             <div className="h-full overflow-y-auto">
-                <div className="mx-auto max-w-4xl px-10 py-8">
+                <div className="w-full px-10 py-8">
                     <div className="flex items-start justify-between mb-7">
                         <div>
                             <Eyebrow>Lo que dejaste a medias · {isLoading ? '…' : `${drafts.length} issues`}</Eyebrow>

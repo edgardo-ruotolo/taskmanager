@@ -24,6 +24,7 @@ public class IssuesController(
     IIssueMentionService mentionService,
     IFileAssetService fileAssetService,
     IIssueArchiveService archiveService,
+    IIssueRelationService relationService,
     ICurrentUser currentUser,
     IHubContext<IssueHub> issueHub) : ControllerBase
 {
@@ -260,6 +261,16 @@ public class IssuesController(
     {
         var mentions = await mentionService.GetMentionsAsync(issueId, ct);
         return Ok(mentions);
+    }
+
+    // — AI dependencies endpoint —
+
+    [HttpGet("{issueId:guid}/ai-dependencies")]
+    public async Task<ActionResult<AiDependenciesDto>> GetAiDependencies(
+        string workspaceSlug, Guid projectId, Guid issueId, CancellationToken ct)
+    {
+        var result = await relationService.GetAiDependenciesAsync(workspaceSlug, projectId, issueId, ct);
+        return Ok(result);
     }
 
     // — Version endpoint —

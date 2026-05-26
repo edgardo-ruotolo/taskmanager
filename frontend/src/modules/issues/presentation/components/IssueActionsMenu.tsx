@@ -21,6 +21,8 @@ import {
 } from '@/components/ui/alert-dialog';
 import type { Issue } from '../../domain/types';
 import { useDeleteIssue, useArchiveIssue, useDuplicateIssue } from '../../application/use-issues';
+import { useProject } from '@/modules/projects/application/use-projects';
+import { getProjectFeatures } from '@/modules/projects/application/use-project-features';
 
 interface IssueActionsMenuProps {
     issue: Issue;
@@ -32,6 +34,9 @@ interface IssueActionsMenuProps {
 export const IssueActionsMenu = ({ issue, workspaceSlug, projectId, onEdit }: IssueActionsMenuProps): React.ReactElement => {
     const [deleteOpen, setDeleteOpen] = useState(false);
     const [dropdownOpen, setDropdownOpen] = useState(false);
+
+    const { data: project } = useProject(workspaceSlug, projectId);
+    const features = getProjectFeatures(project);
 
     const { mutate: deleteIssue, isPending: isDeleting } = useDeleteIssue(workspaceSlug, projectId);
     const { mutate: archiveIssue, isPending: isArchiving } = useArchiveIssue(workspaceSlug, projectId);
@@ -100,10 +105,12 @@ export const IssueActionsMenu = ({ issue, workspaceSlug, projectId, onEdit }: Is
                         <ExternalLink size={13} />
                         Abrir en nueva pestaña
                     </DropdownMenuItem>
+                    {features.archivesEnabled && (
                     <DropdownMenuItem onClick={handleArchive} disabled={isArchiving} className="gap-2 cursor-pointer hover:bg-[var(--neutral-200)] hover:text-primary focus:bg-[var(--neutral-200)] focus:text-primary">
                         <Archive size={13} />
                         Archivar
                     </DropdownMenuItem>
+                    )}
                     <DropdownMenuSeparator className="bg-subtle" />
                     <DropdownMenuItem
                         onClick={(e) => { e.stopPropagation(); setDropdownOpen(false); setDeleteOpen(true); }}

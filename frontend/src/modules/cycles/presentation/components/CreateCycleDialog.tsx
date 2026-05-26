@@ -1,5 +1,5 @@
 import type React from 'react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
@@ -22,29 +22,75 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { createCycleSchema, type CreateCycleFormData } from '../../application/schemas';
-import { useCreateCycle } from '../../application/use-cycles';
+import { useCreateCycle, useUpdateCycle } from '../../application/use-cycles';
+import type { Cycle } from '../../domain/types';
 
 interface CreateCycleDialogProps {
     workspaceSlug: string;
     projectId: string;
     trigger: React.ReactNode;
+    /** When provided, dialog runs in edit mode */
+    cycle?: Cycle;
+    /** Controlled open state for edit mode (optional) */
+    open?: boolean;
+    onOpenChange?: (open: boolean) => void;
 }
 
 export const CreateCycleDialog = ({
     workspaceSlug,
     projectId,
     trigger,
+    cycle,
+    open: controlledOpen,
+    onOpenChange: controlledOnOpenChange,
 }: CreateCycleDialogProps): React.ReactElement => {
-    const [open, setOpen] = useState(false);
+    const [internalOpen, setInternalOpen] = useState(false);
+    const isControlled = controlledOpen !== undefined;
+    const open = isControlled ? controlledOpen : internalOpen;
+    const setOpen = isControlled
+        ? (controlledOnOpenChange ?? setInternalOpen)
+        : setInternalOpen;
+
+    const isEditMode = cycle !== undefined;
 
     const form = useForm<CreateCycleFormData>({
         resolver: zodResolver(createCycleSchema),
-        defaultValues: { name: '', description: '', startDate: '', endDate: '' },
+        defaultValues: {
+            name: cycle?.name ?? '',
+            description: cycle?.description ?? '',
+            startDate: cycle?.startDate?.slice(0, 10) ?? '',
+            endDate: cycle?.endDate?.slice(0, 10) ?? '',
+        },
     });
 
-    const { mutate, isPending } = useCreateCycle<CreateCycleFormData>(workspaceSlug, projectId, {
-        setError: form.setError,
-    });
+    // Reset form when cycle prop changes (e.g. different cycle opened)
+    useEffect(() => {
+        if (open && isEditMode) {
+            form.reset({
+                name: cycle.name,
+                description: cycle.description ?? '',
+                startDate: cycle.startDate?.slice(0, 10) ?? '',
+                endDate: cycle.endDate?.slice(0, 10) ?? '',
+            });
+        }
+        if (!open && !isEditMode) {
+            form.reset({ name: '', description: '', startDate: '', endDate: '' });
+        }
+    }, [open, cycle, isEditMode, form]);
+
+    const { mutate: createMutate, isPending: isCreating } = useCreateCycle<CreateCycleFormData>(
+        workspaceSlug,
+        projectId,
+        { setError: form.setError },
+    );
+
+    const { mutate: updateMutate, isPending: isUpdating } = useUpdateCycle<CreateCycleFormData>(
+        workspaceSlug,
+        projectId,
+        { setError: form.setError },
+    );
+
+    const isPending = isCreating || isUpdating;
 
     const onSubmit = (data: CreateCycleFormData): void => {
         const payload = {
@@ -53,12 +99,20 @@ export const CreateCycleDialog = ({
             startDate: data.startDate || undefined,
             endDate: data.endDate || undefined,
         };
-        mutate(payload, {
-            onSuccess: () => {
-                form.reset();
-                setOpen(false);
-            },
-        });
+
+        if (isEditMode) {
+            updateMutate(
+                { cycleId: cycle.id, data: payload },
+                { onSuccess: () => setOpen(false) },
+            );
+        } else {
+            createMutate(payload, {
+                onSuccess: () => {
+                    form.reset();
+                    setOpen(false);
+                },
+            });
+        }
     };
 
     return (
@@ -66,9 +120,13 @@ export const CreateCycleDialog = ({
             <DialogTrigger asChild>{trigger}</DialogTrigger>
             <DialogContent className="bg-surface-1 border-subtle text-primary sm:max-w-md">
                 <DialogHeader>
-                    <DialogTitle className="text-primary">Nuevo Ciclo</DialogTitle>
+                    <DialogTitle className="text-primary">
+                        {isEditMode ? 'Editar Ciclo' : 'Nuevo Ciclo'}
+                    </DialogTitle>
                     <DialogDescription className="sr-only">
-                        Define un sprint con nombre, fechas y descripción opcional.
+                        {isEditMode
+                            ? 'Modifica el nombre, fechas y descripción del ciclo.'
+                            : 'Define un sprint con nombre, fechas y descripción opcional.'}
                     </DialogDescription>
                 </DialogHeader>
                 <Form {...form}>
@@ -158,7 +216,9 @@ export const CreateCycleDialog = ({
                                 disabled={isPending}
                                 className="bg-accent-primary hover:bg-accent-primary-hover text-on-color"
                             >
-                                {isPending ? 'Creando...' : 'Crear ciclo'}
+                                {isEditMode
+                                    ? isPending ? 'Guardando...' : 'Guardar'
+                                    : isPending ? 'Creando...' : 'Crear ciclo'}
                             </Button>
                         </div>
                     </form>

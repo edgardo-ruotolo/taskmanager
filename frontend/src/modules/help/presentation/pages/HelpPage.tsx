@@ -69,7 +69,7 @@ export function HelpPage(): React.ReactElement {
 
             {/* Content */}
             <main className="overflow-y-auto">
-                <div className="mx-auto max-w-3xl px-10 py-10">
+                <div className="w-full px-10 py-10">
                     {section ? (
                         <article>
                             <Eyebrow>Ayuda</Eyebrow>

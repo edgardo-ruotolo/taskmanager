@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using TaskManager.Api.Common.Exceptions;
 using TaskManager.Api.Common.Pagination;
 using TaskManager.Api.Data;
+using TaskManager.Api.Modules.Auth.Entities;
 using TaskManager.Api.Modules.Cycles.Dtos;
 using TaskManager.Api.Modules.Cycles.Entities;
 using TaskManager.Api.Modules.States.Entities;
@@ -19,6 +20,7 @@ public class CycleService(AppDbContext db) : ICycleService
         var query = db.Cycles
             .AsNoTracking()
             .Include(c => c.CycleIssues)
+            .Include(c => c.Lead)
             .Where(c => c.ProjectId == projectId && c.Project.WorkspaceId == workspace.Id);
 
         var total = await query.CountAsync(ct);
@@ -28,9 +30,12 @@ public class CycleService(AppDbContext db) : ICycleService
             .Take(pageSize)
             .ToListAsync(ct);
 
+        var dtos = items.Select(MapToDto).ToList();
+        await EnrichCyclesAsync(dtos, ct);
+
         return new PagedResult<CycleDto>
         {
-            Items = items.Select(MapToDto),
+            Items = dtos,
             TotalCount = total,
             Page = page,
             PageSize = pageSize
@@ -46,10 +51,13 @@ public class CycleService(AppDbContext db) : ICycleService
         var cycle = await db.Cycles
             .AsNoTracking()
             .Include(c => c.CycleIssues)
+            .Include(c => c.Lead)
             .FirstOrDefaultAsync(c => c.Id == cycleId && c.ProjectId == projectId && c.Project.WorkspaceId == workspace.Id, ct)
             ?? throw new NotFoundException("Cycle not found.");
 
-        return MapToDto(cycle);
+        var result = MapToDto(cycle);
+        await EnrichCyclesAsync(new[] { result }, ct);
+        return result;
     }
 
     public async Task<CycleDto> CreateAsync(string workspaceSlug, Guid projectId, Guid userId, CreateCycleDto dto, CancellationToken ct = default)
@@ -73,7 +81,9 @@ public class CycleService(AppDbContext db) : ICycleService
         db.Cycles.Add(cycle);
         await db.SaveChangesAsync(ct);
 
-        return MapToDto(cycle);
+        var result = MapToDto(cycle);
+        await EnrichCyclesAsync(new[] { result }, ct);
+        return result;
     }
 
     public async Task<CycleDto> UpdateAsync(string workspaceSlug, Guid projectId, Guid cycleId, UpdateCycleDto dto, CancellationToken ct = default)
@@ -83,6 +93,7 @@ public class CycleService(AppDbContext db) : ICycleService
 
         var cycle = await db.Cycles
             .Include(c => c.CycleIssues)
+            .Include(c => c.Lead)
             .FirstOrDefaultAsync(c => c.Id == cycleId && c.ProjectId == projectId && c.Project.WorkspaceId == workspace.Id, ct)
             ?? throw new NotFoundException("Cycle not found.");
 
@@ -93,7 +104,9 @@ public class CycleService(AppDbContext db) : ICycleService
         if (dto.EndDate is not null) cycle.EndDate = dto.EndDate;
 
         await db.SaveChangesAsync(ct);
-        return MapToDto(cycle);
+        var result = MapToDto(cycle);
+        await EnrichCyclesAsync(new[] { result }, ct);
+        return result;
     }
 
     public async Task DeleteAsync(string workspaceSlug, Guid projectId, Guid cycleId, CancellationToken ct = default)
@@ -162,14 +175,18 @@ public class CycleService(AppDbContext db) : ICycleService
             .FirstOrDefaultAsync(w => w.Slug == workspaceSlug, ct)
             ?? throw new NotFoundException($"Workspace '{workspaceSlug}' not found.");
 
-        return await db.Cycles
+        var items = await db.Cycles
             .AsNoTracking()
             .IgnoreQueryFilters()
             .Include(c => c.CycleIssues)
+            .Include(c => c.Lead)
             .Where(c => c.IsArchived && !c.IsDeleted && c.ProjectId == projectId && c.Project.WorkspaceId == workspace.Id)
             .OrderByDescending(c => c.ArchivedAt)
-            .Select(c => MapToDto(c))
             .ToListAsync(ct);
+
+        var dtos = items.Select(MapToDto).ToList();
+        await EnrichCyclesAsync(dtos, ct);
+        return dtos;
     }
 
     public async Task ArchiveAsync(string workspaceSlug, Guid projectId, Guid cycleId, CancellationToken ct = default)
@@ -311,6 +328,47 @@ public class CycleService(AppDbContext db) : ICycleService
         };
     }
 
+    public async Task<CycleDto> CloseAsync(string workspaceSlug, Guid projectId, Guid cycleId, bool moveIncompleteToBacklog, CancellationToken ct = default)
+    {
+        var workspace = await db.Workspaces.FirstOrDefaultAsync(w => w.Slug == workspaceSlug, ct)
+            ?? throw new NotFoundException($"Workspace '{workspaceSlug}' not found.");
+
+        var cycle = await db.Cycles
+            .Include(c => c.CycleIssues)
+            .Include(c => c.Lead)
+            .FirstOrDefaultAsync(c => c.Id == cycleId && c.ProjectId == projectId && c.Project.WorkspaceId == workspace.Id, ct)
+            ?? throw new NotFoundException("Cycle not found.");
+
+        if (cycle.ClosedAt is not null)
+            throw new ValidationException("Cycle is already closed.");
+
+        cycle.Status = CycleStatus.Completed;
+        cycle.ClosedAt = DateTime.UtcNow;
+
+        if (moveIncompleteToBacklog)
+        {
+            var incompleteCategories = new[] { StateCategory.Unstarted, StateCategory.Started };
+
+            var incompleteCycleIssues = await db.CycleIssues
+                .Include(ci => ci.Issue)
+                    .ThenInclude(i => i.State)
+                .Where(ci => ci.CycleId == cycleId && incompleteCategories.Contains(ci.Issue.State.Category))
+                .ToListAsync(ct);
+
+            foreach (var ci in incompleteCycleIssues)
+            {
+                ci.IsDeleted = true;
+                ci.DeletedAt = DateTime.UtcNow;
+            }
+        }
+
+        await db.SaveChangesAsync(ct);
+
+        var result = MapToDto(cycle);
+        await EnrichCyclesAsync(new[] { result }, ct);
+        return result;
+    }
+
     private static CycleDto MapToDto(Cycle cycle) => new()
     {
         Id = cycle.Id,
@@ -321,9 +379,124 @@ public class CycleService(AppDbContext db) : ICycleService
         EndDate = cycle.EndDate,
         ProjectId = cycle.ProjectId,
         OwnerId = cycle.OwnerId,
+        LeadId = cycle.LeadId,
+        LeadName = cycle.Lead != null ? BuildDisplayName(cycle.Lead) : null,
         IssueCount = cycle.CycleIssues.Count,
         IsArchived = cycle.IsArchived,
         ArchivedAt = cycle.ArchivedAt,
+        ClosedAt = cycle.ClosedAt,
         CreatedAt = cycle.CreatedAt
     };
+
+    private async Task EnrichCyclesAsync(IReadOnlyList<CycleDto> cycles, CancellationToken ct)
+    {
+        if (cycles.Count == 0) return;
+
+        var ids = cycles.Select(c => c.Id).ToList();
+
+        // Issue stats per cycle.
+        var stats = await db.CycleIssues
+            .AsNoTracking()
+            .Where(ci => ids.Contains(ci.CycleId))
+            .GroupBy(ci => ci.CycleId)
+            .Select(g => new
+            {
+                CycleId = g.Key,
+                Total = g.Count(),
+                Completed = g.Count(ci => ci.Issue.State.Category == StateCategory.Completed
+                                           || ci.Issue.State.Category == StateCategory.Cancelled)
+            })
+            .ToListAsync(ct);
+
+        // Derive members from assignees of issues belonging to each cycle.
+        var assigneeRows = await db.CycleIssues
+            .AsNoTracking()
+            .Where(ci => ids.Contains(ci.CycleId))
+            .SelectMany(ci => ci.Issue.Assignees
+                .Where(a => a.User != null)
+                .Select(a => new
+                {
+                    ci.CycleId,
+                    a.UserId,
+                    DisplayName = a.User.DisplayName,
+                    FirstName = a.User.FirstName,
+                    LastName = a.User.LastName,
+                    UserName = a.User.UserName,
+                    Email = a.User.Email,
+                    AvatarUrl = a.User.AvatarUrl
+                }))
+            .ToListAsync(ct);
+
+        var membersByCycle = assigneeRows
+            .GroupBy(r => r.CycleId)
+            .ToDictionary(g => g.Key, g => g
+                .GroupBy(r => r.UserId)
+                .Select(ug =>
+                {
+                    var first = ug.First();
+                    var displayName = !string.IsNullOrWhiteSpace(first.DisplayName)
+                        ? first.DisplayName!
+                        : $"{first.FirstName} {first.LastName}".Trim();
+                    if (string.IsNullOrWhiteSpace(displayName))
+                        displayName = first.UserName ?? first.Email ?? string.Empty;
+
+                    return new CycleMemberSummaryDto
+                    {
+                        UserId = first.UserId,
+                        DisplayName = displayName,
+                        Initials = BuildInitials(displayName),
+                        AvatarUrl = first.AvatarUrl
+                    };
+                })
+                .Take(6)
+                .ToList());
+
+        var now = DateTime.UtcNow;
+        var cycleDates = await db.Cycles
+            .AsNoTracking()
+            .Where(c => ids.Contains(c.Id))
+            .Select(c => new { c.Id, c.StartDate, c.Status })
+            .ToListAsync(ct);
+
+        foreach (var dto in cycles)
+        {
+            var s = stats.FirstOrDefault(x => x.CycleId == dto.Id);
+            dto.TotalIssues = s?.Total ?? dto.IssueCount;
+            dto.CompletedIssues = s?.Completed ?? 0;
+
+            dto.Members = membersByCycle.TryGetValue(dto.Id, out var m) ? m : [];
+
+            // Velocity = completed issues per day since StartDate.
+            var dates = cycleDates.FirstOrDefault(x => x.Id == dto.Id);
+            if (dates != null && dates.StartDate.HasValue && dto.CompletedIssues > 0)
+            {
+                var endpoint = dto.EndDate.HasValue && dto.EndDate.Value < now
+                    ? dto.EndDate.Value
+                    : now;
+                var elapsedDays = Math.Max(1, (endpoint - dates.StartDate.Value).TotalDays);
+                dto.Velocity = Math.Round((decimal)(dto.CompletedIssues / elapsedDays), 2);
+            }
+            else
+            {
+                dto.Velocity = null;
+            }
+        }
+    }
+
+    private static string BuildDisplayName(User user)
+    {
+        if (!string.IsNullOrWhiteSpace(user.DisplayName)) return user.DisplayName!;
+        var composed = $"{user.FirstName} {user.LastName}".Trim();
+        if (!string.IsNullOrWhiteSpace(composed)) return composed;
+        return user.UserName ?? user.Email ?? string.Empty;
+    }
+
+    private static string BuildInitials(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return string.Empty;
+        var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length == 0) return string.Empty;
+        if (parts.Length == 1) return parts[0][..Math.Min(2, parts[0].Length)].ToUpperInvariant();
+        return $"{parts[0][0]}{parts[^1][0]}".ToUpperInvariant();
+    }
 }

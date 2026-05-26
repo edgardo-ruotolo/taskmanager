@@ -744,7 +744,7 @@ export const ProfilePage = (): React.ReactElement => {
 
     return (
         <div className="p-6 md:p-8 min-h-screen">
-            <div className="max-w-5xl mx-auto">
+            <div className="w-full">
                 <div className="flex gap-0">
                     <ProfileSidebar
                         activeTab={activeTab}

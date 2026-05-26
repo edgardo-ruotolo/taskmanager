@@ -10,7 +10,6 @@ using TaskManager.Api.Modules.Cycles.Entities;
 using TaskManager.Api.Modules.Files.Entities;
 using TaskManager.Api.Modules.Issues.Entities;
 using TaskManager.Api.Modules.Labels.Entities;
-using TaskManager.Api.Modules.Estimates.Entities;
 using TaskManager.Api.Modules.Intake.Entities;
 using TaskManager.Api.Modules.Notifications.Entities;
 using TaskManager.Api.Modules.Modules.Entities;
@@ -59,8 +58,6 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, ICurrentProjec
     public DbSet<FileAsset> FileAssets => Set<FileAsset>();
     public DbSet<IssueType> IssueTypes => Set<IssueType>();
     public DbSet<OAuthAccount> OAuthAccounts => Set<OAuthAccount>();
-    public DbSet<Estimate> Estimates => Set<Estimate>();
-    public DbSet<EstimatePoint> EstimatePoints => Set<EstimatePoint>();
     public DbSet<ProjectInvitation> ProjectInvitations => Set<ProjectInvitation>();
     public DbSet<IssueSubscriber> IssueSubscribers => Set<IssueSubscriber>();
     public DbSet<IssueRelation> IssueRelations => Set<IssueRelation>();
@@ -128,8 +125,6 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, ICurrentProjec
         builder.Entity<FileAsset>().HasQueryFilter(e => !e.IsDeleted);
         builder.Entity<IssueType>().HasQueryFilter(e => !e.IsDeleted);
         builder.Entity<OAuthAccount>().HasQueryFilter(e => !e.IsDeleted);
-        builder.Entity<Estimate>().HasQueryFilter(e => !e.IsDeleted
-            && (_currentProject.ProjectId == null || e.ProjectId == _currentProject.ProjectId));
         builder.Entity<IssueLink>().HasQueryFilter(e => !e.IsDeleted);
         builder.Entity<ProjectInvitation>().HasQueryFilter(e => !e.IsDeleted);
         builder.Entity<WorkspaceActivity>().HasQueryFilter(e => !e.IsDeleted);
@@ -175,7 +170,6 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, ICurrentProjec
         builder.Entity<IssueLabel>().HasQueryFilter(e => !e.Issue.IsDeleted);
 
         // Child entities without IsDeleted — filter through parent navigation
-        builder.Entity<EstimatePoint>().HasQueryFilter(e => !e.Estimate.IsDeleted);
         builder.Entity<ProjectIssueType>().HasQueryFilter(e => !e.Project.IsDeleted);
         builder.Entity<IssueRelation>().HasQueryFilter(e => !e.Issue.IsDeleted);
         builder.Entity<IssueSubscriber>().HasQueryFilter(e => !e.Issue.IsDeleted);

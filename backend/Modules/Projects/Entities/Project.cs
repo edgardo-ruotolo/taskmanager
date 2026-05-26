@@ -21,4 +21,10 @@ public class Project : AuditableEntity
     public StateGroup StateGroup { get; set; } = null!;
     public Guid? TeamId { get; set; }
     public Team? Team { get; set; }
+    public bool IsArchived { get; set; }
+    public DateTime? ClosingDate { get; set; }
+    public bool CyclesEnabled { get; set; } = false;
+    public bool ModulesEnabled { get; set; } = false;
+    public bool IntakeEnabled { get; set; } = false;
+    public bool ArchivesEnabled { get; set; } = false;
 }

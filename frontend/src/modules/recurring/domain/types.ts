@@ -1,4 +1,4 @@
-﻿export type RecurringFrequency = 'Daily' | 'Weekly' | 'Monthly' | 'Quarterly' | 'Yearly';
+export type RecurringFrequency = 'Daily' | 'Weekly' | 'Monthly' | 'Quarterly' | 'Yearly';
 
 export type RecurringRunStatus =
     | 'Success'
@@ -17,6 +17,12 @@ export interface RecurringTemplateAssigneeSummary {
     id: string;
     displayName: string;
     avatarUrl: string | null;
+}
+
+export interface RecurringTemplateCycleSummary {
+    id: string;
+    name: string;
+    projectId: string;
 }
 
 export interface RecurringTemplate {
@@ -46,6 +52,8 @@ export interface RecurringTemplate {
     targetDateOffsetDays: number;
     blockPolicy: string;
     issueTypeId?: string | null;
+    cycleId: string | null;
+    cycle: RecurringTemplateCycleSummary | null;
     createdById: string;
     createdAt: string;
     updatedAt: string;
@@ -107,6 +115,7 @@ export interface CreateRecurringTemplateData {
     targetDateOffsetDays: number;
     blockPolicy: string;
     issueTypeId?: string | null;
+    cycleId: string | null;
     projectIds: string[];
     assigneeIds: string[];
     labelIds: string[];

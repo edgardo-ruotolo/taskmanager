@@ -54,7 +54,7 @@ export const useUpdateProject = <TFormValues extends FieldValues = FieldValues>(
         onSuccess: (updated) => {
             void qc.invalidateQueries({ queryKey: projectsKey(workspaceSlug) });
             qc.setQueryData(projectKey(workspaceSlug, projectId), updated);
-            toast.success('Proyecto actualizada');
+            toast.success('Proyecto actualizado');
         },
         setError: options?.setError,
         fallbackMessage: 'Error al actualizar la proyecto',

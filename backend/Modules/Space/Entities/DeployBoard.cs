@@ -19,4 +19,8 @@ public class DeployBoard : AuditableEntity
     public bool ShowPriority { get; set; } = true;
     public bool ShowState { get; set; } = true;
     public bool ShowAssignees { get; set; } = true;
+    public int VisitCount { get; set; } = 0;
+    public DateTime? LastVisitAt { get; set; }
+    public string? Audience { get; set; }
+    public DateTime? ExpiresAt { get; set; }
 }

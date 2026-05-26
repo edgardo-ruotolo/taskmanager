@@ -106,12 +106,5 @@
     "vite": "^8.0.10",
     "vitest": "^4.1.6",
     "vitest-axe": "^0.1.0"
-  },
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "msw",
-      "protobufjs"
-    ],
-    "ignoredBuiltDependencies": []
   }
 }

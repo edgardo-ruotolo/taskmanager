@@ -1,18 +1,19 @@
-﻿import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Info, Repeat2, X } from 'lucide-react';
+import { useQueries } from '@tanstack/react-query';
 import { useProjects } from '@/modules/projects/application/use-projects';
 import { useLabels } from '@/modules/labels/application/use-labels';
 import { useWorkspaceMembers } from '@/modules/workspaces/application/use-workspaces';
 import { useIssueTypes } from '@/modules/issues/application/use-issue-types';
+import { cycleRepository } from '@/modules/cycles/infrastructure/cycle-repository';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { ThemedSelect } from '@/shared/components/ThemedSelect';
-import { ThemedMultiSelect } from '@/shared/components/ThemedMultiSelect';
+import { SearchableSelect } from '@/shared/components/ui/searchable-select';
 import { recurringTemplateSchema, type RecurringTemplateFormValues } from '../../application/schemas';
 import type { RecurringTemplate, RecurringFromIssuePrefill, RecurringFrequency } from '../../domain/types';
 
@@ -55,6 +56,8 @@ const DAYS_OF_WEEK = [
 ];
 
 const FREQUENCIES_NEEDING_DAY_OF_MONTH: readonly RecurringFrequency[] = ['Monthly', 'Quarterly', 'Yearly'];
+
+const NO_CYCLE_SENTINEL = '__none__';
 
 const ensureHmsTime = (value: string): string => {
     if (!value) return value;
@@ -117,6 +120,7 @@ export function RecurringForm({ workspaceSlug, data, prefill, onSubmit, onClose 
             targetDateOffsetDays: data?.targetDateOffsetDays ?? 7,
             blockPolicy: data?.blockPolicy ?? 'SkipAndNotify',
             issueTypeId: data?.issueTypeId ?? prefill?.issueTypeId ?? null,
+            cycleId: data?.cycleId ?? null,
             projectIds: data?.projectIds ?? prefill?.projectIds ?? [],
             assigneeIds: data?.assigneeIds ?? prefill?.assigneeIds ?? [],
             labelIds: data?.labelIds ?? prefill?.labelIds ?? [],
@@ -125,6 +129,43 @@ export function RecurringForm({ workspaceSlug, data, prefill, onSubmit, onClose 
 
     const frequency = watch('frequency');
     const watchedProjectIds = watch('projectIds');
+
+    // Load cycles for all selected projects using parallel queries
+    const cycleQueries = useQueries({
+        queries: (watchedProjectIds ?? []).map((pid) => ({
+            queryKey: ['cycles', workspaceSlug, pid] as const,
+            queryFn: () => cycleRepository.getAll(workspaceSlug, pid),
+            enabled: !!workspaceSlug && !!pid,
+        })),
+    });
+
+    const cycleOptions = useMemo(() => {
+        const base = [{ value: NO_CYCLE_SENTINEL, label: 'Sin ciclo' }];
+        if (!watchedProjectIds || watchedProjectIds.length === 0) return base;
+
+        const allCycles = cycleQueries.flatMap((q) => q.data ?? []);
+        const seen = new Set<string>();
+        const unique = allCycles.filter((c) => {
+            if (seen.has(c.id)) return false;
+            seen.add(c.id);
+            return true;
+        });
+
+        // If there are multiple projects, prefix with project identifier for clarity
+        const projectMap = new Map(
+            (projectsData?.items ?? []).map((p) => [p.id, p.identifier ?? p.name]),
+        );
+        const showPrefix = (watchedProjectIds?.length ?? 0) > 1;
+
+        const cycleEntries = unique.map((c) => ({
+            value: c.id,
+            label: showPrefix && projectMap.has(c.projectId)
+                ? `${projectMap.get(c.projectId)} · ${c.name}`
+                : c.name,
+        }));
+
+        return [...base, ...cycleEntries];
+    }, [cycleQueries, watchedProjectIds, projectsData]);
 
     useEffect(() => {
         // Solo auto-seleccionar el primer proyecto al crear (sin data) y si el prefill no provee
@@ -164,6 +205,7 @@ export function RecurringForm({ workspaceSlug, data, prefill, onSubmit, onClose 
                 targetDateOffsetDays: data.targetDateOffsetDays,
                 blockPolicy: data.blockPolicy,
                 issueTypeId: data.issueTypeId ?? null,
+                cycleId: data.cycleId ?? null,
                 projectIds: data.projectIds,
                 assigneeIds: data.assigneeIds,
                 labelIds: data.labelIds,
@@ -201,12 +243,15 @@ export function RecurringForm({ workspaceSlug, data, prefill, onSubmit, onClose 
 
     const showDayOfMonth = FREQUENCIES_NEEDING_DAY_OF_MONTH.includes(frequency);
     const showMonthOfYear = frequency === 'Yearly';
+    const noCyclesAvailable = cycleOptions.length <= 1;
 
     const handleFormSubmit = (values: RecurringTemplateFormValues): Promise<void> => {
         const normalized: RecurringTemplateFormValues = {
             ...values,
             runAtTime: ensureHmsTime(values.runAtTime),
             endTime: values.endTime ? ensureHmsTime(values.endTime) : values.endTime,
+            // Map sentinel back to null before submitting
+            cycleId: values.cycleId === NO_CYCLE_SENTINEL ? null : (values.cycleId ?? null),
         };
         return onSubmit(normalized);
     };
@@ -277,11 +322,14 @@ export function RecurringForm({ workspaceSlug, data, prefill, onSubmit, onClose 
                                     name="frequency"
                                     control={control}
                                     render={({ field }) => (
-                                        <ThemedSelect<RecurringFrequency>
+                                        <SearchableSelect
+                                            multi={false}
                                             value={field.value}
-                                            onValueChange={field.onChange}
-                                            options={FREQUENCY_OPTIONS}
-                                            ariaLabel="Frecuencia"
+                                            onChange={(v) => { if (v) field.onChange(v as RecurringFrequency); }}
+                                            items={FREQUENCY_OPTIONS.map((o) => ({ id: o.value, label: o.label }))}
+                                            placeholder="Frecuencia"
+                                            width="100%"
+                                            clearable={false}
                                         />
                                     )}
                                 />
@@ -459,11 +507,14 @@ export function RecurringForm({ workspaceSlug, data, prefill, onSubmit, onClose 
                                     name="priority"
                                     control={control}
                                     render={({ field }) => (
-                                        <ThemedSelect
+                                        <SearchableSelect
+                                            multi={false}
                                             value={field.value}
-                                            onValueChange={field.onChange}
-                                            options={PRIORITY_OPTIONS}
-                                            ariaLabel="Prioridad"
+                                            onChange={(v) => { if (v) field.onChange(v); }}
+                                            items={PRIORITY_OPTIONS.map((o) => ({ id: o.value, label: o.label }))}
+                                            placeholder="Prioridad"
+                                            width="100%"
+                                            clearable={false}
                                         />
                                     )}
                                 />
@@ -474,11 +525,14 @@ export function RecurringForm({ workspaceSlug, data, prefill, onSubmit, onClose 
                                     name="stateGroup"
                                     control={control}
                                     render={({ field }) => (
-                                        <ThemedSelect
+                                        <SearchableSelect
+                                            multi={false}
                                             value={field.value}
-                                            onValueChange={field.onChange}
-                                            options={STATE_GROUP_OPTIONS}
-                                            ariaLabel="Grupo de estado"
+                                            onChange={(v) => { if (v) field.onChange(v); }}
+                                            items={STATE_GROUP_OPTIONS.map((o) => ({ id: o.value, label: o.label }))}
+                                            placeholder="Grupo de estado"
+                                            width="100%"
+                                            clearable={false}
                                         />
                                     )}
                                 />
@@ -492,12 +546,13 @@ export function RecurringForm({ workspaceSlug, data, prefill, onSubmit, onClose 
                                     name="issueTypeId"
                                     control={control}
                                     render={({ field }) => (
-                                        <ThemedSelect
-                                            value={field.value ?? ''}
-                                            onValueChange={field.onChange}
-                                            options={issueTypes.map((t) => ({ value: t.id, label: t.name }))}
+                                        <SearchableSelect
+                                            multi={false}
+                                            value={field.value ?? null}
+                                            onChange={(v) => field.onChange(v ?? null)}
+                                            items={issueTypes.map((t) => ({ id: t.id, label: t.name }))}
                                             placeholder="Sin tipo"
-                                            ariaLabel="Tipo de tarea"
+                                            width="100%"
                                         />
                                     )}
                                 />
@@ -513,12 +568,14 @@ export function RecurringForm({ workspaceSlug, data, prefill, onSubmit, onClose 
                                 name="projectIds"
                                 control={control}
                                 render={({ field }) => (
-                                    <ThemedMultiSelect
-                                        placeholder="Seleccionar proyectos..."
-                                        options={projectOptions}
-                                        selected={field.value ?? []}
+                                    <SearchableSelect
+                                        multi={true}
+                                        value={field.value ?? []}
                                         onChange={field.onChange}
-                                        emptyText="Sin proyectos disponibles"
+                                        items={projectOptions.map((o) => ({ id: o.value, label: o.label }))}
+                                        placeholder="Seleccionar proyectos..."
+                                        emptyMessage="Sin proyectos disponibles"
+                                        width="100%"
                                     />
                                 )}
                             />
@@ -536,12 +593,14 @@ export function RecurringForm({ workspaceSlug, data, prefill, onSubmit, onClose 
                                 name="assigneeIds"
                                 control={control}
                                 render={({ field }) => (
-                                    <ThemedMultiSelect
-                                        placeholder="Seleccionar miembros..."
-                                        options={memberOptions}
-                                        selected={field.value ?? []}
+                                    <SearchableSelect
+                                        multi={true}
+                                        value={field.value ?? []}
                                         onChange={field.onChange}
-                                        emptyText="Sin miembros disponibles"
+                                        items={memberOptions.map((o) => ({ id: o.value, label: o.label }))}
+                                        placeholder="Seleccionar miembros..."
+                                        emptyMessage="Sin miembros disponibles"
+                                        width="100%"
                                     />
                                 )}
                             />
@@ -549,19 +608,62 @@ export function RecurringForm({ workspaceSlug, data, prefill, onSubmit, onClose 
 
                         <div className="flex flex-col gap-y-1">
                             <Label className="flex items-center gap-1 text-secondary">
-                                Etiquetas
-                                <FieldHelp text="Etiquetas que se aplicarán a cada tarea generada" />
+                                Empresas
+                                <FieldHelp text="Empresas a las que se les realizan las tareas" />
                             </Label>
                             <Controller
                                 name="labelIds"
                                 control={control}
                                 render={({ field }) => (
-                                    <ThemedMultiSelect
-                                        placeholder="Seleccionar etiquetas..."
-                                        options={labelOptions}
-                                        selected={field.value ?? []}
+                                    <SearchableSelect
+                                        multi={true}
+                                        value={field.value ?? []}
                                         onChange={field.onChange}
-                                        emptyText="Sin etiquetas disponibles"
+                                        items={labelOptions.map((o) => ({
+                                            id: o.value,
+                                            label: o.label,
+                                            icon: o.color ? (
+                                                <span
+                                                    style={{
+                                                        width: 10,
+                                                        height: 10,
+                                                        borderRadius: 99,
+                                                        background: o.color,
+                                                        display: 'inline-block',
+                                                    }}
+                                                />
+                                            ) : undefined,
+                                        }))}
+                                        placeholder="Seleccionar empresas..."
+                                        emptyMessage="Sin empresas disponibles"
+                                        width="100%"
+                                    />
+                                )}
+                            />
+                        </div>
+
+                        <div className="flex flex-col gap-y-1">
+                            <Label className="flex items-center gap-1 text-secondary">
+                                Ciclo
+                                <FieldHelp text="Ciclo al que se agregarán las tareas generadas" />
+                            </Label>
+                            <Controller
+                                name="cycleId"
+                                control={control}
+                                render={({ field }) => (
+                                    <SearchableSelect
+                                        multi={false}
+                                        value={field.value ?? NO_CYCLE_SENTINEL}
+                                        onChange={(v) => field.onChange(v === NO_CYCLE_SENTINEL ? null : (v ?? null))}
+                                        items={cycleOptions.map((o) => ({ id: o.value, label: o.label }))}
+                                        placeholder={
+                                            !watchedProjectIds || watchedProjectIds.length === 0
+                                                ? 'Selecciona empresas primero'
+                                                : 'Sin ciclo'
+                                        }
+                                        disabled={!watchedProjectIds || watchedProjectIds.length === 0 || noCyclesAvailable}
+                                        width="100%"
+                                        clearable={false}
                                     />
                                 )}
                             />

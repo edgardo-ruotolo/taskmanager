@@ -14,7 +14,7 @@ export const WorkspacesPage = (): React.ReactElement => {
 
     return (
         <div className="min-h-screen bg-canvas p-8">
-            <div className="max-w-5xl mx-auto">
+            <div className="w-full">
                 {/* Header */}
                 <div className="flex items-center justify-between mb-8">
                     <div>

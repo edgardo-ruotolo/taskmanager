@@ -270,7 +270,7 @@ function buildDonutSegments(buckets: StateBucket[]): { segments: DonutSegment[];
     const segments = buckets.map((b, i) => ({
         label: b.stateName,
         value: b.count,
-        color: STATE_COLORS[i % STATE_COLORS.length]!,
+        color: STATE_COLORS[i % STATE_COLORS.length] ?? 'var(--neutral-700)',
         pct: Math.round((b.count / total) * 100),
     }));
     return { segments, total };
@@ -542,7 +542,7 @@ export const AnalyticsPage = (): React.ReactElement => {
     }, [overview, trend]);
 
     return (
-        <div className="mx-auto max-w-5xl px-10 py-8 flex flex-col gap-7">
+        <div className="w-full px-10 py-8 flex flex-col gap-7">
             {/* KPI grid */}
             <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
                 {kpiItems.map((kpi) => (

@@ -17,7 +17,6 @@ public class CreateIssueDto
     public Guid? CycleId { get; set; }
     public Guid? ParentId { get; set; }
     public Guid? IssueTypeId { get; set; }
-    public Guid? EstimatePointId { get; set; }
     public DateTime? StartDate { get; set; }
     public DateTime? DueDate { get; set; }
     public double SortOrder { get; set; } = 65535;

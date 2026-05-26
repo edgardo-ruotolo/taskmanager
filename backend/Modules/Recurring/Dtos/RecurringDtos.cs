@@ -39,6 +39,7 @@ public class RecurringTemplateDto
     public int TargetDateOffsetDays { get; set; }
     public string BlockPolicy { get; set; } = string.Empty;
     public Guid? IssueTypeId { get; set; }
+    public Guid? CycleId { get; set; }
     public Guid CreatedById { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
@@ -51,6 +52,7 @@ public class RecurringTemplateDto
     // Resúmenes enriquecidos para renderizado directo en UI
     public List<RecurringTemplateProjectSummaryDto> Projects { get; set; } = [];
     public List<RecurringTemplateAssigneeSummaryDto> Assignees { get; set; } = [];
+    public RecurringTemplateCycleSummaryDto? Cycle { get; set; }
 }
 
 public class RecurringTemplateProjectSummaryDto
@@ -65,6 +67,13 @@ public class RecurringTemplateAssigneeSummaryDto
     public Guid Id { get; set; }
     public string DisplayName { get; set; } = string.Empty;
     public string? AvatarUrl { get; set; }
+}
+
+public class RecurringTemplateCycleSummaryDto
+{
+    public Guid Id { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public Guid ProjectId { get; set; }
 }
 
 public class CreateRecurringTemplateDto
@@ -92,6 +101,7 @@ public class CreateRecurringTemplateDto
     public int TargetDateOffsetDays { get; set; } = 7;
     public BlockPolicy BlockPolicy { get; set; } = BlockPolicy.SkipAndNotify;
     public Guid? IssueTypeId { get; set; }
+    public Guid? CycleId { get; set; }
     public List<Guid> ProjectIds { get; set; } = [];
     public List<Guid> AssigneeIds { get; set; } = [];
     public List<Guid> LabelIds { get; set; } = [];
@@ -122,6 +132,7 @@ public class UpdateRecurringTemplateDto
     public int? TargetDateOffsetDays { get; set; }
     public BlockPolicy? BlockPolicy { get; set; }
     public Guid? IssueTypeId { get; set; }
+    public Guid? CycleId { get; set; }
     public List<Guid>? ProjectIds { get; set; }
     public List<Guid>? AssigneeIds { get; set; }
     public List<Guid>? LabelIds { get; set; }

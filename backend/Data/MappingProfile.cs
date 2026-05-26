@@ -21,8 +21,6 @@ using TaskManager.Api.Modules.Modules.Dtos;
 using TaskManager.Api.Modules.Modules.Entities;
 using TaskManager.Api.Modules.States.Dtos;
 using TaskManager.Api.Modules.States.Entities;
-using TaskManager.Api.Modules.Estimates.Dtos;
-using TaskManager.Api.Modules.Estimates.Entities;
 using TaskManager.Api.Modules.Space.Dtos;
 using TaskManager.Api.Modules.Space.Entities;
 using TaskManager.Api.Modules.Workspaces.Dtos;
@@ -84,10 +82,6 @@ public class MappingProfile : Profile
         CreateMap<IssueType, IssueTypeDto>();
         CreateMap<CreateIssueTypeDto, IssueType>();
         CreateMap<OAuthAccount, OAuthAccountDto>();
-        CreateMap<Estimate, EstimateDto>()
-            .ForMember(d => d.Points, o => o.MapFrom(s => s.Points.OrderBy(p => p.SortOrder)));
-        CreateMap<EstimatePoint, EstimatePointDto>();
-        CreateMap<CreateEstimateDto, Estimate>();
 
         CreateMap<IntakeIssue, IntakeIssueDto>()
             .ForMember(d => d.Status, o => o.MapFrom(s => s.Status.ToString()));

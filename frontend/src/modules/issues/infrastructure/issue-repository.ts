@@ -2,6 +2,7 @@ import { apiClient } from '@/shared/lib/api-client';
 import type { PagedResult } from '@/shared/types/pagination';
 import type {
     Issue,
+    IssuePriority,
     CreateIssueData,
     UpdateIssueData,
     IssueComment,
@@ -25,13 +26,40 @@ import type {
     SearchSimilarIssuesData,
 } from '../domain/types';
 
+const PRIORITY_STRING_MAP: Record<string, IssuePriority> = {
+    None: 0,
+    Urgent: 1,
+    High: 2,
+    Medium: 3,
+    Low: 4,
+};
+
+function normalizePriority(raw: unknown): IssuePriority {
+    if (typeof raw === 'number' && raw >= 0 && raw <= 4) return raw as IssuePriority;
+    if (typeof raw === 'string') {
+        const mapped = PRIORITY_STRING_MAP[raw];
+        if (mapped !== undefined) return mapped;
+        const asNum = Number(raw);
+        if (!Number.isNaN(asNum) && asNum >= 0 && asNum <= 4) return asNum as IssuePriority;
+    }
+    return 0;
+}
+
+function normalizeIssue(raw: Issue): Issue {
+    return { ...raw, priority: normalizePriority(raw.priority) };
+}
+
+function normalizePagedIssues(raw: PagedResult<Issue>): PagedResult<Issue> {
+    return { ...raw, items: raw.items.map(normalizeIssue) };
+}
+
 export const issueRepository = {
     getAll: (workspaceSlug: string, projectId: string): Promise<PagedResult<Issue>> =>
         apiClient
             .get<PagedResult<Issue>>(
                 `/api/workspaces/${workspaceSlug}/projects/${projectId}/issues`,
             )
-            .then((r) => r.data),
+            .then((r) => normalizePagedIssues(r.data)),
     create: (
         workspaceSlug: string,
         projectId: string,
@@ -42,7 +70,7 @@ export const issueRepository = {
                 `/api/workspaces/${workspaceSlug}/projects/${projectId}/issues`,
                 data,
             )
-            .then((r) => r.data),
+            .then((r) => normalizeIssue(r.data)),
     update: (
         workspaceSlug: string,
         projectId: string,
@@ -54,7 +82,7 @@ export const issueRepository = {
                 `/api/workspaces/${workspaceSlug}/projects/${projectId}/issues/${issueId}`,
                 data,
             )
-            .then((r) => r.data),
+            .then((r) => normalizeIssue(r.data)),
     delete: (workspaceSlug: string, projectId: string, issueId: string): Promise<void> =>
         apiClient
             .delete(
@@ -72,13 +100,13 @@ export const issueRepository = {
                 `/api/workspaces/${workspaceSlug}/projects/${projectId}/issues/${issueId}/approve`,
                 { targetStateId },
             )
-            .then((r) => r.data),
+            .then((r) => normalizeIssue(r.data)),
     getById: (workspaceSlug: string, projectId: string, issueId: string): Promise<Issue> =>
         apiClient
             .get<Issue>(
                 `/api/workspaces/${workspaceSlug}/projects/${projectId}/issues/${issueId}`,
             )
-            .then((r) => r.data),
+            .then((r) => normalizeIssue(r.data)),
     archive: (workspaceSlug: string, projectId: string, issueId: string): Promise<void> =>
         apiClient
             .post(`/api/workspaces/${workspaceSlug}/projects/${projectId}/issues/${issueId}/archive`)
@@ -86,7 +114,7 @@ export const issueRepository = {
     duplicate: (workspaceSlug: string, projectId: string, issueId: string): Promise<Issue> =>
         apiClient
             .post<Issue>(`/api/workspaces/${workspaceSlug}/projects/${projectId}/issues/${issueId}/duplicate`)
-            .then((r) => r.data),
+            .then((r) => normalizeIssue(r.data)),
 };
 
 // Comments

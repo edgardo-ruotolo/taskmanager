@@ -18,4 +18,5 @@ public interface ICycleService
     Task TransferIssuesAsync(string workspaceSlug, Guid projectId, Guid sourceCycleId, Guid targetCycleId, CancellationToken ct = default);
     Task<CycleProgressDto> GetProgressAsync(string workspaceSlug, Guid projectId, Guid cycleId, CancellationToken ct = default);
     Task<CycleAnalyticsDto> GetAnalyticsAsync(string workspaceSlug, Guid projectId, Guid cycleId, CancellationToken ct = default);
+    Task<CycleDto> CloseAsync(string workspaceSlug, Guid projectId, Guid cycleId, bool moveIncompleteToBacklog, CancellationToken ct = default);
 }

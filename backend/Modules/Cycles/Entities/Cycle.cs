@@ -17,7 +17,10 @@ public class Cycle : AuditableEntity
     public Project Project { get; set; } = null!;
     public Guid OwnerId { get; set; }
     public User Owner { get; set; } = null!;
+    public Guid? LeadId { get; set; }
+    public User? Lead { get; set; }
     public bool IsArchived { get; set; } = false;
     public DateTime? ArchivedAt { get; set; }
+    public DateTime? ClosedAt { get; set; }
     public ICollection<CycleIssue> CycleIssues { get; set; } = [];
 }

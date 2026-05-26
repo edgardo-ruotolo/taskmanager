@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import type React from 'react';
-import { NavLink, useParams, useLocation } from 'react-router-dom';
+import { useParams, useLocation } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -10,15 +10,7 @@ import {
     UserX,
     Shield,
     User,
-    Settings,
-    Users,
-    Webhook,
-    Key,
-    CreditCard,
-    Download,
-    Palette,
     ImageIcon,
-    Plug,
     UserPlus,
     Search,
     Loader2,
@@ -51,7 +43,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 import { getErrorMessage } from '@/shared/lib/api-errors';
-import { ThemedSelect } from '@/shared/components/ThemedSelect';
+import { SearchableSelect } from '@/shared/components/ui/searchable-select';
 import { workspaceRepository } from '../../infrastructure/workspace-repository';
 import { WORKSPACES_KEY, workspaceMembersKey, useWorkspaceTheme, useUpdateWorkspaceTheme } from '../../application/use-workspaces';
 import type { WorkspaceMember, WorkspaceRole, WorkspaceUserSearchResult } from '../../domain/types';
@@ -78,72 +70,7 @@ type CreateUserForm = z.infer<typeof createUserSchema>;
 const inputClass =
     'bg-layer-1 border-subtle text-primary placeholder:text-placeholder focus:border-strong transition-colors';
 
-interface SettingsNavItem {
-    to: string;
-    label: string;
-    icon: React.ElementType;
-    disabled?: boolean;
-}
 
-const ADMIN_ITEMS: SettingsNavItem[] = [
-    { to: 'general', label: 'General', icon: Settings },
-    { to: 'members', label: 'Miembros', icon: Users },
-    { to: 'theme', label: 'Tema', icon: Palette },
-    { to: 'billing', label: 'Facturación', icon: CreditCard },
-    { to: 'exports', label: 'Exportaciones', icon: Download },
-];
-
-const DEV_ITEMS: SettingsNavItem[] = [
-    { to: 'webhooks', label: 'Webhooks', icon: Webhook },
-    { to: 'tokens', label: 'Tokens de API', icon: Key },
-    { to: 'integrations', label: 'Integraciones', icon: Plug },
-];
-
-function _SettingsSidebar({ activeTab, onTabChange }: { activeTab: string; onTabChange: (tab: string) => void }): React.ReactElement {
-    const renderItem = (item: SettingsNavItem): React.ReactElement => {
-        const Icon = item.icon;
-        const isActive = activeTab === item.to;
-        return (
-            <button
-                key={item.to}
-                type="button"
-                disabled={item.disabled}
-                onClick={() => !item.disabled && onTabChange(item.to)}
-                className={cn(
-                    'flex items-center gap-2.5 w-full px-2 py-1.5 rounded-sm text-[13px] font-medium transition-colors text-left',
-                    isActive
-                        ? 'bg-accent-subtle text-accent-primary'
-                        : 'text-secondary hover:bg-layer-transparent-hover hover:text-primary',
-                    item.disabled && 'opacity-40 cursor-not-allowed hover:bg-transparent hover:text-secondary',
-                )}
-            >
-                <Icon size={15} className="shrink-0" aria-hidden="true" />
-                <span>{item.label}</span>
-            </button>
-        );
-    };
-
-    return (
-        <nav className="w-[220px] shrink-0 border-r border-subtle pr-4 space-y-4">
-            <div>
-                <p className="text-[11px] font-semibold text-placeholder uppercase tracking-wider px-2 mb-1">
-                    Administración
-                </p>
-                <div className="space-y-0.5">
-                    {ADMIN_ITEMS.map(renderItem)}
-                </div>
-            </div>
-            <div>
-                <p className="text-[11px] font-semibold text-placeholder uppercase tracking-wider px-2 mb-1">
-                    Desarrollador
-                </p>
-                <div className="space-y-0.5">
-                    {DEV_ITEMS.map(renderItem)}
-                </div>
-            </div>
-        </nav>
-    );
-}
 
 function SectionHeader({ title, description }: { title: string; description: string }): React.ReactElement {
     return (
@@ -490,11 +417,14 @@ function SearchUserPanel({ workspaceSlug, onClose }: SearchUserPanelProps): Reac
                     <label htmlFor="search-role" className="text-sm font-medium text-secondary">
                         Rol
                     </label>
-                    <ThemedSelect<WorkspaceRole>
-                        id="search-role"
+                    <SearchableSelect
+                        multi={false}
                         value={role}
-                        onValueChange={setRole}
-                        options={ROLE_OPTIONS.map((r) => ({ value: r, label: WORKSPACE_ROLE_LABELS[r] }))}
+                        onChange={(v) => { if (v) setRole(v as WorkspaceRole); }}
+                        items={ROLE_OPTIONS.map((r) => ({ id: r, label: WORKSPACE_ROLE_LABELS[r] }))}
+                        placeholder="Seleccionar rol"
+                        width="100%"
+                        clearable={false}
                     />
                 </div>
             )}
@@ -616,10 +546,14 @@ function CreateUserPanel({ workspaceSlug, onClose }: CreateUserPanelProps): Reac
                         <FormItem>
                             <FormLabel className="text-secondary text-sm">Rol</FormLabel>
                             <FormControl>
-                                <ThemedSelect<WorkspaceRole>
+                                <SearchableSelect
+                                    multi={false}
                                     value={field.value}
-                                    onValueChange={field.onChange}
-                                    options={ROLE_OPTIONS.map((r) => ({ value: r, label: WORKSPACE_ROLE_LABELS[r] }))}
+                                    onChange={(v) => { if (v) field.onChange(v as WorkspaceRole); }}
+                                    items={ROLE_OPTIONS.map((r) => ({ id: r, label: WORKSPACE_ROLE_LABELS[r] }))}
+                                    placeholder="Seleccionar rol"
+                                    width="100%"
+                                    clearable={false}
                                 />
                             </FormControl>
                             <FormMessage />
@@ -747,14 +681,15 @@ function MemberRow({ member, workspaceSlug, workspaceOwnerId }: MemberRowProps):
                     </>
                 ) : (
                     <>
-                        <ThemedSelect<WorkspaceRole>
+                        <SearchableSelect
+                            multi={false}
                             value={member.role}
-                            onValueChange={(v) => updateRoleMutation.mutate(v)}
-                            options={ROLE_OPTIONS.map((r) => ({ value: r, label: WORKSPACE_ROLE_LABELS[r] }))}
-                            size="sm"
-                            triggerClassName="w-[140px]"
+                            onChange={(v) => { if (v) updateRoleMutation.mutate(v as WorkspaceRole); }}
+                            items={ROLE_OPTIONS.map((r) => ({ id: r, label: WORKSPACE_ROLE_LABELS[r] }))}
+                            placeholder="Seleccionar rol"
+                            width={140}
+                            clearable={false}
                             disabled={updateRoleMutation.isPending}
-                            ariaLabel="Cambiar rol"
                         />
                         <AlertDialog>
                             <AlertDialogTrigger asChild>
@@ -866,59 +801,6 @@ function MembersTab({ workspaceSlug }: { workspaceSlug: string }): React.ReactEl
     );
 }
 
-function _WebhooksTab(): React.ReactElement {
-    return (
-        <div className="space-y-6">
-            <SectionHeader
-                title="Webhooks"
-                description="Configura webhooks para recibir eventos del espacio de trabajo en tu servidor."
-            />
-            <p className="text-sm text-placeholder">
-                Gestiona los webhooks desde{' '}
-                <NavLink to="../settings/webhooks" className="text-accent-primary hover:underline">
-                    la página de webhooks
-                </NavLink>
-                .
-            </p>
-        </div>
-    );
-}
-
-function _TokensTab(): React.ReactElement {
-    return (
-        <div className="space-y-6">
-            <SectionHeader
-                title="Tokens de API"
-                description="Gestiona tus tokens de acceso personal para la API."
-            />
-            <p className="text-sm text-placeholder">
-                Gestiona los tokens desde{' '}
-                <NavLink to="../settings/tokens" className="text-accent-primary hover:underline">
-                    la página de Tokens de API
-                </NavLink>
-                .
-            </p>
-        </div>
-    );
-}
-
-function _IntegrationsTab(): React.ReactElement {
-    return (
-        <div className="space-y-6">
-            <SectionHeader
-                title="Integraciones"
-                description="Conecta TaskManager con GitHub, Slack y otras herramientas."
-            />
-            <p className="text-sm text-placeholder">
-                Configura las integraciones desde{' '}
-                <NavLink to="../settings/integrations" className="text-accent-primary hover:underline">
-                    la página de Integraciones
-                </NavLink>
-                .
-            </p>
-        </div>
-    );
-}
 
 const THEME_MODES = [
     { value: 'light', label: 'Claro' },
@@ -1037,18 +919,6 @@ function ThemeTab({ workspaceSlug }: { workspaceSlug: string }): React.ReactElem
     );
 }
 
-function _DisabledTab({ title, description }: { title: string; description: string }): React.ReactElement {
-    return (
-        <div className="space-y-6">
-            <SectionHeader title={title} description={description} />
-            <div className="flex flex-col items-center justify-center py-16 text-center border border-subtle rounded-lg bg-layer-1/30">
-                <p className="text-sm text-placeholder">
-                    Esta función no está disponible en la edición Community.
-                </p>
-            </div>
-        </div>
-    );
-}
 
 export const WorkspaceSettingsPage = (): React.ReactElement => {
     const { workspaceSlug } = useParams<{ workspaceSlug: string }>();

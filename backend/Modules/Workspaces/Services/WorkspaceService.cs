@@ -1,4 +1,4 @@
-using AutoMapper;
+﻿using AutoMapper;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using TaskManager.Api.Common.Exceptions;
@@ -29,6 +29,13 @@ public class WorkspaceService(AppDbContext db, IMapper mapper, UserManager<User>
             UserId = userId,
             Role = WorkspaceRole.Admin
         });
+
+        // Marcar onboarding como completado cuando es el primer workspace del usuario
+        var creator = await db.Users.FindAsync(new object[] { userId }, ct);
+        if (creator is not null && creator.OnboardingCompletedAt is null)
+        {
+            creator.OnboardingCompletedAt = DateTime.UtcNow;
+        }
 
         await db.SaveChangesAsync(ct);
         return mapper.Map<WorkspaceDto>(workspace);

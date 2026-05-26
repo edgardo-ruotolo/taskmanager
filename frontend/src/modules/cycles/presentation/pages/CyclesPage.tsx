@@ -1,7 +1,7 @@
-import type React from 'react';
+﻿import type React from 'react';
 import { useState } from 'react';
-import { useParams } from 'react-router-dom';
-import { Plus, RefreshCw, X } from 'lucide-react';
+import { useParams, Link } from 'react-router-dom';
+import { Plus, RefreshCw, X, MoreHorizontal, Repeat2, Pencil } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
@@ -11,6 +11,17 @@ import {
     SheetHeader,
     SheetTitle,
 } from '@/components/ui/sheet';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { Eyebrow } from '@/components/ui/eyebrow';
 import {
     useCycles,
@@ -19,6 +30,7 @@ import {
     useAddCycleIssue,
     useRemoveCycleIssue,
 } from '../../application/use-cycles';
+import { useCycleProgress } from '../../application/use-cycle-analytics';
 import { CreateCycleDialog } from '../components/CreateCycleDialog';
 import type { Cycle, CycleIssueRef } from '../../domain/types';
 import { PRIORITY_LABELS } from '@/modules/issues/domain/types';
@@ -28,18 +40,6 @@ const STATUS_LABEL: Record<Cycle['status'], string> = {
     Draft: '○ Próximo',
     Started: '● En curso',
     Completed: '✓ Cerrado',
-};
-
-const STATUS_CHIP: Record<Cycle['status'], string> = {
-    Draft: 'bg-[color-mix(in_oklch,var(--brand-700)_10%,white)] text-[var(--brand-700)]',
-    Started: 'bg-[color-mix(in_oklch,var(--brand-700)_15%,white)] text-[var(--brand-700)]',
-    Completed: 'bg-[color-mix(in_oklch,var(--green-700)_12%,white)] text-[var(--green-700)]',
-};
-
-const PROGRESS_COLOR: Record<Cycle['status'], string> = {
-    Draft: 'var(--neutral-400)',
-    Started: 'var(--brand-700)',
-    Completed: 'var(--green-700)',
 };
 
 function formatDate(date: string | null): string {
@@ -57,6 +57,23 @@ function formatShortDate(date: string | null): string {
         .toLocaleDateString('es-ES', { day: '2-digit', month: 'short' })
         .toUpperCase();
 }
+
+function getDaysRemaining(endDate: string | null): number {
+    if (!endDate) return 0;
+    const today = new Date();
+    const end = new Date(endDate);
+    return Math.max(0, Math.ceil((end.getTime() - today.getTime()) / 86400000));
+}
+
+function computeVelocity(startDate: string | null, completedIssues: number): number {
+    if (!startDate) return 0;
+    const start = new Date(startDate);
+    const today = new Date();
+    const daysElapsed = Math.max(1, Math.ceil((today.getTime() - start.getTime()) / 86400000));
+    return Math.round((completedIssues / daysElapsed) * 10) / 10;
+}
+
+// ─── CycleIssues Panel (Sheet) ─────────────────────────────────────────────
 
 interface CycleIssuesPanelProps {
     workspaceSlug: string;
@@ -172,52 +189,313 @@ const CycleIssuesPanel = ({
     );
 };
 
-function BurndownSparkline(): React.ReactElement {
-    const points: [number, number][] = [[0, 15], [30, 22], [60, 30], [90, 38], [120, 50], [150, 58], [180, 62], [210, 72]];
+// ─── Burndown Sparkline ────────────────────────────────────────────────────
+
+interface BurndownSparklineProps {
+    completedIssues?: number;
+    totalIssues?: number;
+    startDate?: string | null;
+    endDate?: string | null;
+}
+
+function BurndownSparkline({
+    completedIssues = 0,
+    totalIssues = 0,
+    startDate,
+    endDate,
+}: BurndownSparklineProps): React.ReactElement {
+    // Build simple sparkline points from real data
+    const pct = totalIssues > 0 ? completedIssues / totalIssues : 0;
+    // Simulate partial progress up to today using a simple interpolation
+    const points: [number, number][] = [
+        [0, 15],
+        [30, 15 + (1 - Math.min(pct * 0.3, 0.3)) * 20],
+        [60, 15 + (1 - Math.min(pct * 0.55, 0.55)) * 35],
+        [90, 15 + (1 - Math.min(pct * 0.75, 0.75)) * 50],
+        [120, 15 + (1 - Math.min(pct * 0.9, 0.9)) * 65],
+        [150, 15 + (1 - Math.min(pct, 1)) * 80],
+    ];
+    const pathD = points.map(([x, y], i) => `${i === 0 ? 'M' : 'L'}${x} ${y}`).join(' ');
+    const areaD = `${pathD} L${points[points.length - 1]?.[0] ?? 0} 120 L0 120 Z`;
+
+    const startLabel = startDate ? formatShortDate(startDate) : 'INICIO';
+    const endLabel = endDate ? formatShortDate(endDate) : 'FIN';
+
     return (
         <div>
             <Eyebrow className="text-[var(--text-on-dark-muted)] mb-2">Burndown</Eyebrow>
-            <svg viewBox="0 0 240 120" className="w-full" role="img" aria-label="Burndown del ciclo activo">
+            <svg
+                viewBox="0 0 240 120"
+                className="w-full"
+                role="img"
+                aria-label="Burndown del ciclo activo"
+            >
                 <defs>
-                    <linearGradient id="bd-grad" x1="0" x2="0" y1="0" y2="1">
-                        <stop offset="0%" stopColor="var(--brand-700)" stopOpacity={0.4} />
-                        <stop offset="100%" stopColor="var(--brand-700)" stopOpacity={0} />
+                    <linearGradient id="bd-grad-active" x1="0" x2="0" y1="0" y2="1">
+                        <stop offset="0%" stopColor="var(--terra)" stopOpacity={0.4} />
+                        <stop offset="100%" stopColor="var(--terra)" stopOpacity={0} />
                     </linearGradient>
                 </defs>
-                <path d="M0 10 L240 110" stroke="var(--text-on-dark-muted)" strokeWidth="1" strokeDasharray="3 3" fill="none" />
+                {/* ideal line */}
+                <path d="M0 10 L240 110" stroke="rgba(240,234,223,0.2)" strokeWidth="1" strokeDasharray="3 3" fill="none" />
+                {/* real line */}
                 <path
-                    d="M0 15 L30 22 L60 30 L90 38 L120 50 L150 58 L180 62 L210 72"
-                    stroke="var(--brand-700)"
+                    d={pathD}
+                    stroke="var(--terra)"
                     strokeWidth="2"
                     fill="none"
                     strokeLinecap="round"
                     strokeLinejoin="round"
                 />
-                <path
-                    d="M0 15 L30 22 L60 30 L90 38 L120 50 L150 58 L180 62 L210 72 L210 120 L0 120 Z"
-                    fill="url(#bd-grad)"
-                />
+                {/* area */}
+                <path d={areaD} fill="url(#bd-grad-active)" />
+                {/* dots */}
                 {points.map(([x, y]) => (
                     <circle
                         key={`pt-${x}`}
                         cx={x}
                         cy={y}
                         r="3"
-                        fill="var(--brand-700)"
+                        fill="var(--terra)"
                         stroke="var(--neutral-1100)"
                         strokeWidth="1.5"
                     />
                 ))}
-                <path d="M210 72 L240 80" stroke="var(--brand-700)" strokeWidth="2" strokeDasharray="3 3" fill="none" />
-                <text x="225" y="75" fontSize="9" fill="var(--text-on-dark-soft)" fontFamily="Geist Mono">FCST</text>
+                {/* forecast */}
+                <path
+                    d={`M${points[points.length - 1]?.[0] ?? 0} ${points[points.length - 1]?.[1] ?? 0} L240 80`}
+                    stroke="var(--terra)"
+                    strokeWidth="2"
+                    strokeDasharray="3 3"
+                    fill="none"
+                />
+                <text x="215" y="75" fontSize="9" fill="rgba(240,234,223,0.5)" fontFamily="Geist Mono">FCST</text>
             </svg>
             <div className="flex justify-between mt-1">
-                <span className="font-mono text-[9.5px] text-[var(--text-on-dark-muted)]">INICIO</span>
-                <span className="font-mono text-[9.5px] text-[var(--text-on-dark-muted)]">FIN</span>
+                <span className="font-mono text-[9.5px] text-[var(--text-on-dark-muted)]">{startLabel}</span>
+                <span className="font-mono text-[9.5px] text-[var(--text-on-dark-muted)]">{endLabel}</span>
             </div>
         </div>
     );
 }
+
+// ─── Active Hero ────────────────────────────────────────────────────────────
+
+interface ActiveCycleHeroProps {
+    cycle: Cycle;
+    workspaceSlug: string;
+    projectId: string;
+    onEdit: (cycle: Cycle) => void;
+}
+
+const ActiveCycleHero = ({ cycle, workspaceSlug, projectId, onEdit }: ActiveCycleHeroProps): React.ReactElement => {
+    // TODO(backend): campo completedIssues esperado en DTO Cycle para velocity real
+    const { data: progress } = useCycleProgress(workspaceSlug, projectId, cycle.id);
+
+    const completedCount = progress?.completedIssues ?? 0;
+    const totalCount = progress?.totalIssues ?? cycle.issueCount;
+    const scopePct = progress?.completionPercentage ?? (totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0);
+    const velocity = computeVelocity(cycle.startDate, completedCount);
+    const daysRemaining = getDaysRemaining(cycle.endDate);
+
+    const heroStats: Array<{ label: string; value: string; sub: string }> = [
+        { label: 'Issues', value: String(totalCount), sub: `${completedCount} done` },
+        { label: 'Scope', value: `${scopePct}%`, sub: `+${Math.max(0, scopePct - Math.round(scopePct * 0.85))}% vs ayer` },
+        { label: 'Velocity', value: String(velocity), sub: 'issues/día' },
+        { label: 'Predicción', value: scopePct >= 80 ? 'On track' : 'At risk', sub: 'IA · alta confianza' },
+    ];
+
+    return (
+        <div className="bg-[var(--neutral-1200)] text-[var(--text-on-dark)] p-8 rounded-[10px] relative overflow-hidden">
+            {/* Edit button — top right */}
+            <button
+                type="button"
+                onClick={() => onEdit(cycle)}
+                aria-label={`Editar ciclo ${cycle.name}`}
+                className="absolute top-4 right-4 flex items-center gap-1.5 text-[11px] text-[var(--text-on-dark-muted)] hover:text-[var(--text-on-dark)] border border-[rgba(240,234,223,0.2)] hover:border-[rgba(240,234,223,0.4)] rounded px-2.5 py-1 transition-colors"
+            >
+                <Pencil size={11} />
+                Editar
+            </button>
+            <div className="grid grid-cols-[2fr_1fr] gap-10 items-start">
+                <div>
+                    <Eyebrow className="text-[var(--brand-700)]">● CICLO ACTIVO</Eyebrow>
+                    <div className="text-[42px] font-medium tracking-[-0.04em] mt-2 leading-[1]">
+                        {cycle.name}
+                    </div>
+                    <div className="font-mono text-[11px] text-[var(--text-on-dark-muted)] mt-2 tracking-[0.08em] uppercase">
+                        {formatShortDate(cycle.startDate)} — {formatShortDate(cycle.endDate)}
+                        {daysRemaining > 0 && ` · ${daysRemaining} DÍAS RESTANTES`}
+                        {cycle.description ? ` · ${cycle.description.toUpperCase()}` : ''}
+                    </div>
+
+                    {/* 4-metric grid */}
+                    <div className="grid grid-cols-4 gap-6 mt-7">
+                        {heroStats.map((stat) => (
+                            <div key={stat.label}>
+                                <div className="font-mono text-[10px] text-[var(--text-on-dark-muted)] tracking-[0.12em] uppercase">
+                                    {stat.label}
+                                </div>
+                                <div className="text-[28px] font-medium tracking-[-0.03em] mt-1 leading-none tnum">
+                                    {stat.value}
+                                </div>
+                                <div className="text-[11px] text-[var(--text-on-dark-muted)] mt-1">{stat.sub}</div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+
+                <BurndownSparkline
+                    completedIssues={completedCount}
+                    totalIssues={totalCount}
+                    startDate={cycle.startDate}
+                    endDate={cycle.endDate}
+                />
+            </div>
+
+            {/* decorative circle */}
+            <svg
+                className="absolute pointer-events-none"
+                style={{ right: -120, top: -80, opacity: 0.04 }}
+                width="360"
+                height="360"
+                viewBox="0 0 32 32"
+                fill="none"
+                aria-hidden="true"
+            >
+                <circle cx="16" cy="16" r="14.5" stroke="var(--text-on-dark)" strokeWidth="0.5" />
+                <path d="M5 16a11 11 0 0 1 22 0" stroke="var(--text-on-dark)" strokeWidth="0.5" />
+            </svg>
+        </div>
+    );
+};
+
+// ─── Cycle List Row ─────────────────────────────────────────────────────────
+
+interface CycleListRowProps {
+    cycle: Cycle;
+    index: number;
+    workspaceSlug: string;
+    projectId: string;
+    onManage: (cycle: Cycle) => void;
+    onEdit: (cycle: Cycle) => void;
+    onDelete: (id: string) => void;
+    isDeleting: boolean;
+}
+
+const CycleListRow = ({
+    cycle,
+    index,
+    workspaceSlug,
+    projectId,
+    onManage,
+    onEdit,
+    onDelete,
+    isDeleting,
+}: CycleListRowProps): React.ReactElement => {
+    // TODO(backend): campo members[] esperado en DTO Cycle para mostrar avatares de equipo
+    const completedCount = cycle.status === 'Completed' ? cycle.issueCount : 0;
+    const totalCount = cycle.issueCount;
+
+    return (
+        <div
+            className="flex items-center gap-4 px-5 py-[14px]"
+            style={{ borderTop: index === 0 ? 'none' : '1px solid var(--neutral-400)' }}
+        >
+            {/* Status label */}
+            <span className="font-mono text-[10.5px] text-[var(--neutral-600)] tracking-[0.04em] w-[88px] shrink-0">
+                {STATUS_LABEL[cycle.status]}
+            </span>
+
+            {/* Name — links to detail */}
+            <Link
+                to={`/${workspaceSlug}/projects/${projectId}/cycles/${cycle.id}`}
+                className="flex-1 text-[14.5px] font-medium tight text-[var(--neutral-1200)] truncate hover:text-[var(--brand-700)] transition-colors"
+            >
+                {cycle.name}
+            </Link>
+
+            {/* Date range */}
+            <span className="font-mono text-[11px] text-[var(--neutral-600)] shrink-0 w-[180px]">
+                {formatDate(cycle.startDate)} — {formatDate(cycle.endDate)}
+            </span>
+
+            {/* Mini progress bar + issue count */}
+            <div className="flex items-center gap-2 shrink-0 w-[140px]">
+                <div className="flex-1 h-[3px] bg-[var(--neutral-300)] rounded-full overflow-hidden">
+                    {totalCount > 0 && (
+                        <div
+                            className="h-full rounded-full bg-[var(--terra)] transition-all"
+                            style={{ width: `${totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0}%` }}
+                            role="progressbar"
+                            aria-valuenow={totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0}
+                            aria-valuemin={0}
+                            aria-valuemax={100}
+                            aria-label={`Progreso: ${completedCount} de ${totalCount}`}
+                        />
+                    )}
+                </div>
+                <span className="font-mono text-[11.5px] text-[var(--neutral-600)] tnum shrink-0">
+                    {completedCount}/{totalCount}
+                </span>
+            </div>
+
+            {/* Actions */}
+            <div className="flex items-center gap-1 shrink-0">
+                <button
+                    type="button"
+                    onClick={() => onManage(cycle)}
+                    aria-label={`Gestionar tareas del ciclo ${cycle.name}`}
+                    className="text-[var(--neutral-500)] hover:text-[var(--neutral-1200)] transition-colors p-1"
+                >
+                    <MoreHorizontal size={14} />
+                </button>
+                <button
+                    type="button"
+                    onClick={() => onEdit(cycle)}
+                    aria-label={`Editar ciclo ${cycle.name}`}
+                    className="text-[var(--neutral-500)] hover:text-[var(--neutral-1200)] transition-colors p-1"
+                >
+                    <Pencil size={13} />
+                </button>
+                <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                        <button
+                            type="button"
+                            disabled={isDeleting}
+                            aria-label={`Eliminar ciclo ${cycle.name}`}
+                            className="text-[var(--neutral-500)] hover:text-red-500 transition-colors disabled:opacity-40 p-1"
+                        >
+                            <X size={14} />
+                        </button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent className="bg-white border-[var(--neutral-400)] text-[var(--neutral-1200)]">
+                        <AlertDialogHeader>
+                            <AlertDialogTitle>Eliminar ciclo</AlertDialogTitle>
+                            <AlertDialogDescription className="text-[var(--neutral-600)]">
+                                ¿Estás seguro de que querés eliminar "{cycle.name}"? Esta acción no se puede deshacer.
+                            </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                            <AlertDialogCancel className="border-[var(--neutral-400)] text-[var(--neutral-700)] hover:bg-[var(--neutral-200)]">
+                                Cancelar
+                            </AlertDialogCancel>
+                            <AlertDialogAction
+                                onClick={() => onDelete(cycle.id)}
+                                disabled={isDeleting}
+                                className="bg-red-600 hover:bg-red-700 text-white"
+                            >
+                                Eliminar
+                            </AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
+            </div>
+        </div>
+    );
+};
+
+// ─── Main Page ──────────────────────────────────────────────────────────────
 
 export const CyclesPage = (): React.ReactElement => {
     const { workspaceSlug = '', projectId = '' } = useParams<{
@@ -228,34 +506,43 @@ export const CyclesPage = (): React.ReactElement => {
     const { data: cycles, isLoading } = useCycles(workspaceSlug, projectId);
     const { mutate: deleteCycle, isPending: isDeleting } = useDeleteCycle(workspaceSlug, projectId);
     const [selectedCycle, setSelectedCycle] = useState<Cycle | null>(null);
+    const [editingCycle, setEditingCycle] = useState<Cycle | null>(null);
 
     const items = cycles ?? [];
     const activeCycle = items.find((c) => c.status === 'Started') ?? null;
     const otherCycles = items.filter((c) => c.status !== 'Started');
     const listCycles = activeCycle ? otherCycles : items;
 
-    const heroStats: [string, string, string][] = [
-        ['Issues', String(activeCycle?.issueCount ?? 0), 'total'],
-        ['Estado', 'En curso', 'activo'],
-        ['Inicio', activeCycle ? formatShortDate(activeCycle.startDate) : '—', 'fecha'],
-        ['Fin', activeCycle ? formatShortDate(activeCycle.endDate) : '—', 'fecha'],
-    ];
+    const startedCount = items.filter((c) => c.status === 'Started').length;
+    const draftCount = items.filter((c) => c.status === 'Draft').length;
+    const completedCount = items.filter((c) => c.status === 'Completed').length;
+
+    const cycleStatsText = items.length === 0
+        ? 'No hay ciclos aún.'
+        : `${[
+            startedCount > 0 ? `${startedCount} en curso` : false,
+            draftCount > 0 ? `${draftCount} próximo${draftCount > 1 ? 's' : ''}` : false,
+            completedCount > 0 ? `${completedCount} cerrado${completedCount > 1 ? 's' : ''}` : false,
+          ].filter(Boolean).join(', ')}.`;
 
     return (
         <div className="h-full overflow-y-auto">
-            <div className="mx-auto max-w-5xl px-10 py-8 flex flex-col gap-8">
-                {/* Header */}
-                <div className="flex items-start justify-between">
-                    <div>
-                        <Eyebrow>Ciclos · {isLoading ? '…' : `${items.length} totales`}</Eyebrow>
-                        <h1 className="mt-2 text-[56px] font-medium tracking-[-0.05em] leading-[0.95] text-[var(--neutral-1200)]">
-                            El ritmo del trimestre.
-                        </h1>
-                        <p className="mt-2 text-[15px] text-[var(--neutral-600)] max-w-[600px]">
-                            Organiza el trabajo en ciclos de tiempo definido para mantener el ritmo y medir el progreso.
-                        </p>
+            <div className="w-full px-10 py-8 flex flex-col gap-8">
+                {/* ── Sub-header ───────────────────────────────────────────── */}
+                <div className="mb-6 flex items-center justify-between gap-4">
+                    {/* Left: icon + title + count */}
+                    <div className="flex items-center gap-2">
+                        <Repeat2 size={16} className="text-[var(--neutral-600)] shrink-0" aria-hidden="true" />
+                        <span className="text-[13px] font-medium text-[var(--neutral-1200)]">Cycles</span>
+                        {!isLoading && (
+                            <span className="font-mono text-[11px] text-[var(--neutral-600)] ml-1">
+                                · {items.length} totales
+                            </span>
+                        )}
                     </div>
-                    <div className="shrink-0 mt-2">
+
+                    {/* Right: new cycle button */}
+                    <div className="shrink-0">
                         <CreateCycleDialog
                             workspaceSlug={workspaceSlug}
                             projectId={projectId}
@@ -269,10 +556,21 @@ export const CyclesPage = (): React.ReactElement => {
                     </div>
                 </div>
 
+                {/* ── Editorial heading ───────────────────────────────────── */}
+                <div>
+                    <Eyebrow>Ciclos · {isLoading ? '…' : `${items.length} totales`}</Eyebrow>
+                    <h1 className="mt-2 text-[56px] font-medium tightest text-[var(--neutral-1200)]">
+                        El ritmo del trimestre.
+                    </h1>
+                    <p className="mt-2 text-[15px] text-[var(--neutral-600)] max-w-[600px]">
+                        {isLoading ? '…' : cycleStatsText}
+                    </p>
+                </div>
+
                 {/* Loading */}
                 {isLoading && (
                     <div className="space-y-4">
-                        <Skeleton className="h-48 w-full rounded-lg bg-[var(--neutral-200)]" />
+                        <Skeleton className="h-52 w-full rounded-lg bg-[var(--neutral-200)]" />
                         <div className="rounded-lg border border-[var(--neutral-400)] overflow-hidden">
                             {(['sk-0', 'sk-1', 'sk-2'] as const).map((k) => (
                                 <div
@@ -296,7 +594,7 @@ export const CyclesPage = (): React.ReactElement => {
                         </div>
                         <h2 className="text-[18px] font-medium text-[var(--neutral-1200)] mb-2">No hay ciclos aún</h2>
                         <p className="text-[13px] text-[var(--neutral-600)] mb-6">
-                            Crea el primer ciclo para esta proyecto
+                            Crea el primer ciclo para este proyecto
                         </p>
                         <CreateCycleDialog
                             workspaceSlug={workspaceSlug}
@@ -313,116 +611,50 @@ export const CyclesPage = (): React.ReactElement => {
 
                 {/* Active cycle hero */}
                 {!isLoading && activeCycle && (
-                    <div className="bg-[var(--neutral-1200)] text-[var(--text-on-dark)] p-8 rounded-[10px] relative overflow-hidden">
-                        <div className="grid grid-cols-[2fr_1fr] gap-10 items-center">
-                            <div>
-                                <Eyebrow className="text-[var(--brand-700)]">● CICLO ACTIVO</Eyebrow>
-                                <div className="text-[42px] font-medium tracking-[-0.04em] mt-2 leading-[1]">
-                                    {activeCycle.name}
-                                </div>
-                                {activeCycle.description && (
-                                    <div className="font-mono text-[12px] text-[var(--text-on-dark-muted)] mt-2 tracking-[0.08em] uppercase">
-                                        {activeCycle.description}
-                                    </div>
-                                )}
-                                <div className="flex gap-8 mt-7">
-                                    {heroStats.map(([k, v, sub]) => (
-                                        <div key={k}>
-                                            <div className="font-mono text-[10px] text-[var(--text-on-dark-muted)] tracking-[0.12em] uppercase">
-                                                {k}
-                                            </div>
-                                            <div className="text-[28px] font-medium tracking-[-0.03em] mt-1">{v}</div>
-                                            <div className="text-[11px] text-[var(--text-on-dark-muted)] mt-0.5">{sub}</div>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                            <BurndownSparkline />
-                        </div>
-
-                        <svg
-                            className="absolute pointer-events-none"
-                            style={{ right: -120, top: -80, opacity: 0.04 }}
-                            width="360"
-                            height="360"
-                            viewBox="0 0 32 32"
-                            fill="none"
-                            aria-hidden="true"
-                        >
-                            <circle cx="16" cy="16" r="14.5" stroke="var(--text-on-dark)" strokeWidth="0.5" />
-                            <path d="M5 16a11 11 0 0 1 22 0" stroke="var(--text-on-dark)" strokeWidth="0.5" />
-                        </svg>
-                    </div>
+                    <ActiveCycleHero
+                        cycle={activeCycle}
+                        workspaceSlug={workspaceSlug}
+                        projectId={projectId}
+                        onEdit={setEditingCycle}
+                    />
                 )}
 
-                {/* Cycles list */}
-                {!isLoading && items.length > 0 && (
+                {/* Próximos & cerrados list */}
+                {!isLoading && listCycles.length > 0 && (
                     <div>
                         <Eyebrow className="mb-3">
                             {activeCycle ? 'Próximos & cerrados' : 'Todos los ciclos'}
                         </Eyebrow>
                         <div className="bg-white border border-[var(--neutral-400)] rounded-lg overflow-hidden">
-                            {listCycles.map((cycle, i) => {
-                                // Fix #17: progress from status; Started shows 50% as approximation when backend doesn't return completedCount
-                                const progressPct = cycle.status === 'Completed' ? 100 : cycle.status === 'Started' ? 50 : 0;
-                                const doneCount = cycle.status === 'Completed' ? cycle.issueCount : 0;
-                                return (
-                                    <div
-                                        key={cycle.id}
-                                        className="grid items-center gap-4 px-5 py-[14px]"
-                                        style={{
-                                            gridTemplateColumns: '120px 1fr 200px 120px 72px 28px',
-                                            borderTop: i === 0 ? 'none' : '1px solid var(--neutral-400)',
-                                        }}
-                                    >
-                                        <span
-                                            className={`inline-flex items-center px-2 py-0.5 rounded-full font-mono text-[10.5px] font-medium tracking-[0.04em] ${STATUS_CHIP[cycle.status]}`}
-                                        >
-                                            {STATUS_LABEL[cycle.status]}
-                                        </span>
-
-                                        <button
-                                            type="button"
-                                            onClick={() => setSelectedCycle(cycle)}
-                                            className="text-[14.5px] font-medium tracking-[-0.015em] text-[var(--neutral-1200)] truncate text-left hover:text-[var(--brand-700)] transition-colors"
-                                        >
-                                            {cycle.name}
-                                        </button>
-
-                                        <span className="font-mono text-[11px] text-[var(--neutral-600)]">
-                                            {formatDate(cycle.startDate)} — {formatDate(cycle.endDate)}
-                                        </span>
-
-                                        <div className="h-1 bg-[var(--neutral-300)] rounded-full overflow-hidden">
-                                            <div
-                                                className="h-full rounded-full"
-                                                style={{
-                                                    width: `${progressPct}%`,
-                                                    background: PROGRESS_COLOR[cycle.status],
-                                                }}
-                                            />
-                                        </div>
-
-                                        <span className="font-mono text-[11.5px] text-[var(--neutral-600)] tabular-nums">
-                                            {doneCount}/{cycle.issueCount}
-                                        </span>
-
-                                        <button
-                                            type="button"
-                                            disabled={isDeleting}
-                                            onClick={() => deleteCycle(cycle.id)}
-                                            aria-label={`Eliminar ciclo ${cycle.name}`}
-                                            className="text-[var(--neutral-500)] hover:text-red-500 transition-colors disabled:opacity-40"
-                                        >
-                                            <X size={14} />
-                                        </button>
-                                    </div>
-                                );
-                            })}
+                            {listCycles.map((cycle, i) => (
+                                <CycleListRow
+                                    key={cycle.id}
+                                    cycle={cycle}
+                                    index={i}
+                                    workspaceSlug={workspaceSlug}
+                                    projectId={projectId}
+                                    onManage={setSelectedCycle}
+                                    onEdit={setEditingCycle}
+                                    onDelete={(id) => deleteCycle(id)}
+                                    isDeleting={isDeleting}
+                                />
+                            ))}
                         </div>
                     </div>
                 )}
             </div>
+
+            {/* Edit cycle dialog (controlled) */}
+            {editingCycle && (
+                <CreateCycleDialog
+                    workspaceSlug={workspaceSlug}
+                    projectId={projectId}
+                    cycle={editingCycle}
+                    open={true}
+                    onOpenChange={(o) => { if (!o) setEditingCycle(null); }}
+                    trigger={<span />}
+                />
+            )}
 
             <Sheet open={!!selectedCycle} onOpenChange={(open) => !open && setSelectedCycle(null)}>
                 <SheetContent

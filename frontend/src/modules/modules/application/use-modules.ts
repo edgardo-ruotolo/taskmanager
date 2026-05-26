@@ -1,9 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import type { UseQueryOptions } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import type { FieldValues, UseFormSetError } from 'react-hook-form';
 import { useServerMutation } from '@/shared/hooks/useServerMutation';
 import { moduleRepository } from '../infrastructure/module-repository';
-import type { CreateModuleData, ModuleIssueRef } from '../domain/types';
+import type { Module, CreateModuleData, UpdateModuleData, ModuleIssueRef } from '../domain/types';
 import { issuesKey } from '@/modules/issues/application/use-issues';
 import type { Issue } from '@/modules/issues/domain/types';
 import type { PagedResult } from '@/shared/types/pagination';
@@ -11,11 +12,16 @@ import type { PagedResult } from '@/shared/types/pagination';
 export const modulesKey = (workspaceSlug: string, projectId: string) =>
     ['modules', workspaceSlug, projectId] as const;
 
-export const useModules = (workspaceSlug: string, projectId: string) =>
+export const useModules = (
+    workspaceSlug: string,
+    projectId: string,
+    options?: Omit<UseQueryOptions<Module[]>, 'queryKey' | 'queryFn'>,
+) =>
     useQuery({
         queryKey: modulesKey(workspaceSlug, projectId),
         queryFn: () => moduleRepository.getAll(workspaceSlug, projectId),
         enabled: !!workspaceSlug && !!projectId,
+        ...options,
     });
 
 export const useCreateModule = <TFormValues extends FieldValues = FieldValues>(
@@ -33,6 +39,24 @@ export const useCreateModule = <TFormValues extends FieldValues = FieldValues>(
         },
         setError: options?.setError,
         fallbackMessage: 'Error al crear el módulo',
+    });
+};
+
+export const useUpdateModule = <TFormValues extends FieldValues = FieldValues>(
+    workspaceSlug: string,
+    projectId: string,
+    options?: { setError?: UseFormSetError<TFormValues> },
+) => {
+    const qc = useQueryClient();
+    return useServerMutation<unknown, { moduleId: string; data: UpdateModuleData }, TFormValues>({
+        mutationFn: ({ moduleId, data }) =>
+            moduleRepository.update(workspaceSlug, projectId, moduleId, data),
+        onSuccess: () => {
+            void qc.invalidateQueries({ queryKey: modulesKey(workspaceSlug, projectId) });
+            toast.success('Módulo actualizado');
+        },
+        setError: options?.setError,
+        fallbackMessage: 'Error al actualizar el módulo',
     });
 };
 

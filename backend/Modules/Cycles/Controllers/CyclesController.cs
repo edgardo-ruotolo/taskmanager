@@ -110,4 +110,16 @@ public class CyclesController(ICycleService cycleService, ICurrentUser currentUs
         var result = await cycleService.GetAnalyticsAsync(workspaceSlug, projectId, cycleId, ct);
         return Ok(result);
     }
+
+    [HttpPost("{cycleId:guid}/close")]
+    public async Task<ActionResult<CycleDto>> Close(
+        string workspaceSlug,
+        Guid projectId,
+        Guid cycleId,
+        [FromQuery] bool moveIncompleteToBacklog = false,
+        CancellationToken ct = default)
+    {
+        var result = await cycleService.CloseAsync(workspaceSlug, projectId, cycleId, moveIncompleteToBacklog, ct);
+        return Ok(result);
+    }
 }

@@ -100,7 +100,7 @@ export const GanttPage = (): React.ReactElement => {
     const ticks = useMemo(() => buildTicks(minDate, maxDate, zoom), [minDate, maxDate, zoom]);
 
     return (
-        <div className="mx-auto max-w-[1400px] px-10 py-8 space-y-5">
+        <div className="w-full px-10 py-8 space-y-5">
             <div className="flex items-center justify-between gap-4 flex-wrap">
                 <h2 className="text-[20px] font-medium tracking-[-0.02em] text-[var(--neutral-1200)]">
                     Gantt — tareas en curso y realizadas

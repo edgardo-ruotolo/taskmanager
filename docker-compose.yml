@@ -1,0 +1,128 @@
+﻿name: taskmanager
+
+networks:
+  taskmanager_net:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  redis_data:
+  uploads_data:
+  dpkeys_data:
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: taskmanager-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - taskmanager_net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: taskmanager-redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD}"]
+    volumes:
+      - redis_data:/data
+    networks:
+      - taskmanager_net
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+
+  migrate:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: ef
+    container_name: taskmanager-migrate
+    restart: "no"
+    command: ["dotnet", "ef", "database", "update", "--project", "TaskManager.Api.csproj"]
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ConnectionStrings__Postgres: "Host=postgres;Port=5432;Database=${POSTGRES_DB};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD};Maximum Pool Size=100;Minimum Pool Size=10;Connection Lifetime=300;Connection Idle Lifetime=180;"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - taskmanager_net
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: runtime
+    container_name: taskmanager-backend
+    restart: unless-stopped
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_URLS: http://+:8080
+      ConnectionStrings__Postgres: "Host=postgres;Port=5432;Database=${POSTGRES_DB};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD};Maximum Pool Size=100;Minimum Pool Size=10;Connection Lifetime=300;Connection Idle Lifetime=180;"
+      Redis__ConnectionString: "redis:6379,password=${REDIS_PASSWORD},abortConnect=false"
+      Auth__MagicLinkSecret: ${AUTH_MAGIC_LINK_SECRET}
+      Auth__RefreshTokenSecret: ${AUTH_REFRESH_TOKEN_SECRET}
+      Cors__AllowedOrigins__0: ${FRONTEND_PUBLIC_URL}
+      App__BaseUrl: ${BACKEND_PUBLIC_URL}
+      App__FrontendUrl: ${FRONTEND_PUBLIC_URL}
+      Brevo__ApiKey: ${BREVO_API_KEY}
+      Email__UseRealProvider: ${EMAIL_USE_REAL_PROVIDER:-false}
+      Admin__Username: ${ADMIN_USERNAME}
+      Admin__Email: ${ADMIN_EMAIL}
+      Admin__Password: ${ADMIN_PASSWORD}
+      Admin__FirstName: ${ADMIN_FIRST_NAME}
+      Admin__LastName: ${ADMIN_LAST_NAME}
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
+    volumes:
+      - uploads_data:/app/wwwroot/uploads
+      - dpkeys_data:/app/dpkeys
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    ports:
+      - "${BACKEND_HOST_PORT:-5000}:8080"
+    networks:
+      - taskmanager_net
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8080/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: ${FRONTEND_BUILD_API_URL}
+        VITE_SENTRY_DSN: ${VITE_SENTRY_DSN:-}
+        VITE_ENV: production
+        VITE_POSTHOG_KEY: ${VITE_POSTHOG_KEY:-}
+        VITE_POSTHOG_HOST: ${VITE_POSTHOG_HOST:-}
+    container_name: taskmanager-frontend
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "${FRONTEND_HOST_PORT:-8081}:80"
+    networks:
+      - taskmanager_net

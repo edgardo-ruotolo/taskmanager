@@ -201,7 +201,7 @@ export function RecurringListPage(): React.ReactElement {
                 workspaceSlug={workspaceSlug}
             />
             <div className="h-full overflow-y-auto">
-                <div className="mx-auto max-w-5xl px-10 py-8">
+                <div className="w-full px-10 py-8">
                     {/* Header */}
                     <div className="flex items-start justify-between mb-7">
                         <div>

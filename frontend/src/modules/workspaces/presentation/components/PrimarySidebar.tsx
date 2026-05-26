@@ -26,6 +26,8 @@ import { useSidebarStore } from '@/modules/workspaces/application/sidebar-store'
 import { useAuthMe } from '@/modules/auth/application/use-auth-me';
 import { ThemeSwitcher } from '@/shared/components/ThemeSwitcher';
 import { useProjects } from '@/modules/projects/application/use-projects';
+import { getProjectFeatures, type ProjectFeatures } from '@/modules/projects/application/use-project-features';
+import type { Project } from '@/modules/projects/domain/types';
 import { Eyebrow } from '@/components/ui/eyebrow';
 import { WorkspaceSwitcher } from '@/modules/workspaces/presentation/components/WorkspaceSwitcher';
 
@@ -132,21 +134,20 @@ interface ProjectSubNavItem {
     label: string;
 }
 
-function getProjectSubNav(slug: string, projectId: string): ProjectSubNavItem[] {
+function getProjectSubNav(slug: string, projectId: string, features: ProjectFeatures): ProjectSubNavItem[] {
     return [
         { to: `/${slug}/projects/${projectId}/issues`, icon: AlertCircle, label: 'Tareas' },
-        { to: `/${slug}/projects/${projectId}/cycles`, icon: GitBranch, label: 'Ciclos' },
-        { to: `/${slug}/projects/${projectId}/modules`, icon: BoxSelect, label: 'Módulos' },
-        { to: `/${slug}/projects/${projectId}/estimates`, icon: BarChart2, label: 'Estimaciones' },
-        { to: `/${slug}/projects/${projectId}/inbox`, icon: Inbox, label: 'Bandeja' },
-        { to: `/${slug}/projects/${projectId}/archives`, icon: Archive, label: 'Archivos' },
+        ...(features.cyclesEnabled ? [{ to: `/${slug}/projects/${projectId}/cycles`, icon: GitBranch, label: 'Ciclos' }] : []),
+        ...(features.modulesEnabled ? [{ to: `/${slug}/projects/${projectId}/modules`, icon: BoxSelect, label: 'Módulos' }] : []),
+        ...(features.intakeEnabled ? [{ to: `/${slug}/projects/${projectId}/inbox`, icon: Inbox, label: 'Bandeja' }] : []),
+        ...(features.archivesEnabled ? [{ to: `/${slug}/projects/${projectId}/archives`, icon: Archive, label: 'Archivos' }] : []),
         { to: `/${slug}/projects/${projectId}/settings`, icon: Settings, label: 'Configuración' },
     ];
 }
 
 interface ExpandableProjectItemProps {
     slug: string;
-    project: { id: string; name: string; identifier: string };
+    project: Project;
     isExpanded: boolean;
     onToggle: (projectId: string) => void;
 }
@@ -157,7 +158,8 @@ function ExpandableProjectItem({
     isExpanded,
     onToggle,
 }: ExpandableProjectItemProps): React.ReactElement {
-    const subNav = getProjectSubNav(slug, project.id);
+    const features = getProjectFeatures(project);
+    const subNav = getProjectSubNav(slug, project.id, features);
     return (
         <div className="flex flex-col">
             <div className="flex items-stretch gap-0.5">
@@ -304,7 +306,7 @@ export function PrimarySidebar(): React.ReactElement {
                         aria-label="Abrir paleta de comandos"
                     >
                         <Search size={13} aria-hidden="true" />
-                        <span className="flex-1 text-left">Buscar…</span>
+                        <span className="flex-1 text-left">Buscar...</span>
                         <span
                             className="font-mono text-[10px] px-1 py-0.5 rounded"
                             style={{ background: 'var(--neutral-200)', color: 'var(--neutral-700)' }}
@@ -387,7 +389,7 @@ export function PrimarySidebar(): React.ReactElement {
                 ) : (
                     <div className="flex flex-col gap-0.5">
                         <div className="flex items-center justify-between px-2 py-1.5">
-                            <Eyebrow>Proyectos</Eyebrow>
+                            <Eyebrow>PROYECTOS</Eyebrow>
                         </div>
                         {(projects?.items ?? []).map((project) => (
                             <ExpandableProjectItem

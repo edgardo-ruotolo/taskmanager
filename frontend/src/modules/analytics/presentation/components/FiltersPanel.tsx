@@ -1,21 +1,14 @@
 ﻿import type React from 'react';
 import { useMemo, useState } from 'react';
-import { Calendar as CalendarIcon, Check, ChevronsUpDown, X } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
+import { Calendar as CalendarIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { Label as UiLabel } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
-import { Switch } from '@/components/ui/switch';
+import { SearchableSelect } from '@/shared/components/ui/searchable-select';
 import { cn } from '@/lib/utils';
+import { Switch } from '@/components/ui/switch';
 import { useLabels } from '@/modules/labels/application/use-labels';
 import { useProjects } from '@/modules/projects/application/use-projects';
 import { useStates } from '@/modules/states/application/use-states';
@@ -89,41 +82,95 @@ export const FiltersPanel = ({ workspaceSlug, onClose }: FiltersPanelProps): Rea
         [states],
     );
 
+    const userItems = useMemo(
+        () => userOptions.map((o) => ({ id: o.value, label: o.label })),
+        [userOptions],
+    );
+
+    const labelSelectItems = useMemo(
+        () =>
+            labelOptions.map((o) => ({
+                id: o.value,
+                label: o.label,
+                icon: o.color ? (
+                    <span
+                        className="h-2.5 w-2.5 rounded-sm shrink-0 inline-block"
+                        style={{ background: o.color }}
+                        aria-hidden="true"
+                    />
+                ) : undefined,
+            })),
+        [labelOptions],
+    );
+
+    const projectItems = useMemo(
+        () => projectOptions.map((o) => ({ id: o.value, label: o.label })),
+        [projectOptions],
+    );
+
+    const stateSelectItems = useMemo(
+        () =>
+            stateOptions.map((o) => ({
+                id: o.value,
+                label: o.label,
+                icon: o.color ? (
+                    <span
+                        className="h-2.5 w-2.5 rounded-full shrink-0 inline-block"
+                        style={{ background: o.color }}
+                        aria-hidden="true"
+                    />
+                ) : undefined,
+            })),
+        [stateOptions],
+    );
+
     return (
         <div className="mt-6 space-y-5">
             <Section title="Asignados">
-                <MultiSelect
-                    placeholder="Seleccionar usuarios…"
-                    options={userOptions}
+                <SearchableSelect
+                    multi={true}
                     value={filters.userIds}
                     onChange={(v) => filters.setFilters({ userIds: v })}
+                    items={userItems}
+                    placeholder="Seleccionar usuarios…"
+                    width="100%"
+                    clearable
                 />
             </Section>
 
             <Section title="Clientes (etiquetas)">
-                <MultiSelect
-                    placeholder="Seleccionar clientes…"
-                    options={labelOptions}
+                <SearchableSelect
+                    multi={true}
                     value={filters.labelIds}
                     onChange={(v) => filters.setFilters({ labelIds: v })}
+                    items={labelSelectItems}
+                    placeholder="Seleccionar clientes…"
+                    width="100%"
+                    clearable
                 />
             </Section>
 
             <Section title="Proyectos">
-                <MultiSelect
-                    placeholder="Seleccionar proyectos…"
-                    options={projectOptions}
+                <SearchableSelect
+                    multi={true}
                     value={filters.projectIds}
                     onChange={(v) => filters.setFilters({ projectIds: v })}
+                    items={projectItems}
+                    placeholder="Seleccionar proyectos…"
+                    width="100%"
+                    clearable
                 />
             </Section>
 
             <Section title="Estados">
-                <MultiSelect
-                    placeholder="Seleccionar estados…"
-                    options={stateOptions}
+                <SearchableSelect
+                    multi={true}
                     value={filters.stateIds}
                     onChange={(v) => filters.setFilters({ stateIds: v })}
+                    items={stateSelectItems}
+                    placeholder="Seleccionar estados…"
+                    width="100%"
+                    clearable
                 />
             </Section>
 
@@ -147,23 +194,17 @@ export const FiltersPanel = ({ workspaceSlug, onClose }: FiltersPanelProps): Rea
 
             <Section title="Rango de fechas">
                 <div className="space-y-3">
-                    <Select
+                    <SearchableSelect
+                        multi={false}
                         value={filters.dateField}
-                        onValueChange={(v) =>
-                            filters.setFilters({ dateField: v as AnalyticsDateField })
-                        }
-                    >
-                        <SelectTrigger className="h-9">
-                            <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {DATE_FIELDS.map((f) => (
-                                <SelectItem key={f.value} value={f.value}>
-                                    {f.label}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
+                        onChange={(v) => {
+                            if (v) filters.setFilters({ dateField: v as AnalyticsDateField });
+                        }}
+                        items={DATE_FIELDS.map((f) => ({ id: f.value, label: f.label }))}
+                        placeholder="Campo de fecha"
+                        width="100%"
+                        clearable={false}
+                    />
                     <div className="grid grid-cols-2 gap-2">
                         <DateField
                             label="Desde"
@@ -214,122 +255,6 @@ const Section = ({ title, children }: { title: string; children: React.ReactNode
         {children}
     </div>
 );
-
-interface MultiSelectOption {
-    value: string;
-    label: string;
-    color?: string;
-}
-
-interface MultiSelectProps {
-    placeholder: string;
-    options: MultiSelectOption[];
-    value: string[];
-    onChange: (next: string[]) => void;
-}
-
-const MultiSelect = ({ placeholder, options, value, onChange }: MultiSelectProps): React.ReactElement => {
-    const [open, setOpen] = useState(false);
-    const selectedLabels = useMemo(
-        () => options.filter((o) => value.includes(o.value)),
-        [options, value],
-    );
-
-    const toggle = (val: string): void => {
-        if (value.includes(val)) {
-            onChange(value.filter((v) => v !== val));
-        } else {
-            onChange([...value, val]);
-        }
-    };
-
-    return (
-        <Popover open={open} onOpenChange={setOpen}>
-            <PopoverTrigger asChild>
-                <Button
-                    variant="outline"
-                    className="w-full justify-between font-normal h-9 px-3"
-                    type="button"
-                >
-                    {value.length === 0 ? (
-                        <span className="text-[var(--neutral-600)] text-sm">{placeholder}</span>
-                    ) : (
-                        <span className="text-sm truncate">{value.length} seleccionado(s)</span>
-                    )}
-                    <ChevronsUpDown className="h-3.5 w-3.5 opacity-50" />
-                </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
-                <div className="max-h-64 overflow-y-auto py-1">
-                    {options.length === 0 ? (
-                        <div className="px-3 py-4 text-center text-xs text-[var(--neutral-600)]">
-                            Sin opciones
-                        </div>
-                    ) : (
-                        options.map((o) => {
-                            const checked = value.includes(o.value);
-                            return (
-                                <button
-                                    key={o.value}
-                                    type="button"
-                                    onClick={() => toggle(o.value)}
-                                    className="w-full flex items-center gap-2 px-3 py-1.5 hover:bg-[var(--neutral-100)] text-sm text-left"
-                                >
-                                    <div
-                                        className={cn(
-                                            'h-4 w-4 rounded-sm border flex items-center justify-center',
-                                            checked
-                                                ? 'bg-[var(--brand-700)] border-[var(--brand-700)] text-white'
-                                                : 'border-[var(--neutral-400)] bg-white',
-                                        )}
-                                    >
-                                        {checked && <Check className="h-3 w-3" />}
-                                    </div>
-                                    {o.color && (
-                                        <span
-                                            className="h-2.5 w-2.5 rounded-sm shrink-0"
-                                            style={{ background: o.color }}
-                                            aria-hidden="true"
-                                        />
-                                    )}
-                                    <span className="truncate flex-1">{o.label}</span>
-                                </button>
-                            );
-                        })
-                    )}
-                </div>
-            </PopoverContent>
-            {selectedLabels.length > 0 && (
-                <div className="mt-2 flex flex-wrap gap-1">
-                    {selectedLabels.map((o) => (
-                        <Badge
-                            key={o.value}
-                            variant="secondary"
-                            className="gap-1 pl-1.5 pr-1 py-0 h-5"
-                        >
-                            {o.color && (
-                                <span
-                                    className="h-2 w-2 rounded-sm"
-                                    style={{ background: o.color }}
-                                    aria-hidden="true"
-                                />
-                            )}
-                            <span className="text-[11px]">{o.label}</span>
-                            <button
-                                type="button"
-                                aria-label={`Remover ${o.label}`}
-                                onClick={() => toggle(o.value)}
-                                className="ml-0.5 hover:bg-[var(--neutral-200)] rounded-sm p-0.5"
-                            >
-                                <X className="h-2.5 w-2.5" />
-                            </button>
-                        </Badge>
-                    ))}
-                </div>
-            )}
-        </Popover>
-    );
-};
 
 interface CategoryTogglesProps<T extends string> {
     options: { value: T; label: string }[];

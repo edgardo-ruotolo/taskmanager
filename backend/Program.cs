@@ -8,10 +8,13 @@ using Hangfire;
 using Hangfire.Dashboard;
 using Hangfire.PostgreSql;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.DataProtection;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Npgsql;
 using Scalar.AspNetCore;
 using Serilog;
@@ -19,6 +22,7 @@ using TaskManager.Api.Common.Auth;
 using TaskManager.Api.Common.Authorization;
 using TaskManager.Api.Common.Email;
 using TaskManager.Api.Common.Filters;
+using TaskManager.Api.Common.Health;
 using TaskManager.Api.Common.Multitenancy;
 using TaskManager.Api.Common.Security;
 using TaskManager.Api.Data;
@@ -33,7 +37,6 @@ using TaskManager.Api.Modules.Auth.Onboarding.Services;
 using TaskManager.Api.Modules.Auth.Services;
 using TaskManager.Api.Modules.Projects.Services;
 using TaskManager.Api.Modules.Cycles.Services;
-using TaskManager.Api.Modules.Estimates.Services;
 using TaskManager.Api.Modules.Files.Services;
 using TaskManager.Api.Modules.Issues.Services;
 using TaskManager.Api.Modules.Labels.Services;
@@ -150,9 +153,18 @@ builder.Services.AddSingleton<IHtmlSanitizer>(_ =>
     return sanitizer;
 });
 
-builder.Services.AddScoped<IEmailService, LogOnlyEmailService>();
-// To use Brevo for real email delivery, comment the line above and uncomment:
-// builder.Services.AddHttpClient<IEmailService, BrevoEmailService>();
+// Email provider: usar Brevo solo si UseRealProvider=true Y ApiKey configurada.
+// Fallback a LogOnlyEmailService para evitar entregas accidentales en dev/staging.
+var useRealEmailProvider = builder.Configuration.GetValue<bool>("Email:UseRealProvider");
+var brevoApiKey = builder.Configuration["Brevo:ApiKey"];
+if (useRealEmailProvider && !string.IsNullOrWhiteSpace(brevoApiKey))
+{
+    builder.Services.AddHttpClient<IEmailService, BrevoEmailService>();
+}
+else
+{
+    builder.Services.AddScoped<IEmailService, LogOnlyEmailService>();
+}
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IRefreshTokenService, RefreshTokenService>();
 builder.Services.AddScoped<IOnboardingService, OnboardingService>();
@@ -174,6 +186,7 @@ builder.Services.AddScoped<IIssueRelationService, IssueRelationService>();
 builder.Services.AddScoped<IIssueLinkService, IssueLinkService>();
 builder.Services.AddScoped<IIssueVersionService, IssueVersionService>();
 builder.Services.AddScoped<ICycleService, CycleService>();
+builder.Services.AddScoped<TaskManager.Api.Modules.Home.Services.IHomeSummaryService, TaskManager.Api.Modules.Home.Services.HomeSummaryService>();
 builder.Services.AddScoped<IModuleService, ModuleService>();
 builder.Services.AddScoped<ILabelService, LabelService>();
 builder.Services.AddScoped<IIssueViewService, IssueViewService>();
@@ -183,7 +196,6 @@ builder.Services.AddScoped<IFileStorageService, LocalFileStorage>();
 builder.Services.AddScoped<IFileAssetService, FileAssetService>();
 builder.Services.AddScoped<IIssueTypeService, IssueTypeService>();
 builder.Services.AddScoped<IOAuthAccountService, OAuthAccountService>();
-builder.Services.AddScoped<IEstimateService, EstimateService>();
 builder.Services.AddScoped<IInstanceConfigService, InstanceConfigService>();
 builder.Services.AddScoped<IIntakeService, IntakeService>();
 builder.Services.AddScoped<IRecurringService, RecurringService>();
@@ -375,6 +387,22 @@ builder.Services.AddHsts(o =>
     o.Preload = true;
 });
 
+// Data Protection — claves persistidas en producción para sobrevivir restarts
+// (cookies de auth, antiforgery tokens, refresh tokens dependen de esto).
+if (!builder.Environment.IsDevelopment())
+{
+    var dpKeysPath = builder.Configuration["DataProtection:KeysPath"] ?? "/app/dpkeys";
+    Directory.CreateDirectory(dpKeysPath);
+    builder.Services.AddDataProtection()
+        .PersistKeysToFileSystem(new DirectoryInfo(dpKeysPath))
+        .SetApplicationName("TaskManager");
+}
+
+// Health checks — /health (liveness rápido) y /health/ready (incluye Postgres).
+builder.Services.AddHealthChecks()
+    .AddCheck("self", () => HealthCheckResult.Healthy("App is running"))
+    .AddCheck<DatabaseHealthCheck>("postgres", tags: new[] { "ready" });
+
 var app = builder.Build();
 
 using (var scope = app.Services.CreateScope())
@@ -382,6 +410,9 @@ using (var scope = app.Services.CreateScope())
     var services = scope.ServiceProvider;
     await StateSeeder.SeedAsync(services);
     await AdminUserSeeder.SeedAsync(services);
+    await WorkspaceBootstrapSeeder.SeedAsync(services);
+    await ProjectBootstrapSeeder.SeedAsync(services);
+    await CompanyLabelsSeeder.SeedAsync(services);
 }
 
 if (app.Environment.IsDevelopment())
@@ -418,6 +449,17 @@ app.MapControllers();
 app.MapHub<NotificationHub>("/hubs/notifications");
 app.MapHub<IssueHub>("/hubs/issues");
 app.MapHub<DocumentHub>("/hubs/document");
+
+// Liveness — solo verifica que el proceso responde.
+app.MapHealthChecks("/health", new HealthCheckOptions
+{
+    Predicate = check => check.Name == "self"
+});
+// Readiness — incluye chequeo de Postgres para indicar que el servicio puede aceptar tráfico.
+app.MapHealthChecks("/health/ready", new HealthCheckOptions
+{
+    Predicate = check => check.Tags.Contains("ready") || check.Name == "self"
+});
 
 app.Run();
 

@@ -16,6 +16,12 @@ export interface CreateModuleData {
     status?: string;
 }
 
+export interface UpdateModuleData {
+    name?: string;
+    description?: string;
+    status?: string;
+}
+
 export interface ModuleIssueRef {
     issueId: string;
     issueTitle: string;

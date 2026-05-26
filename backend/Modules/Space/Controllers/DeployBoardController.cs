@@ -41,6 +41,11 @@ public class DeployBoardController(AppDbContext db) : ControllerBase
                 ShowPriority = b.ShowPriority,
                 ShowState = b.ShowState,
                 ShowAssignees = b.ShowAssignees,
+                VisitCount = b.VisitCount,
+                LastVisitAt = b.LastVisitAt,
+                Audience = b.Audience,
+                ExpiresAt = b.ExpiresAt,
+                VisitHistory = BuildEmptyVisitHistory(),
                 CreatedAt = b.CreatedAt
             })
             .ToListAsync(ct);
@@ -79,22 +84,7 @@ public class DeployBoardController(AppDbContext db) : ControllerBase
         db.DeployBoards.Add(board);
         await db.SaveChangesAsync(ct);
 
-        var result = new DeployBoardDto
-        {
-            Id = board.Id,
-            ProjectId = board.ProjectId,
-            WorkspaceId = board.WorkspaceId,
-            Token = board.Token,
-            Title = board.Title,
-            Description = board.Description,
-            IsPublic = board.IsPublic,
-            ShowVoting = board.ShowVoting,
-            ShowComments = board.ShowComments,
-            ShowPriority = board.ShowPriority,
-            ShowState = board.ShowState,
-            ShowAssignees = board.ShowAssignees,
-            CreatedAt = board.CreatedAt
-        };
+        var result = MapToDto(board);
 
         return CreatedAtAction(nameof(GetById), new { workspaceSlug, projectId, id = board.Id }, result);
     }
@@ -114,22 +104,7 @@ public class DeployBoardController(AppDbContext db) : ControllerBase
 
         if (board is null) return NotFound();
 
-        return Ok(new DeployBoardDto
-        {
-            Id = board.Id,
-            ProjectId = board.ProjectId,
-            WorkspaceId = board.WorkspaceId,
-            Token = board.Token,
-            Title = board.Title,
-            Description = board.Description,
-            IsPublic = board.IsPublic,
-            ShowVoting = board.ShowVoting,
-            ShowComments = board.ShowComments,
-            ShowPriority = board.ShowPriority,
-            ShowState = board.ShowState,
-            ShowAssignees = board.ShowAssignees,
-            CreatedAt = board.CreatedAt
-        });
+        return Ok(MapToDto(board));
     }
 
     [HttpPatch("{id:guid}")]
@@ -156,25 +131,12 @@ public class DeployBoardController(AppDbContext db) : ControllerBase
         if (dto.ShowPriority.HasValue) board.ShowPriority = dto.ShowPriority.Value;
         if (dto.ShowState.HasValue) board.ShowState = dto.ShowState.Value;
         if (dto.ShowAssignees.HasValue) board.ShowAssignees = dto.ShowAssignees.Value;
+        if (dto.Audience is not null) board.Audience = dto.Audience;
+        if (dto.ExpiresAt.HasValue) board.ExpiresAt = dto.ExpiresAt.Value;
 
         await db.SaveChangesAsync(ct);
 
-        return Ok(new DeployBoardDto
-        {
-            Id = board.Id,
-            ProjectId = board.ProjectId,
-            WorkspaceId = board.WorkspaceId,
-            Token = board.Token,
-            Title = board.Title,
-            Description = board.Description,
-            IsPublic = board.IsPublic,
-            ShowVoting = board.ShowVoting,
-            ShowComments = board.ShowComments,
-            ShowPriority = board.ShowPriority,
-            ShowState = board.ShowState,
-            ShowAssignees = board.ShowAssignees,
-            CreatedAt = board.CreatedAt
-        });
+        return Ok(MapToDto(board));
     }
 
     [HttpDelete("{id:guid}")]
@@ -198,4 +160,29 @@ public class DeployBoardController(AppDbContext db) : ControllerBase
 
         return NoContent();
     }
+
+    private static DeployBoardDto MapToDto(DeployBoard board) => new()
+    {
+        Id = board.Id,
+        ProjectId = board.ProjectId,
+        WorkspaceId = board.WorkspaceId,
+        Token = board.Token,
+        Title = board.Title,
+        Description = board.Description,
+        IsPublic = board.IsPublic,
+        ShowVoting = board.ShowVoting,
+        ShowComments = board.ShowComments,
+        ShowPriority = board.ShowPriority,
+        ShowState = board.ShowState,
+        ShowAssignees = board.ShowAssignees,
+        VisitCount = board.VisitCount,
+        LastVisitAt = board.LastVisitAt,
+        Audience = board.Audience,
+        ExpiresAt = board.ExpiresAt,
+        // TODO: replace placeholder with real per-day visit history once visit log is persisted.
+        VisitHistory = BuildEmptyVisitHistory(),
+        CreatedAt = board.CreatedAt
+    };
+
+    private static int[] BuildEmptyVisitHistory() => new int[30];
 }

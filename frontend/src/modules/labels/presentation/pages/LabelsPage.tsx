@@ -16,7 +16,7 @@ export const LabelsPage = (): React.ReactElement => {
 
     return (
         <div className="p-8">
-            <div className="max-w-3xl mx-auto">
+            <div className="w-full">
                 <div className="flex items-center justify-between mb-8">
                     <div>
                         <p className="text-xs text-placeholder uppercase tracking-wider mb-1">

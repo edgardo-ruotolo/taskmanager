@@ -3,7 +3,6 @@ using TaskManager.Api.Common.Auditing;
 using TaskManager.Api.Modules.Auth.Entities;
 using TaskManager.Api.Modules.Projects.Entities;
 using TaskManager.Api.Modules.Cycles.Entities;
-using TaskManager.Api.Modules.Estimates.Entities;
 using TaskManager.Api.Modules.Modules.Entities;
 using TaskManager.Api.Modules.States.Entities;
 
@@ -42,9 +41,6 @@ public class Issue : AuditableEntity
     public DateTime? ArchivedAt { get; set; }
     public Guid? IssueTypeId { get; set; }
     public IssueType? IssueType { get; set; }
-    public Guid? EstimatePointId { get; set; }
-    public EstimatePoint? EstimatePoint { get; set; }
-    public int? Point { get; set; }
     public string? ExternalSource { get; set; }
     public string? ExternalId { get; set; }
     public ICollection<IssueAssignee> Assignees { get; set; } = [];

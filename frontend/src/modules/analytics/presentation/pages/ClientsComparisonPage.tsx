@@ -139,7 +139,7 @@ export const ClientsComparisonPage = (): React.ReactElement => {
     });
 
     return (
-        <div className="mx-auto max-w-[1200px] px-10 py-8 space-y-5">
+        <div className="w-full px-10 py-8 space-y-5">
             <h2 className="text-[20px] font-medium tracking-[-0.02em] text-[var(--neutral-1200)]">
                 Comparativa por cliente
             </h2>

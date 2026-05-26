@@ -2,8 +2,10 @@ using Microsoft.EntityFrameworkCore;
 using TaskManager.Api.Common.Exceptions;
 using TaskManager.Api.Common.Pagination;
 using TaskManager.Api.Data;
+using TaskManager.Api.Modules.Auth.Entities;
 using TaskManager.Api.Modules.Modules.Dtos;
 using TaskManager.Api.Modules.Modules.Entities;
+using TaskManager.Api.Modules.States.Entities;
 
 namespace TaskManager.Api.Modules.Modules.Services;
 
@@ -18,6 +20,8 @@ public class ModuleService(AppDbContext db) : IModuleService
         var query = db.Modules
             .AsNoTracking()
             .Include(m => m.ModuleIssues)
+            .Include(m => m.Lead)
+            .Include(m => m.Members).ThenInclude(mm => mm.User)
             .Where(m => m.ProjectId == projectId && m.Project.WorkspaceId == workspace.Id);
 
         var total = await query.CountAsync(ct);
@@ -27,9 +31,12 @@ public class ModuleService(AppDbContext db) : IModuleService
             .Take(pageSize)
             .ToListAsync(ct);
 
+        var dtos = items.Select(MapToDto).ToList();
+        await EnrichModulesAsync(dtos, ct);
+
         return new PagedResult<ModuleDto>
         {
-            Items = items.Select(MapToDto),
+            Items = dtos,
             TotalCount = total,
             Page = page,
             PageSize = pageSize
@@ -45,10 +52,14 @@ public class ModuleService(AppDbContext db) : IModuleService
         var module = await db.Modules
             .AsNoTracking()
             .Include(m => m.ModuleIssues)
+            .Include(m => m.Lead)
+            .Include(m => m.Members).ThenInclude(mm => mm.User)
             .FirstOrDefaultAsync(m => m.Id == moduleId && m.ProjectId == projectId && m.Project.WorkspaceId == workspace.Id, ct)
             ?? throw new NotFoundException("Module not found.");
 
-        return MapToDto(module);
+        var result = MapToDto(module);
+        await EnrichModulesAsync(new[] { result }, ct);
+        return result;
     }
 
     public async Task<ModuleDto> CreateAsync(string workspaceSlug, Guid projectId, Guid userId, CreateModuleDto dto, CancellationToken ct = default)
@@ -72,7 +83,9 @@ public class ModuleService(AppDbContext db) : IModuleService
         db.Modules.Add(module);
         await db.SaveChangesAsync(ct);
 
-        return MapToDto(module);
+        var result = MapToDto(module);
+        await EnrichModulesAsync(new[] { result }, ct);
+        return result;
     }
 
     public async Task<ModuleDto> UpdateAsync(string workspaceSlug, Guid projectId, Guid moduleId, UpdateModuleDto dto, CancellationToken ct = default)
@@ -82,6 +95,8 @@ public class ModuleService(AppDbContext db) : IModuleService
 
         var module = await db.Modules
             .Include(m => m.ModuleIssues)
+            .Include(m => m.Lead)
+            .Include(m => m.Members).ThenInclude(mm => mm.User)
             .FirstOrDefaultAsync(m => m.Id == moduleId && m.ProjectId == projectId && m.Project.WorkspaceId == workspace.Id, ct)
             ?? throw new NotFoundException("Module not found.");
 
@@ -92,7 +107,9 @@ public class ModuleService(AppDbContext db) : IModuleService
         if (dto.EndDate is not null) module.EndDate = dto.EndDate;
 
         await db.SaveChangesAsync(ct);
-        return MapToDto(module);
+        var result = MapToDto(module);
+        await EnrichModulesAsync(new[] { result }, ct);
+        return result;
     }
 
     public async Task DeleteAsync(string workspaceSlug, Guid projectId, Guid moduleId, CancellationToken ct = default)
@@ -241,14 +258,19 @@ public class ModuleService(AppDbContext db) : IModuleService
             .FirstOrDefaultAsync(w => w.Slug == workspaceSlug, ct)
             ?? throw new NotFoundException($"Workspace '{workspaceSlug}' not found.");
 
-        return await db.Modules
+        var items = await db.Modules
             .AsNoTracking()
             .IgnoreQueryFilters()
             .Include(m => m.ModuleIssues)
+            .Include(m => m.Lead)
+            .Include(m => m.Members).ThenInclude(mm => mm.User)
             .Where(m => m.IsArchived && !m.IsDeleted && m.ProjectId == projectId && m.Project.WorkspaceId == workspace.Id)
             .OrderByDescending(m => m.ArchivedAt)
-            .Select(m => MapToDto(m))
             .ToListAsync(ct);
+
+        var dtos = items.Select(MapToDto).ToList();
+        await EnrichModulesAsync(dtos, ct);
+        return dtos;
     }
 
     public async Task ArchiveAsync(string workspaceSlug, Guid projectId, Guid moduleId, CancellationToken ct = default)
@@ -291,11 +313,68 @@ public class ModuleService(AppDbContext db) : IModuleService
         Status = module.Status,
         StartDate = module.StartDate,
         EndDate = module.EndDate,
+        DueDate = module.DueDate ?? module.EndDate,
         ProjectId = module.ProjectId,
         OwnerId = module.OwnerId,
+        LeadId = module.LeadId,
+        LeadName = module.Lead != null ? BuildDisplayName(module.Lead) : null,
         IssueCount = module.ModuleIssues.Count,
+        Members = module.Members
+            .Where(mm => mm.User != null)
+            .Select(mm => new ModuleMemberSummaryDto
+            {
+                UserId = mm.UserId,
+                DisplayName = BuildDisplayName(mm.User),
+                Initials = BuildInitials(BuildDisplayName(mm.User)),
+                AvatarUrl = mm.User.AvatarUrl
+            })
+            .ToList(),
         IsArchived = module.IsArchived,
         ArchivedAt = module.ArchivedAt,
         CreatedAt = module.CreatedAt
     };
+
+    private async Task EnrichModulesAsync(IReadOnlyList<ModuleDto> modules, CancellationToken ct)
+    {
+        if (modules.Count == 0) return;
+
+        var ids = modules.Select(m => m.Id).ToList();
+
+        var stats = await db.ModuleIssues
+            .AsNoTracking()
+            .Where(mi => ids.Contains(mi.ModuleId))
+            .GroupBy(mi => mi.ModuleId)
+            .Select(g => new
+            {
+                ModuleId = g.Key,
+                Total = g.Count(),
+                Completed = g.Count(mi => mi.Issue.State.Category == StateCategory.Completed
+                                           || mi.Issue.State.Category == StateCategory.Cancelled)
+            })
+            .ToListAsync(ct);
+
+        foreach (var dto in modules)
+        {
+            var s = stats.FirstOrDefault(x => x.ModuleId == dto.Id);
+            dto.TotalIssues = s?.Total ?? dto.IssueCount;
+            dto.CompletedIssues = s?.Completed ?? 0;
+        }
+    }
+
+    private static string BuildDisplayName(User user)
+    {
+        if (!string.IsNullOrWhiteSpace(user.DisplayName)) return user.DisplayName!;
+        var composed = $"{user.FirstName} {user.LastName}".Trim();
+        if (!string.IsNullOrWhiteSpace(composed)) return composed;
+        return user.UserName ?? user.Email ?? string.Empty;
+    }
+
+    private static string BuildInitials(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return string.Empty;
+        var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length == 0) return string.Empty;
+        if (parts.Length == 1) return parts[0][..Math.Min(2, parts[0].Length)].ToUpperInvariant();
+        return $"{parts[0][0]}{parts[^1][0]}".ToUpperInvariant();
+    }
 }

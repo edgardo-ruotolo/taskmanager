@@ -1,3 +1,7 @@
 allowBuilds:
-  msw: true
-  protobufjs: true
+  msw: set this to true or false
+  protobufjs: set this to true or false
+onlyBuiltDependencies:
+  - core-js
+  - msw
+  - protobufjs

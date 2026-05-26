@@ -19,6 +19,13 @@ export interface CreateCycleData {
     endDate?: string;
 }
 
+export interface UpdateCycleData {
+    name?: string;
+    description?: string;
+    startDate?: string;
+    endDate?: string;
+}
+
 export interface CycleIssueRef {
     issueId: string;
     issueTitle: string;

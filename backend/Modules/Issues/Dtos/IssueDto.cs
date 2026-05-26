@@ -19,14 +19,18 @@ public class IssueDto
     public Guid CreatedById { get; set; }
     public Guid? UpdatedById { get; set; }
     public Guid? AssigneeId { get; set; }
+    public string? AssigneeName { get; set; }
+    public string? AssigneeAvatarUrl { get; set; }
     public List<Guid> AssigneeIds { get; set; } = [];
     public List<Guid> LabelIds { get; set; } = [];
     public List<Guid> ModuleIds { get; set; } = [];
     public Guid? CycleId { get; set; }
+    public string? CycleName { get; set; }
     public Guid? ParentId { get; set; }
+    public int SubIssueCount { get; set; }
+    public int SubIssueCompletedCount { get; set; }
+    public string? CreatedByName { get; set; }
     public Guid? IssueTypeId { get; set; }
-    public Guid? EstimatePointId { get; set; }
-    public int? Point { get; set; }
     public DateTime? StartDate { get; set; }
     public DateTime? DueDate { get; set; }
     public DateTime? CompletedAt { get; set; }

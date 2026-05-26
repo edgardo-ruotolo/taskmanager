@@ -82,7 +82,7 @@ export const IssueTemplatesPage = (): React.ReactElement => {
 
     return (
         <div className="p-6 md:p-8 animate-fade-in">
-            <div className="max-w-4xl mx-auto">
+            <div className="w-full">
                 <div className="flex items-center justify-between mb-6">
                     <div>
                         <h1 className="text-xl font-semibold text-primary">Plantillas de tareas</h1>

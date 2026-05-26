@@ -74,4 +74,44 @@ public class IssueRelationService(AppDbContext db) : IIssueRelationService
         db.IssueRelations.Remove(relation);
         await db.SaveChangesAsync(ct);
     }
+
+    public async Task<AiDependenciesDto> GetAiDependenciesAsync(string workspaceSlug, Guid projectId, Guid issueId, CancellationToken ct = default)
+    {
+        var workspace = await db.Workspaces.AsNoTracking()
+            .FirstOrDefaultAsync(w => w.Slug == workspaceSlug, ct)
+            ?? throw new NotFoundException($"Workspace '{workspaceSlug}' not found.");
+
+        _ = await db.Issues.AsNoTracking()
+            .FirstOrDefaultAsync(i => i.Id == issueId && i.ProjectId == projectId && i.Project.WorkspaceId == workspace.Id, ct)
+            ?? throw new NotFoundException("Issue not found.");
+
+        var relevantTypes = new[]
+        {
+            IssueRelationType.BlockedBy,
+            IssueRelationType.Blocking,
+            IssueRelationType.DuplicateOf,
+            IssueRelationType.Duplicate
+        };
+
+        // TODO: replace with real AI-driven detection. For now we only surface manually-created relations.
+        var dependencies = await db.IssueRelations
+            .AsNoTracking()
+            .Include(r => r.RelatedIssue)
+                .ThenInclude(i => i.State)
+            .Include(r => r.RelatedIssue)
+                .ThenInclude(i => i.Project)
+            .Where(r => r.IssueId == issueId && relevantTypes.Contains(r.RelationType))
+            .Select(r => new AiDependencyDto
+            {
+                IssueId = r.RelatedIssue.Id,
+                Identifier = $"{r.RelatedIssue.Project.Identifier}-{r.RelatedIssue.SequenceId}",
+                Title = r.RelatedIssue.Title,
+                StateColor = r.RelatedIssue.State.Color,
+                RelationType = r.RelationType,
+                DetectedBy = "manual"
+            })
+            .ToListAsync(ct);
+
+        return new AiDependenciesDto { Dependencies = dependencies };
+    }
 }

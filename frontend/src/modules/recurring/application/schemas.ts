@@ -20,6 +20,7 @@ export const recurringTemplateSchema = z
         targetDateOffsetDays: z.number().int(),
         blockPolicy: z.string(),
         issueTypeId: z.string().nullable().optional(),
+        cycleId: z.string().uuid().nullable(),
         projectIds: z.array(z.string()).min(1, 'Debe seleccionar al menos un proyecto'),
         assigneeIds: z.array(z.string()),
         labelIds: z.array(z.string()),

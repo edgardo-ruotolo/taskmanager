@@ -14,6 +14,11 @@ public class DeployBoardDto
     public bool ShowPriority { get; set; }
     public bool ShowState { get; set; }
     public bool ShowAssignees { get; set; }
+    public int VisitCount { get; set; }
+    public DateTime? LastVisitAt { get; set; }
+    public string? Audience { get; set; }
+    public DateTime? ExpiresAt { get; set; }
+    public int[] VisitHistory { get; set; } = Array.Empty<int>();
     public DateTime CreatedAt { get; set; }
 }
 
@@ -38,4 +43,6 @@ public class UpdateDeployBoardDto
     public bool? ShowPriority { get; set; }
     public bool? ShowState { get; set; }
     public bool? ShowAssignees { get; set; }
+    public string? Audience { get; set; }
+    public DateTime? ExpiresAt { get; set; }
 }

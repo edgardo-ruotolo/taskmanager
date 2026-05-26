@@ -93,6 +93,7 @@ function buildConfigRows(template: RecurringTemplate): ConfigRow[] {
         { key: 'Comienza el', value: template.startsOn ?? '—' },
         { key: 'Proyectos', value: projectsLabel },
         { key: 'Asignados', value: assigneesLabel },
+        { key: 'Ciclo', value: template.cycle?.name ?? 'Sin ciclo' },
     ];
     if (template.endsOn) rows.push({ key: 'Termina el', value: template.endsOn });
     if (template.nextRunAt)
@@ -364,7 +365,7 @@ export function RecurringDetailPage(): React.ReactElement {
                 onUpdated={handleUpdate}
             />
             <div className="h-full overflow-y-auto">
-                <div className="mx-auto max-w-4xl px-10 py-8 flex flex-col gap-6">
+                <div className="w-full px-10 py-8 flex flex-col gap-6">
                     <div className="flex items-start justify-between">
                         <div>
                             <Eyebrow>

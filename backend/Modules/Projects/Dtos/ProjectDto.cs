@@ -13,5 +13,14 @@ public class ProjectDto
     public string StateGroupName { get; set; } = string.Empty;
     public Guid? TeamId { get; set; }
     public string? TeamName { get; set; }
+    public bool IsArchived { get; set; }
+    public DateTime? ClosingDate { get; set; }
+    public bool CyclesEnabled { get; set; }
+    public bool ModulesEnabled { get; set; }
+    public bool IntakeEnabled { get; set; }
+    public bool ArchivesEnabled { get; set; }
+    public int TotalIssues { get; set; }
+    public int CompletedIssues { get; set; }
+    public List<ProjectMemberSummaryDto> Members { get; set; } = [];
     public DateTime CreatedAt { get; set; }
 }

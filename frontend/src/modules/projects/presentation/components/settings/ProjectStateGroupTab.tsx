@@ -6,13 +6,6 @@ import { AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from '@/components/ui/select';
-import {
     Form,
     FormControl,
     FormField,
@@ -20,6 +13,7 @@ import {
     FormLabel,
     FormMessage,
 } from '@/components/ui/form';
+import { SearchableSelect } from '@/shared/components/ui/searchable-select';
 import { useStateGroups } from '@/modules/states/application/use-states';
 import { useProject, useUpdateProject } from '../../../application/use-projects';
 import { SectionHeader } from './SectionHeader';
@@ -91,25 +85,20 @@ export function ProjectStateGroupTab({
                                     <FormLabel className="text-secondary text-sm">
                                         Grupo de estados
                                     </FormLabel>
-                                    <Select onValueChange={field.onChange} value={field.value}>
-                                        <FormControl>
-                                            <SelectTrigger className="bg-layer-1 border-subtle text-primary h-9 text-sm">
-                                                <SelectValue placeholder="Seleccionar grupo..." />
-                                            </SelectTrigger>
-                                        </FormControl>
-                                        <SelectContent className="bg-surface-2 border-subtle">
-                                            {groupList.map((g) => (
-                                                <SelectItem
-                                                    key={g.id}
-                                                    value={g.id}
-                                                    className="text-primary text-sm"
-                                                >
-                                                    {g.name}
-                                                    {g.isDefault ? ' (Por defecto)' : ''}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
+                                    <FormControl>
+                                        <SearchableSelect
+                                            multi={false}
+                                            value={field.value || null}
+                                            onChange={(v) => field.onChange(v ?? '')}
+                                            items={groupList.map((g) => ({
+                                                id: g.id,
+                                                label: g.name + (g.isDefault ? ' (Por defecto)' : ''),
+                                            }))}
+                                            placeholder="Seleccionar grupo..."
+                                            width="100%"
+                                            clearable={false}
+                                        />
+                                    </FormControl>
                                     <FormMessage />
                                 </FormItem>
                             )}

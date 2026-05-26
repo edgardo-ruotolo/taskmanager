@@ -1,5 +1,5 @@
 import { apiClient } from '@/shared/lib/api-client';
-import type { Module, CreateModuleData, ModuleIssueRef } from '../domain/types';
+import type { Module, CreateModuleData, UpdateModuleData, ModuleIssueRef } from '../domain/types';
 
 export const moduleRepository = {
     getAll: (workspaceSlug: string, projectId: string): Promise<Module[]> =>
@@ -17,6 +17,19 @@ export const moduleRepository = {
         apiClient
             .post<Module>(
                 `/api/workspaces/${workspaceSlug}/projects/${projectId}/modules`,
+                data,
+            )
+            .then((r) => r.data),
+
+    update: (
+        workspaceSlug: string,
+        projectId: string,
+        moduleId: string,
+        data: UpdateModuleData,
+    ): Promise<Module> =>
+        apiClient
+            .patch<Module>(
+                `/api/workspaces/${workspaceSlug}/projects/${projectId}/modules/${moduleId}`,
                 data,
             )
             .then((r) => r.data),

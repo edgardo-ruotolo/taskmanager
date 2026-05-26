@@ -43,6 +43,14 @@ public class RecurringService(AppDbContext db, IConfiguration configuration) : I
                 throw new NotFoundException("El tipo de tarea no existe en este workspace.");
         }
 
+        if (dto.CycleId.HasValue)
+        {
+            var cycleExists = await db.Cycles
+                .AnyAsync(c => c.Id == dto.CycleId.Value && c.Project.WorkspaceId == workspace.Id, ct);
+            if (!cycleExists)
+                throw new NotFoundException("El ciclo no existe en este workspace.");
+        }
+
         var sequenceId = await GenerateSequenceIdAsync(workspace.Id, ct);
 
         var template = new RecurringIssueTemplate
@@ -67,6 +75,7 @@ public class RecurringService(AppDbContext db, IConfiguration configuration) : I
             TargetDateOffsetDays = dto.TargetDateOffsetDays,
             BlockPolicy = dto.BlockPolicy,
             IssueTypeId = dto.IssueTypeId,
+            CycleId = dto.CycleId,
             CreatedById = userId
         };
 
@@ -137,6 +146,7 @@ public class RecurringService(AppDbContext db, IConfiguration configuration) : I
             .Include(t => t.Assignees)
                 .ThenInclude(a => a.Assignee)
             .Include(t => t.Labels)
+            .Include(t => t.Cycle)
             .ToListAsync(ct);
 
         return new PagedResult<RecurringTemplateDto>
@@ -202,6 +212,14 @@ public class RecurringService(AppDbContext db, IConfiguration configuration) : I
             if (!typeExists)
                 throw new NotFoundException("El tipo de tarea no existe en este workspace.");
             template.IssueTypeId = dto.IssueTypeId;
+        }
+        if (dto.CycleId.HasValue)
+        {
+            var cycleExists = await db.Cycles
+                .AnyAsync(c => c.Id == dto.CycleId.Value && c.Project.WorkspaceId == workspace.Id, ct);
+            if (!cycleExists)
+                throw new NotFoundException("El ciclo no existe en este workspace.");
+            template.CycleId = dto.CycleId;
         }
 
         if (dto.ProjectIds != null || dto.AssigneeIds != null || dto.LabelIds != null)
@@ -312,6 +330,7 @@ public class RecurringService(AppDbContext db, IConfiguration configuration) : I
             TargetDateOffsetDays = original.TargetDateOffsetDays,
             BlockPolicy = original.BlockPolicy,
             IssueTypeId = original.IssueTypeId,
+            CycleId = original.CycleId,
             CreatedById = userId
         };
 
@@ -472,6 +491,7 @@ public class RecurringService(AppDbContext db, IConfiguration configuration) : I
             .Include(t => t.Assignees)
                 .ThenInclude(a => a.Assignee)
             .Include(t => t.Labels)
+            .Include(t => t.Cycle)
             .FirstOrDefaultAsync(t => t.Id == templateId, ct)
             ?? throw new NotFoundException("Tarea recurrente no encontrada.");
 
@@ -506,6 +526,7 @@ public class RecurringService(AppDbContext db, IConfiguration configuration) : I
         TargetDateOffsetDays = t.TargetDateOffsetDays,
         BlockPolicy = t.BlockPolicy.ToString(),
         IssueTypeId = t.IssueTypeId,
+        CycleId = t.CycleId,
         CreatedById = t.CreatedById,
         CreatedAt = t.CreatedAt,
         UpdatedAt = t.UpdatedAt,
@@ -527,7 +548,15 @@ public class RecurringService(AppDbContext db, IConfiguration configuration) : I
                 Id = a.AssigneeId,
                 DisplayName = ResolveDisplayName(a.Assignee!),
                 AvatarUrl = a.Assignee!.AvatarUrl
-            }).ToList()
+            }).ToList(),
+        Cycle = t.Cycle != null
+            ? new RecurringTemplateCycleSummaryDto
+            {
+                Id = t.Cycle.Id,
+                Name = t.Cycle.Name,
+                ProjectId = t.Cycle.ProjectId
+            }
+            : null
     };
 
     private static string ResolveDisplayName(User user)

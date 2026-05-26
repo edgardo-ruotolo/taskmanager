@@ -46,6 +46,7 @@ export function CreateRecurringDialog({
                 targetDateOffsetDays: values.targetDateOffsetDays,
                 blockPolicy: values.blockPolicy,
                 issueTypeId: values.issueTypeId ?? null,
+                cycleId: values.cycleId ?? null,
                 projectIds: values.projectIds,
                 assigneeIds: values.assigneeIds,
                 labelIds: values.labelIds,

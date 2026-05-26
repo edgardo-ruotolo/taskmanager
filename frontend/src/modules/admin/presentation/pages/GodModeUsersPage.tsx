@@ -34,13 +34,6 @@ import {
     AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from '@/components/ui/select';
-import {
     Form,
     FormControl,
     FormField,
@@ -48,6 +41,7 @@ import {
     FormLabel,
     FormMessage,
 } from '@/components/ui/form';
+import { SearchableSelect } from '@/shared/components/ui/searchable-select';
 import {
     useAdminUsers,
     useCreateAdminUser,
@@ -198,21 +192,20 @@ function CreateUserDialog({ open, onClose }: CreateUserDialogProps): React.React
                             render={({ field }) => (
                                 <FormItem>
                                     <FormLabel className="text-secondary text-xs">Rol</FormLabel>
-                                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                        <FormControl>
-                                            <SelectTrigger className="bg-layer-1 border-subtle text-primary h-8 text-sm">
-                                                <SelectValue />
-                                            </SelectTrigger>
-                                        </FormControl>
-                                        <SelectContent className="bg-surface-2 border-subtle">
-                                            <SelectItem value="SuperAdmin" className="text-primary text-sm">
-                                                SuperAdministrador
-                                            </SelectItem>
-                                            <SelectItem value="Administrador" className="text-primary text-sm">
-                                                Administrador
-                                            </SelectItem>
-                                        </SelectContent>
-                                    </Select>
+                                    <FormControl>
+                                        <SearchableSelect
+                                            multi={false}
+                                            value={field.value || null}
+                                            onChange={(v) => field.onChange(v ?? 'Administrador')}
+                                            items={[
+                                                { id: 'SuperAdmin', label: 'SuperAdministrador' },
+                                                { id: 'Administrador', label: 'Administrador' },
+                                            ]}
+                                            placeholder="Seleccionar rol"
+                                            width="100%"
+                                            clearable={false}
+                                        />
+                                    </FormControl>
                                     <FormMessage />
                                 </FormItem>
                             )}
@@ -329,21 +322,20 @@ function EditUserDialog({ user, onClose }: EditUserDialogProps): React.ReactElem
                                 render={({ field }) => (
                                     <FormItem>
                                         <FormLabel className="text-secondary text-xs">Rol</FormLabel>
-                                        <Select onValueChange={field.onChange} value={field.value}>
-                                            <FormControl>
-                                                <SelectTrigger className="bg-layer-1 border-subtle text-primary h-8 text-sm">
-                                                    <SelectValue />
-                                                </SelectTrigger>
-                                            </FormControl>
-                                            <SelectContent className="bg-surface-2 border-subtle">
-                                                <SelectItem value="SuperAdmin" className="text-primary text-sm">
-                                                    SuperAdministrador
-                                                </SelectItem>
-                                                <SelectItem value="Administrador" className="text-primary text-sm">
-                                                    Administrador
-                                                </SelectItem>
-                                            </SelectContent>
-                                        </Select>
+                                        <FormControl>
+                                            <SearchableSelect
+                                                multi={false}
+                                                value={field.value || null}
+                                                onChange={(v) => field.onChange(v ?? 'Administrador')}
+                                                items={[
+                                                    { id: 'SuperAdmin', label: 'SuperAdministrador' },
+                                                    { id: 'Administrador', label: 'Administrador' },
+                                                ]}
+                                                placeholder="Seleccionar rol"
+                                                width="100%"
+                                                clearable={false}
+                                            />
+                                        </FormControl>
                                     </FormItem>
                                 )}
                             />
@@ -353,24 +345,20 @@ function EditUserDialog({ user, onClose }: EditUserDialogProps): React.ReactElem
                                 render={({ field }) => (
                                     <FormItem>
                                         <FormLabel className="text-secondary text-xs">Estado</FormLabel>
-                                        <Select
-                                            onValueChange={(v) => field.onChange(v === 'true')}
-                                            value={String(field.value)}
-                                        >
-                                            <FormControl>
-                                                <SelectTrigger className="bg-layer-1 border-subtle text-primary h-8 text-sm">
-                                                    <SelectValue />
-                                                </SelectTrigger>
-                                            </FormControl>
-                                            <SelectContent className="bg-surface-2 border-subtle">
-                                                <SelectItem value="true" className="text-primary text-sm">
-                                                    Activo
-                                                </SelectItem>
-                                                <SelectItem value="false" className="text-primary text-sm">
-                                                    Inactivo
-                                                </SelectItem>
-                                            </SelectContent>
-                                        </Select>
+                                        <FormControl>
+                                            <SearchableSelect
+                                                multi={false}
+                                                value={String(field.value)}
+                                                onChange={(v) => field.onChange(v === 'true')}
+                                                items={[
+                                                    { id: 'true', label: 'Activo' },
+                                                    { id: 'false', label: 'Inactivo' },
+                                                ]}
+                                                placeholder="Estado"
+                                                width="100%"
+                                                clearable={false}
+                                            />
+                                        </FormControl>
                                     </FormItem>
                                 )}
                             />

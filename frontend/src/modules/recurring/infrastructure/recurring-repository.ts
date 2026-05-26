@@ -34,6 +34,8 @@ const normalizeFrequency = (value: string): RecurringFrequency => {
 const normalizeTemplate = (template: RecurringTemplate): RecurringTemplate => ({
     ...template,
     frequency: normalizeFrequency(template.frequency as unknown as string),
+    cycleId: template.cycleId ?? null,
+    cycle: template.cycle ?? null,
     projects: template.projects ?? [],
     assignees: template.assignees ?? [],
 });

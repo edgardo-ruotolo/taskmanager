@@ -15,4 +15,5 @@ public class WorkspaceActivity : AuditableEntity
     public string? EntityTitle { get; set; }
     public string? OldValue { get; set; }
     public string? NewValue { get; set; }
+    public string? CommentBody { get; set; }
 }

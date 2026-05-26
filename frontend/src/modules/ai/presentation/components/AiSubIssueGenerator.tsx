@@ -1,4 +1,4 @@
-import type React from 'react';
+﻿import type React from 'react';
 import { useState, useEffect } from 'react';
 import { Sparkles, Loader2, CheckSquare, Square } from 'lucide-react';
 import { toast } from 'sonner';
@@ -99,7 +99,7 @@ export function AiSubIssueGenerator({
                             {suggestions.map((item, idx) => {
                                 const isSelected = selected.has(idx);
                                 return (
-                                    <li key={idx}>
+                                    <li key={item}>
                                         <button
                                             type="button"
                                             onClick={() => toggleItem(idx)}

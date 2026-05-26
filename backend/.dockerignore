@@ -1,0 +1,13 @@
+﻿bin/
+obj/
+out/
+publish/
+Tests/
+appsettings.Local.json
+appsettings.Development.json
+**/.vs/
+**/.idea/
+**/.vscode/
+**/*.user
+**/*.suo
+**/.DS_Store

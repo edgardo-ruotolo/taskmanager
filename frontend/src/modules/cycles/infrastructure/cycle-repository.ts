@@ -1,5 +1,5 @@
 import { apiClient } from '@/shared/lib/api-client';
-import type { Cycle, CreateCycleData, CycleIssueRef } from '../domain/types';
+import type { Cycle, CreateCycleData, UpdateCycleData, CycleIssueRef } from '../domain/types';
 
 export const cycleRepository = {
     getAll: (workspaceSlug: string, projectId: string): Promise<Cycle[]> =>
@@ -15,6 +15,19 @@ export const cycleRepository = {
         apiClient
             .post<Cycle>(
                 `/api/workspaces/${workspaceSlug}/projects/${projectId}/cycles`,
+                data,
+            )
+            .then((r) => r.data),
+
+    update: (
+        workspaceSlug: string,
+        projectId: string,
+        cycleId: string,
+        data: UpdateCycleData,
+    ): Promise<Cycle> =>
+        apiClient
+            .patch<Cycle>(
+                `/api/workspaces/${workspaceSlug}/projects/${projectId}/cycles/${cycleId}`,
                 data,
             )
             .then((r) => r.data),

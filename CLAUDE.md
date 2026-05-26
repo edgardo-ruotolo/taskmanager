@@ -10,10 +10,10 @@ Este archivo proporciona instrucciones permanentes a Claude Code cuando trabaja 
 
 **USO OBLIGATORIO DE AGENTES ESPECIALIZADOS** — Cualquier tarea que involucre código en `frontend/` o `backend/` **debe ser ejecutada por el agente especializado correspondiente**, nunca por Claude directamente:
 
-- Tareas en `frontend/` → usar **siempre** el skill `taskmanager-frontend`
-- Tareas en `backend/` → usar **siempre** el skill `taskmanager-backend`
+- Tareas en `frontend/` → invocar **SIEMPRE** el agente `frontend-engineer` (vía la herramienta `Agent` con `subagent_type: "frontend-engineer"`). Definición del agente: `.claude/agents/frontend-engineer.md`. Este agente, a su vez, usa el skill local `taskmanager-frontend` y las skills externas instaladas (`shadcn`, `vercel-react-best-practices`, `tailwind-v4-shadcn`, `typescript-advanced-types`, `tanstack-query-best-practices`, `vercel-react-view-transitions`, `frontend-design`, `web-design-guidelines`, `accessibility`, `high-end-visual-design`). **Está PROHIBIDO que Claude principal use `Edit`, `Write` o `Bash` modificando archivos dentro de `frontend/` directamente — siempre delegar al agente `frontend-engineer`.**
+- Tareas en `backend/` → usar **siempre** el skill `taskmanager-backend`.
 
-Claude no debe escribir ni modificar código en esos directorios por su cuenta. Su rol es planificar, coordinar y delegar al agente correcto.
+Claude principal NO debe escribir ni modificar código en esos directorios por su cuenta. Su rol es planificar a alto nivel, coordinar y delegar al agente/skill correcto. Si Claude detecta que está por tocar un archivo dentro de `frontend/` sin haber invocado el agente `frontend-engineer`, debe detenerse y delegar inmediatamente.
 
 **Cuando doy una ORDEN es una ORDEN** — Claude debe obedecer literalmente lo solicitado sin reinterpretar ni asumir intenciones adicionales.
 
@@ -105,14 +105,57 @@ Al iniciar la aplicación por primera vez (tabla `Users` vacía), el backend deb
 
 ## Base de datos
 
-La infraestructura de base de datos (Docker con PostgreSQL + Adminer) se gestiona en un repositorio separado:
+### Desarrollo local (`make dev`)
+La DB usada en desarrollo es la del proyecto separado **`/Users/edgardoruotolo/Sites/db_projetcs/db_taskmaneger`** (PostgreSQL 17 + Adminer en Docker). Expone `localhost:5432` con `user=eruotolo / db=taskmanager`. El `appsettings.Local.json` (gitignored) ya apunta a esa URL.
 
-**`/Users/edgardoruotolo/Sites/db_projetcs/db_taskmaneger`**
+Antes de `make dev`, asegurate de que esa stack esté arriba:
+```bash
+cd /Users/edgardoruotolo/Sites/db_projetcs/db_taskmaneger && docker compose up -d
+```
 
-No existe ni existirá un `docker-compose.yml` dentro de este repositorio.
+### Producción (Docker compose del propio repo)
+**Sí existe** un `docker-compose.yml` en la raíz de este repo — es el que la VPS usa para deploy (postgres + redis + migrate + backend + frontend). Ver `DEPLOY.md` para el flujo paso a paso.
 
 ## PROYECTO ORIGINAL
 
 El proyecto original que se está replicando/adaptando se encuentra en:
 
 **`/Users/edgardoruotolo/Sites/nextjs_projects/next-plane`**
+
+## Roles de los repos: TaskManager (master) vs TestManager (sandbox)
+
+| Repo | Path | Rol |
+|---|---|---|
+| **TaskManager** | `/Users/edgardoruotolo/Sites/blazor_projects/TaskManager` | **Source of truth.** Es el código que se sube a GitHub y se buildea en la VPS de producción. Todo desarrollo se hace acá. |
+| **TestManager** | `/Users/edgardoruotolo/Sites/blazor_projects/TestManager` | **Sandbox local de "ambiente de producción".** Sirve para probar con `docker compose` (postgres + redis + backend + frontend buildeados como en prod) **antes** de pushear a GitHub. NO va a GitHub. |
+
+### Regla obligatoria de sincronización (TaskManager → TestManager)
+
+**Cualquier cambio aplicado en `TaskManager/backend/` o `TaskManager/frontend/` debe replicarse inmediatamente al path equivalente en `TestManager/` en la misma respuesta** — incluso si la tarea original solo mencionaba al repo `TaskManager`. Esto garantiza que TestManager siga siendo un fiel reflejo de lo que va a producción. La regla aplica a:
+
+- Modificaciones (Edit/Write a archivos existentes).
+- Creación de archivos nuevos.
+- Eliminación de archivos.
+
+No es necesario sincronizar: `bin/`, `obj/`, `node_modules/`, `dist/`, `.vite/`, archivos de IDE, `appsettings.Local.json` (excluido por `.dockerignore` del backend).
+
+### Comando de propagación
+
+Después de cada cambio en `TaskManager/`, copiar al espejo con:
+
+```bash
+cp TaskManager/<ruta-relativa>  TestManager/<misma-ruta-relativa>
+```
+
+Para múltiples archivos o renombrados/eliminaciones, usar `rsync -av --delete` limitado al subdirectorio tocado.
+
+### Reflejar en TestManager los efectos del cambio
+
+Dependiendo de qué se haya modificado:
+- Cambio en código **backend** (`.cs`, `Program.cs`, `*.csproj`) → `cd TestManager && docker compose build backend && docker compose up -d --no-deps backend`.
+- Cambio en código **frontend** (`*.ts`, `*.tsx`, `*.css`, `vite.config.ts`) → `cd TestManager && docker compose build frontend && docker compose up -d --no-deps frontend`.
+- Cambio en `docker-compose.yml`, `.env` del repo o Dockerfile → `cd TestManager && docker compose up -d --build`.
+
+### Verificación post-sync
+
+Tras propagar, validar con `diff -q` que los archivos tocados queden idénticos en ambos lados.

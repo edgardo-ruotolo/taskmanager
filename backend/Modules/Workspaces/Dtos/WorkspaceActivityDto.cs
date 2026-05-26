@@ -11,5 +11,6 @@ public record WorkspaceActivityDto(
     string? EntityTitle,
     string? OldValue,
     string? NewValue,
+    string? CommentBody,
     DateTime CreatedAt
 );

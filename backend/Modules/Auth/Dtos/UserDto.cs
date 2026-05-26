@@ -1,4 +1,4 @@
-namespace TaskManager.Api.Modules.Auth.Dtos;
+﻿namespace TaskManager.Api.Modules.Auth.Dtos;
 
 public class UserDto
 {
@@ -11,4 +11,6 @@ public class UserDto
     public string? AvatarUrl { get; set; }
     public List<string> Roles { get; set; } = [];
     public bool IsSuperAdmin { get; set; }
+    public DateTime? OnboardingCompletedAt { get; set; }
+    public List<string> OnboardingCompletedSteps { get; set; } = new();
 }

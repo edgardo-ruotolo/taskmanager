@@ -34,7 +34,7 @@ public class WorkspaceActivityController(
         CancellationToken ct)
     {
         var workspace = await workspaceService.GetBySlugAsync(workspaceSlug, ct);
-        await activityService.LogAsync(workspace.Id, currentUser.UserId, dto.Action, dto.EntityType, dto.EntityId, dto.EntityTitle, ct);
+        await activityService.LogAsync(workspace.Id, currentUser.UserId, dto.Action, dto.EntityType, dto.EntityId, dto.EntityTitle, dto.CommentBody, ct);
         return NoContent();
     }
 }

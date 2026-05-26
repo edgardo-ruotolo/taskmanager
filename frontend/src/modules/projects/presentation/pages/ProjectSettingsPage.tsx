@@ -82,14 +82,14 @@ export const ProjectSettingsPage = (): React.ReactElement => {
 
             {/* Content Area */}
             <div className="flex-1 overflow-y-auto">
-                <div className="mx-auto max-w-4xl px-10 py-8">
+                <div className="w-full px-10 py-8">
                     {activeTab === 'general' && (
                         <ProjectGeneralTab workspaceSlug={workspaceSlug} projectId={projectId} />
                     )}
                     {activeTab === 'states' && (
                         <ProjectStateGroupTab workspaceSlug={workspaceSlug} projectId={projectId} />
                     )}
-                    {activeTab === 'features' && <ProjectFeaturesTab />}
+                    {activeTab === 'features' && <ProjectFeaturesTab workspaceSlug={workspaceSlug} projectId={projectId} />}
                     {activeTab === 'danger' && (
                         <ProjectDangerTab workspaceSlug={workspaceSlug} projectId={projectId} />
                     )}

@@ -6,5 +6,5 @@ namespace TaskManager.Api.Modules.Workspaces.Services;
 public interface IWorkspaceActivityService
 {
     Task<PagedResult<WorkspaceActivityDto>> GetAllAsync(string workspaceSlug, int page, int pageSize, CancellationToken ct = default);
-    Task LogAsync(Guid workspaceId, Guid actorId, string action, string? entityType, Guid? entityId, string? entityTitle, CancellationToken ct = default);
+    Task LogAsync(Guid workspaceId, Guid actorId, string action, string? entityType, Guid? entityId, string? entityTitle, string? commentBody = null, CancellationToken ct = default);
 }

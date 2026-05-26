@@ -6,13 +6,14 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { toast } from 'sonner';
 import { CheckCircle2, Mail } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { authRepository } from '../../infrastructure/auth-repository';
 import { workspaceRepository } from '@/modules/workspaces/infrastructure/workspace-repository';
-import { setAuthSession } from '../../application/use-auth-me';
+import { useAuthMe, setAuthSession, authMeKey } from '../../application/use-auth-me';
 import { getOnboardingState, saveOnboardingState } from '../../application/onboarding-state';
 
 export { getOnboardingState } from '../../application/onboarding-state';
@@ -190,6 +191,7 @@ interface WorkspaceStepProps {
 }
 
 const WorkspaceStep = ({ onNext, onBack, saving, setSaving }: WorkspaceStepProps): React.ReactElement => {
+    const queryClient = useQueryClient();
     const form = useForm<WorkspaceFormData>({
         resolver: zodResolver(workspaceSchema),
         defaultValues: { name: '', slug: '' },
@@ -205,6 +207,10 @@ const WorkspaceStep = ({ onNext, onBack, saving, setSaving }: WorkspaceStepProps
         setSaving(true);
         try {
             const workspace = await workspaceRepository.create({ name: data.name, slug: data.slug });
+            // Force a refetch of /api/auth/me so the backend-set onboardingCompletedAt
+            // is picked up immediately. This makes the backend the single source of truth
+            // and prevents the loop where the workspace exists but the frontend doesn't know.
+            await queryClient.invalidateQueries({ queryKey: authMeKey });
             onNext(workspace.slug);
         } catch {
             toast.error('El slug ya está en uso. Prueba con otro nombre.');
@@ -393,14 +399,17 @@ export const OnboardingPage = (): React.ReactElement => {
     const [step, setStep] = useState<Step>('welcome');
     const [workspaceSlug, setWorkspaceSlug] = useState('');
     const [saving, setSaving] = useState(false);
+    const { data: currentUser } = useAuthMe();
 
-    // If already completed, redirect away
+    // If already completed (backend field is the source of truth, localStorage is a fallback),
+    // redirect away to avoid looping on /onboarding after a reload.
     useEffect(() => {
-        const state = getOnboardingState();
-        if (state.hasCompletedOnboarding && location.pathname === '/onboarding') {
+        const backendDone = currentUser?.onboardingCompletedAt !== null && currentUser?.onboardingCompletedAt !== undefined;
+        const localDone = getOnboardingState().hasCompletedOnboarding;
+        if ((backendDone || localDone) && location.pathname === '/onboarding') {
             void navigate(workspaceSlug ? `/${workspaceSlug}/projects` : '/workspaces', { replace: true });
         }
-    }, [navigate, location.pathname, workspaceSlug]);
+    }, [navigate, location.pathname, workspaceSlug, currentUser]);
 
     const goTo = (target: Step): void => {
         const currentIndex = STEPS.indexOf(step);

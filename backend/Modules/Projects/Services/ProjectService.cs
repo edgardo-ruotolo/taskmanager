@@ -6,6 +6,7 @@ using TaskManager.Api.Common.Pagination;
 using TaskManager.Api.Data;
 using TaskManager.Api.Modules.Projects.Dtos;
 using TaskManager.Api.Modules.Projects.Entities;
+using TaskManager.Api.Modules.States.Entities;
 
 namespace TaskManager.Api.Modules.Projects.Services;
 
@@ -49,7 +50,10 @@ public class ProjectService(AppDbContext db, IMapper mapper, IEmailService email
         });
 
         await db.SaveChangesAsync(ct);
-        return mapper.Map<ProjectDto>(project);
+
+        var result = mapper.Map<ProjectDto>(project);
+        await EnrichProjectsAsync(new[] { result }, ct);
+        return result;
     }
 
     public async Task<PagedResult<ProjectDto>> GetAllAsync(string workspaceSlug, int page, int pageSize, CancellationToken ct = default)
@@ -62,13 +66,82 @@ public class ProjectService(AppDbContext db, IMapper mapper, IEmailService email
         var total = await query.CountAsync(ct);
         var items = await query.OrderBy(c => c.Name).Skip((page - 1) * pageSize).Take(pageSize).ToListAsync(ct);
 
+        var dtos = mapper.Map<List<ProjectDto>>(items);
+        await EnrichProjectsAsync(dtos, ct);
+
         return new PagedResult<ProjectDto>
         {
-            Items = mapper.Map<IEnumerable<ProjectDto>>(items),
+            Items = dtos,
             TotalCount = total,
             Page = page,
             PageSize = pageSize
         };
+    }
+
+    private async Task EnrichProjectsAsync(IReadOnlyList<ProjectDto> projects, CancellationToken ct)
+    {
+        if (projects.Count == 0) return;
+
+        var projectIds = projects.Select(p => p.Id).ToList();
+
+        var issueStats = await db.Issues
+            .AsNoTracking()
+            .Where(i => projectIds.Contains(i.ProjectId))
+            .GroupBy(i => i.ProjectId)
+            .Select(g => new
+            {
+                ProjectId = g.Key,
+                Total = g.Count(),
+                Completed = g.Count(i => i.State.Category == StateCategory.Completed
+                                          || i.State.Category == StateCategory.Cancelled)
+            })
+            .ToListAsync(ct);
+
+        var membersRaw = await db.ProjectMembers
+            .AsNoTracking()
+            .Include(m => m.User)
+            .Where(m => projectIds.Contains(m.ProjectId))
+            .OrderBy(m => m.CreatedAt)
+            .ToListAsync(ct);
+
+        var membersByProject = membersRaw
+            .GroupBy(m => m.ProjectId)
+            .ToDictionary(g => g.Key, g => g.Take(6).Select(MapMemberSummary).ToList());
+
+        foreach (var p in projects)
+        {
+            var stats = issueStats.FirstOrDefault(s => s.ProjectId == p.Id);
+            p.TotalIssues = stats?.Total ?? 0;
+            p.CompletedIssues = stats?.Completed ?? 0;
+            p.Members = membersByProject.TryGetValue(p.Id, out var members) ? members : [];
+        }
+    }
+
+    private static ProjectMemberSummaryDto MapMemberSummary(ProjectMember member)
+    {
+        var user = member.User;
+        var displayName = !string.IsNullOrWhiteSpace(user.DisplayName)
+            ? user.DisplayName!
+            : $"{user.FirstName} {user.LastName}".Trim();
+        if (string.IsNullOrWhiteSpace(displayName))
+            displayName = user.UserName ?? user.Email ?? string.Empty;
+
+        return new ProjectMemberSummaryDto
+        {
+            UserId = user.Id,
+            DisplayName = displayName,
+            Initials = BuildInitials(displayName),
+            AvatarUrl = user.AvatarUrl
+        };
+    }
+
+    private static string BuildInitials(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return string.Empty;
+        var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length == 0) return string.Empty;
+        if (parts.Length == 1) return parts[0][..Math.Min(2, parts[0].Length)].ToUpperInvariant();
+        return $"{parts[0][0]}{parts[^1][0]}".ToUpperInvariant();
     }
 
     public async Task<ProjectDto> GetByIdAsync(string workspaceSlug, Guid projectId, CancellationToken ct = default)
@@ -82,7 +155,9 @@ public class ProjectService(AppDbContext db, IMapper mapper, IEmailService email
             .FirstOrDefaultAsync(c => c.Id == projectId && c.WorkspaceId == workspace.Id, ct)
             ?? throw new NotFoundException("Project not found.");
 
-        return mapper.Map<ProjectDto>(project);
+        var result = mapper.Map<ProjectDto>(project);
+        await EnrichProjectsAsync(new[] { result }, ct);
+        return result;
     }
 
     public async Task DeleteAsync(string workspaceSlug, Guid projectId, Guid userId, CancellationToken ct = default)
@@ -120,6 +195,10 @@ public class ProjectService(AppDbContext db, IMapper mapper, IEmailService email
         if (dto.Name != null) project.Name = dto.Name;
         if (dto.Description != null) project.Description = dto.Description;
         if (dto.LogoUrl != null) project.LogoUrl = dto.LogoUrl;
+        if (dto.CyclesEnabled.HasValue) project.CyclesEnabled = dto.CyclesEnabled.Value;
+        if (dto.ModulesEnabled.HasValue) project.ModulesEnabled = dto.ModulesEnabled.Value;
+        if (dto.IntakeEnabled.HasValue) project.IntakeEnabled = dto.IntakeEnabled.Value;
+        if (dto.ArchivesEnabled.HasValue) project.ArchivesEnabled = dto.ArchivesEnabled.Value;
 
         if (dto.StateGroupId.HasValue && dto.StateGroupId.Value != project.StateGroupId)
         {
@@ -140,7 +219,10 @@ public class ProjectService(AppDbContext db, IMapper mapper, IEmailService email
         }
 
         await db.SaveChangesAsync(ct);
-        return mapper.Map<ProjectDto>(project);
+
+        var result = mapper.Map<ProjectDto>(project);
+        await EnrichProjectsAsync(new[] { result }, ct);
+        return result;
     }
 
     public async Task<ProjectDto> UpdateTeamAsync(string workspaceSlug, Guid projectId, Guid userId, UpdateProjectTeamDto dto, CancellationToken ct = default)
@@ -175,7 +257,10 @@ public class ProjectService(AppDbContext db, IMapper mapper, IEmailService email
         }
 
         await db.SaveChangesAsync(ct);
-        return mapper.Map<ProjectDto>(project);
+
+        var result = mapper.Map<ProjectDto>(project);
+        await EnrichProjectsAsync(new[] { result }, ct);
+        return result;
     }
 
     public async Task<IEnumerable<ProjectMemberDto>> GetMembersAsync(string workspaceSlug, Guid projectId, CancellationToken ct = default)

@@ -448,7 +448,7 @@ export const TeamsPage = (): React.ReactElement => {
     };
 
     return (
-        <div className="p-6 md:p-8 max-w-4xl mx-auto">
+        <div className="p-6 md:p-8 w-full">
             <div className="flex items-center justify-between mb-6">
                 <div>
                     <h1 className="text-lg font-semibold text-primary">Equipos</h1>

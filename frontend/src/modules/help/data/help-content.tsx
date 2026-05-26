@@ -685,27 +685,6 @@ const projectExtrasSections = [
         ),
     },
     {
-        slug: 'estimaciones',
-        title: 'Estimaciones',
-        summary: 'Configuración del sistema de estimaciones del proyecto.',
-        content: (
-            <>
-                <HelpScreenshot src={SHOT('estimates')} alt="Configuración de estimaciones" />
-                <HelpP>
-                    URL: <code className="font-mono">/{"{workspace}"}/projects/{"{id}"}/estimates</code>.
-                    Define cómo se estima el esfuerzo de las tareas del proyecto.
-                </HelpP>
-                <HelpH3>Sistemas disponibles</HelpH3>
-                <HelpList>
-                    <li><strong>Puntos (Fibonacci)</strong> — 1, 2, 3, 5, 8, 13, 21.</li>
-                    <li><strong>T-shirt sizes</strong> — XS, S, M, L, XL, XXL.</li>
-                    <li><strong>Tiempo (horas)</strong> — valor numérico libre.</li>
-                    <li><strong>Personalizado</strong> — definí tu propia escala.</li>
-                </HelpList>
-            </>
-        ),
-    },
-    {
         slug: 'deploy-boards',
         title: 'Deploy Boards',
         summary: 'Boards públicos compartibles del proyecto.',

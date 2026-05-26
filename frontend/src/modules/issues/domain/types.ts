@@ -38,8 +38,6 @@ export interface Issue {
     cycleId?: string;
     parentId?: string;
     issueTypeId?: string;
-    estimatePointId?: string;
-    point?: number;
     startDate?: string;
     dueDate?: string;
     completedAt?: string;
@@ -71,7 +69,6 @@ export interface CreateIssueData {
     cycleId?: string;
     parentId?: string;
     issueTypeId?: string;
-    estimatePointId?: string;
     startDate?: string;
     dueDate?: string;
     isDraft?: boolean;
@@ -92,7 +89,6 @@ export interface UpdateIssueData {
     cycleId?: string;
     parentId?: string;
     issueTypeId?: string;
-    estimatePointId?: string;
     startDate?: string;
     dueDate?: string;
     isDraft?: boolean;

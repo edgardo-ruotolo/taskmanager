@@ -162,7 +162,6 @@ public class IssueArchiveService(AppDbContext db, IConfiguration configuration) 
             AssigneeId = original.AssigneeId,
             ParentId = original.ParentId,
             IssueTypeId = original.IssueTypeId,
-            EstimatePointId = original.EstimatePointId,
             SortOrder = original.SortOrder + 1,
             IsDraft = original.IsDraft,
             StartDate = original.StartDate,

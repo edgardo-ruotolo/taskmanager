@@ -91,7 +91,7 @@ export const ImporterPage = (): React.ReactElement => {
     };
 
     return (
-        <div className="p-6 md:p-8 max-w-5xl mx-auto">
+        <div className="p-6 md:p-8 w-full">
             {/* Header */}
             <div className="mb-8">
                 <h1 className="text-2xl font-bold text-primary mb-1">

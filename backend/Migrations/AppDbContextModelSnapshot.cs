@@ -587,6 +587,9 @@ namespace TaskManager.Api.Migrations
                     b.Property<DateTime?>("ArchivedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<DateTime?>("ClosedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -604,6 +607,9 @@ namespace TaskManager.Api.Migrations
 
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("boolean");
+
+                    b.Property<Guid?>("LeadId")
+                        .HasColumnType("uuid");
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -627,6 +633,8 @@ namespace TaskManager.Api.Migrations
                         .HasColumnType("timestamp with time zone");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("LeadId");
 
                     b.HasIndex("OwnerId");
 
@@ -726,78 +734,6 @@ namespace TaskManager.Api.Migrations
                     b.HasIndex("StateId");
 
                     b.ToTable("DraftIssues");
-                });
-
-            modelBuilder.Entity("TaskManager.Api.Modules.Estimates.Entities.Estimate", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateTime?>("DeletedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("Description")
-                        .HasColumnType("text");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("boolean");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(255)
-                        .HasColumnType("character varying(255)");
-
-                    b.Property<Guid>("ProjectId")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("Type")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ProjectId");
-
-                    b.ToTable("Estimates");
-                });
-
-            modelBuilder.Entity("TaskManager.Api.Modules.Estimates.Entities.EstimatePoint", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("Description")
-                        .HasColumnType("text");
-
-                    b.Property<Guid>("EstimateId")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("Key")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)");
-
-                    b.Property<int>("SortOrder")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("Value")
-                        .IsRequired()
-                        .HasMaxLength(255)
-                        .HasColumnType("character varying(255)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("EstimateId");
-
-                    b.ToTable("EstimatePoints");
                 });
 
             modelBuilder.Entity("TaskManager.Api.Modules.Exporter.Entities.ExporterHistory", b =>
@@ -1211,9 +1147,6 @@ namespace TaskManager.Api.Migrations
                     b.Property<DateTime?>("DueDate")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<Guid?>("EstimatePointId")
-                        .HasColumnType("uuid");
-
                     b.Property<string>("ExternalId")
                         .HasColumnType("text");
 
@@ -1236,9 +1169,6 @@ namespace TaskManager.Api.Migrations
 
                     b.Property<Guid?>("ParentId")
                         .HasColumnType("uuid");
-
-                    b.Property<int?>("Point")
-                        .HasColumnType("integer");
 
                     b.Property<int>("Priority")
                         .HasColumnType("integer");
@@ -1281,8 +1211,6 @@ namespace TaskManager.Api.Migrations
                     b.HasIndex("AssigneeId");
 
                     b.HasIndex("CreatedById");
-
-                    b.HasIndex("EstimatePointId");
 
                     b.HasIndex("IssueTypeId");
 
@@ -1868,6 +1796,9 @@ namespace TaskManager.Api.Migrations
                     b.Property<string>("Description")
                         .HasColumnType("text");
 
+                    b.Property<DateTime?>("DueDate")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<DateTime?>("EndDate")
                         .HasColumnType("timestamp with time zone");
 
@@ -1876,6 +1807,9 @@ namespace TaskManager.Api.Migrations
 
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("boolean");
+
+                    b.Property<Guid?>("LeadId")
+                        .HasColumnType("uuid");
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -1899,6 +1833,8 @@ namespace TaskManager.Api.Migrations
                         .HasColumnType("timestamp with time zone");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("LeadId");
 
                     b.HasIndex("OwnerId");
 
@@ -2108,8 +2044,17 @@ namespace TaskManager.Api.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<bool>("ArchivesEnabled")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime?>("ClosingDate")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("CyclesEnabled")
+                        .HasColumnType("boolean");
 
                     b.Property<DateTime?>("DeletedAt")
                         .HasColumnType("timestamp with time zone");
@@ -2123,12 +2068,21 @@ namespace TaskManager.Api.Migrations
                         .HasMaxLength(10)
                         .HasColumnType("character varying(10)");
 
+                    b.Property<bool>("IntakeEnabled")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsArchived")
+                        .HasColumnType("boolean");
+
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("boolean");
 
                     b.Property<string>("LogoUrl")
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
+
+                    b.Property<bool>("ModulesEnabled")
+                        .HasColumnType("boolean");
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -2334,6 +2288,9 @@ namespace TaskManager.Api.Migrations
                     b.Property<Guid>("CreatedById")
                         .HasColumnType("uuid");
 
+                    b.Property<Guid?>("CycleId")
+                        .HasColumnType("uuid");
+
                     b.Property<int?>("DayOfMonth")
                         .HasColumnType("integer");
 
@@ -2434,6 +2391,8 @@ namespace TaskManager.Api.Migrations
 
                     b.HasIndex("CreatedById");
 
+                    b.HasIndex("CycleId");
+
                     b.HasIndex("IssueTypeId");
 
                     b.HasIndex("WorkspaceId", "SequenceId")
@@ -2493,6 +2452,9 @@ namespace TaskManager.Api.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<string>("Audience")
+                        .HasColumnType("text");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -2502,11 +2464,17 @@ namespace TaskManager.Api.Migrations
                     b.Property<string>("Description")
                         .HasColumnType("text");
 
+                    b.Property<DateTime?>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("boolean");
 
                     b.Property<bool>("IsPublic")
                         .HasColumnType("boolean");
+
+                    b.Property<DateTime?>("LastVisitAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<Guid>("ProjectId")
                         .HasColumnType("uuid");
@@ -2536,6 +2504,9 @@ namespace TaskManager.Api.Migrations
 
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("VisitCount")
+                        .HasColumnType("integer");
 
                     b.Property<Guid>("WorkspaceId")
                         .HasColumnType("uuid");
@@ -2864,6 +2835,9 @@ namespace TaskManager.Api.Migrations
                     b.Property<Guid>("ActorId")
                         .HasColumnType("uuid");
 
+                    b.Property<string>("CommentBody")
+                        .HasColumnType("text");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -3099,6 +3073,10 @@ namespace TaskManager.Api.Migrations
 
             modelBuilder.Entity("TaskManager.Api.Modules.Cycles.Entities.Cycle", b =>
                 {
+                    b.HasOne("TaskManager.Api.Modules.Auth.Entities.User", "Lead")
+                        .WithMany()
+                        .HasForeignKey("LeadId");
+
                     b.HasOne("TaskManager.Api.Modules.Auth.Entities.User", "Owner")
                         .WithMany()
                         .HasForeignKey("OwnerId")
@@ -3110,6 +3088,8 @@ namespace TaskManager.Api.Migrations
                         .HasForeignKey("ProjectId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("Lead");
 
                     b.Navigation("Owner");
 
@@ -3164,28 +3144,6 @@ namespace TaskManager.Api.Migrations
                     b.Navigation("Project");
 
                     b.Navigation("State");
-                });
-
-            modelBuilder.Entity("TaskManager.Api.Modules.Estimates.Entities.Estimate", b =>
-                {
-                    b.HasOne("TaskManager.Api.Modules.Projects.Entities.Project", "Project")
-                        .WithMany()
-                        .HasForeignKey("ProjectId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Project");
-                });
-
-            modelBuilder.Entity("TaskManager.Api.Modules.Estimates.Entities.EstimatePoint", b =>
-                {
-                    b.HasOne("TaskManager.Api.Modules.Estimates.Entities.Estimate", "Estimate")
-                        .WithMany("Points")
-                        .HasForeignKey("EstimateId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Estimate");
                 });
 
             modelBuilder.Entity("TaskManager.Api.Modules.Exporter.Entities.ExporterHistory", b =>
@@ -3331,11 +3289,6 @@ namespace TaskManager.Api.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("TaskManager.Api.Modules.Estimates.Entities.EstimatePoint", "EstimatePoint")
-                        .WithMany()
-                        .HasForeignKey("EstimatePointId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
                     b.HasOne("TaskManager.Api.Modules.Issues.Entities.IssueType", "IssueType")
                         .WithMany()
                         .HasForeignKey("IssueTypeId")
@@ -3368,8 +3321,6 @@ namespace TaskManager.Api.Migrations
                     b.Navigation("Assignee");
 
                     b.Navigation("CreatedBy");
-
-                    b.Navigation("EstimatePoint");
 
                     b.Navigation("IssueType");
 
@@ -3659,6 +3610,10 @@ namespace TaskManager.Api.Migrations
 
             modelBuilder.Entity("TaskManager.Api.Modules.Modules.Entities.Module", b =>
                 {
+                    b.HasOne("TaskManager.Api.Modules.Auth.Entities.User", "Lead")
+                        .WithMany()
+                        .HasForeignKey("LeadId");
+
                     b.HasOne("TaskManager.Api.Modules.Auth.Entities.User", "Owner")
                         .WithMany()
                         .HasForeignKey("OwnerId")
@@ -3670,6 +3625,8 @@ namespace TaskManager.Api.Migrations
                         .HasForeignKey("ProjectId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("Lead");
 
                     b.Navigation("Owner");
 
@@ -3872,6 +3829,11 @@ namespace TaskManager.Api.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("TaskManager.Api.Modules.Cycles.Entities.Cycle", "Cycle")
+                        .WithMany()
+                        .HasForeignKey("CycleId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("TaskManager.Api.Modules.Issues.Entities.IssueType", "IssueType")
                         .WithMany()
                         .HasForeignKey("IssueTypeId")
@@ -3884,6 +3846,8 @@ namespace TaskManager.Api.Migrations
                         .IsRequired();
 
                     b.Navigation("CreatedBy");
+
+                    b.Navigation("Cycle");
 
                     b.Navigation("IssueType");
 
@@ -4108,11 +4072,6 @@ namespace TaskManager.Api.Migrations
             modelBuilder.Entity("TaskManager.Api.Modules.Cycles.Entities.Cycle", b =>
                 {
                     b.Navigation("CycleIssues");
-                });
-
-            modelBuilder.Entity("TaskManager.Api.Modules.Estimates.Entities.Estimate", b =>
-                {
-                    b.Navigation("Points");
                 });
 
             modelBuilder.Entity("TaskManager.Api.Modules.Issues.Entities.Issue", b =>

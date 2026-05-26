@@ -10,9 +10,15 @@ public class ModuleDto
     public ModuleStatus Status { get; set; }
     public DateTime? StartDate { get; set; }
     public DateTime? EndDate { get; set; }
+    public DateTime? DueDate { get; set; }
     public Guid ProjectId { get; set; }
     public Guid OwnerId { get; set; }
+    public Guid? LeadId { get; set; }
+    public string? LeadName { get; set; }
     public int IssueCount { get; set; }
+    public int TotalIssues { get; set; }
+    public int CompletedIssues { get; set; }
+    public List<ModuleMemberSummaryDto> Members { get; set; } = [];
     public bool IsArchived { get; set; }
     public DateTime? ArchivedAt { get; set; }
     public DateTime CreatedAt { get; set; }

@@ -28,13 +28,7 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from '@/components/ui/select';
+import { SearchableSelect } from '@/shared/components/ui/searchable-select';
 import {
     useStateGroups,
     useCreateStateGroup,
@@ -353,18 +347,15 @@ function CreateStateDialog({ stateGroupId, onClose }: CreateStateDialogProps): R
                             control={form.control}
                             name="category"
                             render={({ field }) => (
-                                <Select onValueChange={field.onChange} value={field.value}>
-                                    <SelectTrigger className="bg-layer-1 border-subtle text-primary h-8 text-sm">
-                                        <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent className="bg-surface-2 border-subtle">
-                                        {CATEGORIES.map((c) => (
-                                            <SelectItem key={c} value={c} className="text-primary text-sm">
-                                                {CATEGORY_LABELS[c]}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
+                                <SearchableSelect
+                                    multi={false}
+                                    value={field.value || null}
+                                    onChange={(v) => field.onChange(v ?? 'Unstarted')}
+                                    items={CATEGORIES.map((c) => ({ id: c, label: CATEGORY_LABELS[c] }))}
+                                    placeholder="Categoría"
+                                    width="100%"
+                                    clearable={false}
+                                />
                             )}
                         />
                     </div>
@@ -485,18 +476,15 @@ function EditStateDialog({ state, onClose }: EditStateDialogProps): React.ReactE
                             control={form.control}
                             name="category"
                             render={({ field }) => (
-                                <Select onValueChange={field.onChange} value={field.value}>
-                                    <SelectTrigger className="bg-layer-1 border-subtle text-primary h-8 text-sm">
-                                        <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent className="bg-surface-2 border-subtle">
-                                        {CATEGORIES.map((c) => (
-                                            <SelectItem key={c} value={c} className="text-primary text-sm">
-                                                {CATEGORY_LABELS[c]}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
+                                <SearchableSelect
+                                    multi={false}
+                                    value={field.value || null}
+                                    onChange={(v) => field.onChange(v ?? 'Unstarted')}
+                                    items={CATEGORIES.map((c) => ({ id: c, label: CATEGORY_LABELS[c] }))}
+                                    placeholder="Categoría"
+                                    width="100%"
+                                    clearable={false}
+                                />
                             )}
                         />
                     </div>

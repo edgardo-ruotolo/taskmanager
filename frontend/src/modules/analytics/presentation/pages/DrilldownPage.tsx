@@ -12,13 +12,7 @@ import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from '@/components/ui/select';
+import { SearchableSelect } from '@/shared/components/ui/searchable-select';
 import { cn } from '@/lib/utils';
 import { useAnalyticsFiltersStore } from '../../application/filters-store';
 import { useCreateExport, useDrilldown } from '../../application/use-analytics';
@@ -209,7 +203,7 @@ export const DrilldownPage = (): React.ReactElement => {
     };
 
     return (
-        <div className="mx-auto max-w-[1400px] px-10 py-8 space-y-5">
+        <div className="w-full px-10 py-8 space-y-5">
             <div className="flex items-center justify-between flex-wrap gap-3">
                 <div>
                     <h2 className="text-[20px] font-medium tracking-[-0.02em] text-[var(--neutral-1200)]">
@@ -316,24 +310,17 @@ export const DrilldownPage = (): React.ReactElement => {
                 <div className="border-t border-[var(--neutral-200)] px-3 py-2 flex items-center justify-between gap-3">
                     <div className="flex items-center gap-2 text-[12px] text-[var(--neutral-600)]">
                         <span>Por página:</span>
-                        <Select
+                        <SearchableSelect
+                            multi={false}
                             value={String(pageSize)}
-                            onValueChange={(v) => {
-                                setPageSize(Number(v));
-                                setPage(1);
+                            onChange={(v) => {
+                                if (v) { setPageSize(Number(v)); setPage(1); }
                             }}
-                        >
-                            <SelectTrigger className="h-7 w-20 text-[12px]">
-                                <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {PAGE_SIZES.map((n) => (
-                                    <SelectItem key={n} value={String(n)}>
-                                        {n}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
+                            items={PAGE_SIZES.map((n) => ({ id: String(n), label: String(n) }))}
+                            placeholder="50"
+                            width={88}
+                            clearable={false}
+                        />
                     </div>
                     <div className="flex items-center gap-2 text-[12px] text-[var(--neutral-700)]">
                         <Button
